@@ -1,0 +1,6 @@
+# image: tapis/authenticator-migrations
+from tapis/authenticator
+
+COPY migrations /home/tapis/migrations
+
+ENTRYPOINT ["flask", "db"]

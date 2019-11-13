@@ -1,0 +1,41 @@
+{
+  "$id": "http://github.com/tapis-project/authenticator/configschema.json",
+  "$schema": "http://json-schema.org/schema#",
+  "properties": {
+    "sql_db_url": {
+      "type": "string",
+      "description": "full URL, including protocol and database, to the SQL db.",
+      "default": "postgres://authenticator:d3fd6pAssw0rd@postgres:5432/authenticator"
+    },
+    "dev_ldap_url": {
+      "type": "string",
+      "description": "full URL to the test LDAP db.",
+      "default": "ldap"
+    },
+    "dev_ldap_port": {
+      "type": "integer",
+      "description": "port for the test LDAP db.",
+      "default": 389
+    },
+    "dev_ldap_use_ssl": {
+      "type": "boolean",
+      "description": "Whether to use SSL for the test LDAP db.",
+      "default": false
+    },
+    "dev_ldap_user_dn": {
+      "type": "string",
+      "description": "Base DN for users in the test LDAP db.",
+      "default": "dc=tapis"
+    },
+    "dev_ldap_bind_dn": {
+      "type": "string",
+      "description": "Bind DN for the test LDAP db.",
+      "default": "cn=admin,dc=tapis"
+    },
+    "dev_ldap_bind_credential": {
+      "type": "string",
+      "description": "Bind credential for the test LDAP db.",
+      "default": "a1r2c3HKvv0"
+    }
+    }
+}
