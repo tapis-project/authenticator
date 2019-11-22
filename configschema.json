@@ -10,7 +10,7 @@
     "dev_ldap_url": {
       "type": "string",
       "description": "full URL to the test LDAP db.",
-      "default": "ldap"
+      "default": "ldap://ldap"
     },
     "dev_ldap_port": {
       "type": "integer",
@@ -22,10 +22,15 @@
       "description": "Whether to use SSL for the test LDAP db.",
       "default": false
     },
+    "dev_ldap_tenants_base_dn": {
+      "type": "string",
+      "description": "Base DN for tenant OUs in the test LDAP db.",
+      "default": "dc=tapis"
+    },
     "dev_ldap_user_dn": {
       "type": "string",
-      "description": "Base DN for users in the test LDAP db.",
-      "default": "dc=tapis"
+      "description": "Base DN for users withint the dev tenant in the test LDAP db.",
+      "default": "ou=tenants.dev,dc=tapis"
     },
     "dev_ldap_bind_dn": {
       "type": "string",
