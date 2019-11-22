@@ -1,7 +1,7 @@
 {
 
   "service_name": "authenticator",
-  "tenants": ["dev"],
+  "tenants": ["dev", "test"],
   "use_sk": false,
   "log_level": "DEBUG",
   "show_traceback": true

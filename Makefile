@@ -20,16 +20,26 @@ build.api:
 build.migrations:
 	cd $(cwd); docker build -f Dockerfile-migrations -t tapis/$(api)-migrations .
 
-build: build.api build.migrations
+build.test:
+	cd $(cwd); docker build -t tapis/$(api)-tests -f Dockerfile-tests .;
 
+build: build.api build.migrations build.test
 
-# ----- wipe the local environment by removing all containers
-clean:
+# ----- run tests
+test: build.test
+	cd $(cwd); touch service.log; docker-compose run $(api)-tests;
+
+# ----- shutdown the currently running services
+down:
 	docker-compose down
 
+# ----- wipe the local environment by removing all data and containers
+clean: down
+	docker volume rm $(api)_pgdata
+
 # ----- start databases
-run_dbs: build.api clean
-	cd $(cwd); docker-compose up -d postgres; docker-compose up -d ldap
+run_dbs: build.api down
+	cd $(cwd); docker-compose up -d postgres
 
 # ----- connect to db as root
 connect_db:
@@ -38,16 +48,14 @@ connect_db:
 # ----- initialize databases; run this target once per database installation
 init_dbs: run_dbs
 	echo "wait for db to start up..."
-	sleep 4
-	docker cp new_db.sql ${api}_postgres_1:/db.sql
-	docker-compose exec postgres psql -Upostgres -f /db.sql
+	sleep 8
+	docker cp new_db.sql $(api)_postgres_1:/db.sql
+	docker-compose exec -T postgres psql -Upostgres -f /db.sql
 
 # ----- wipe database and associated data
 wipe: clean
-	docker volume rm $(api)_pgdata
 	rm -rf migrations
 
 # ----- run migrations
 migrate.upgrade: build.migrations
 	docker-compose run --rm migrations upgrade
-	

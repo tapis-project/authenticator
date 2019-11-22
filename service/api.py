@@ -3,7 +3,7 @@ from flask_migrate import Migrate
 from common.utils import TapisApi, handle_error, flask_errors_dict
 
 from service.auth import authn_and_authz
-from service.controllers import ClientsResource, ClientResource
+from service.controllers import ClientsResource, ClientResource, TokensResource
 from service.models import db, app
 
 # authentication and authorization ---
@@ -26,5 +26,6 @@ api.handle_exception = handle_error
 api.handle_user_exception = handle_error
 
 # Add resources
-api.add_resource(ClientsResource, '/clients')
-api.add_resource(ClientResource, '/clients/<client_id>')
+api.add_resource(ClientsResource, '/v3/clients')
+api.add_resource(ClientResource, '/v3/clients/<client_id>')
+api.add_resource(TokensResource, '/v3/oauth2/tokens')

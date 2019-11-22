@@ -2,13 +2,16 @@ from common.auth import tenants as ts
 from common.config import conf
 from common import errors
 
+from common.logs import get_logger
+logger = get_logger(__name__)
+
+
 def add_tenant_ldaps():
     """
-    
     :return: 
     """
     result = []
-    for tenant in ts:
+    for tenant in ts.tenants:
         # in dev mode, the authenticator can be configured to not use the security kernel, in which case we must get
         # the ldap information for a "dev" tenant directly from the service configs:
         if not conf.use_sk:

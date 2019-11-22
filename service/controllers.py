@@ -11,6 +11,7 @@ from service.models import db, Client
 from common.logs import get_logger
 logger = get_logger(__name__)
 
+
 class ClientsResource(Resource):
     """
     Work with OAuth client objects
@@ -33,6 +34,7 @@ class ClientsResource(Resource):
         db.session.commit()
         return utils.ok(result=client.serialize, msg="Client created successfully.")
 
+
 class ClientResource(Resource):
     """
     Work with a single OAuth client objects
@@ -54,4 +56,20 @@ class ClientResource(Resource):
             raise errors.PermissionsError("Not authorized for this client.")
         db.session.delete(client)
         db.session.commit()
+
+
+class TokensResource(Resource):
+    """
+    Work with OAuth client objects
+    """
+
+    def post(self):
+        validator = RequestValidator(utils.spec)
+        result = validator.validate(FlaskOpenAPIRequest(request))
+        if result.errors:
+            raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
+        validated_body = result.body
+
+        return validated_body
+        # return utils.ok(result=client.serialize, msg="Client created successfully.")
 
