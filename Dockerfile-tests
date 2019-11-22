@@ -1,0 +1,11 @@
+# Image: tapis/authenticator-tests
+from tapis/authenticator
+
+USER root
+ADD tests-requirements.txt /home/tapis/tests-requirements.txt
+RUN pip install -r /home/tapis/tests-requirements.txt
+ADD service/tests /home/tapis/service/tests
+RUN chown -R tapis:tapis /home/tapis
+
+USER tapis
+ENTRYPOINT ["pytest"]
