@@ -1,5 +1,4 @@
 {
-
   "service_name": "authenticator",
   "tenants": ["dev", "test"],
   "use_sk": false,

@@ -7,6 +7,16 @@
       "description": "full URL, including protocol and database, to the SQL db.",
       "default": "postgres://authenticator:d3fd6pAssw0rd@postgres:5432/authenticator"
     },
+    "default_page_limit": {
+      "type": "integer",
+      "description": "The default maximum number of results to return for each listing endpoint.",
+      "default": 100
+    },
+    "populate_dev_ldap": {
+      "type": "boolean",
+      "description": "At start up, ensure the test LDAP db is populated with an OU and set of user accounts for the dev tenant.",
+      "default": true
+    },
     "dev_ldap_url": {
       "type": "string",
       "description": "full URL to the test LDAP db.",

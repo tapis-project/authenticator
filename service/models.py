@@ -11,6 +11,7 @@ from common.errors import DAOError
 from common.logs import get_logger
 logger = get_logger(__name__)
 
+from service import get_tenant_config
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = conf.sql_db_url
@@ -171,6 +172,41 @@ class LdapUser(object):
         self.username = uid
         self.password = userPassword
 
+    @classmethod
+    def from_ldap3_entry(cls, tenant_id, entry):
+        """
+        Create an LdapUser object from an ldap3 cn obect.
+        {:param tenant_id: (str) The tenant_id associated with this entry.
+        :param entry:
+        :return: LdapUser
+        """
+        # the attributes of the LdapUser object
+        attrs = {}
+        try:
+            cn = entry['cn'][0]
+        except Exception as e:
+            logger.error(f"Got exception trying to get cn from entry; entry: {entry}")
+            raise DAOError("Unable to parse LDAP user objects.")
+        # the cn is the uid/username
+        attrs['uid'] = cn
+        # compute the DN from the CN
+        tenant = get_tenant_config(tenant_id)
+        ldap_user_dn = tenant['ldap_user_dn']
+        attrs['dn'] = f'cn={cn},{ldap_user_dn}'
+        # the remaining params are computed directly in the same way -- as the first entry in an array of bytes
+        params = ['givenName', 'sn', 'mail', 'telephoneNumber', 'mobile', 'createTimestamp',
+                  'uidNumber', 'userPassword']
+        for param in params:
+            if param in entry and entry[param][0]:
+                # some parans are returned as bytes and others as strings:
+                val = entry[param][0]
+                if hasattr(val, 'decode'):
+                    attrs[param] = val.decode('utf-8')
+                else:
+                    attrs[param] = val
+        # now, construct and return a LdapUser object
+        return LdapUser(**attrs)
+
     def save(self, conn):
         """
         Save an LdapUser object in an LDAP server with connection, conn.
@@ -189,7 +225,7 @@ class LdapUser(object):
             logger.error(msg)
             raise DAOError("Unable to communicate with LDAP database when trying to save user account.")
         if not result:
-            msg = f'Got False result trying to add a user to LDAP; error data: {conn.result}'
+            msg = f'Got False result trying to add a user with dn {self.dn} to LDAP; error data: {conn.result}'
             logger.error(msg)
             raise DAOError("Unable to save user account in LDAP database; "
                            "Required fields could be missing or improperly formatted.")
@@ -222,6 +258,20 @@ class LdapUser(object):
         if self.password:
             result['userPassword'] = self.password
         return result
+
+    @property
+    def serialize(self):
+        return {
+            'dn': self.dn,
+            'given_name': self.given_name,
+            'last_name': self.last_name,
+            'email': self.email,
+            'phone': self.phone,
+            'mobile_phone': self.mobile_phone,
+            'create_time': self.create_time,
+            'username': self.username,
+            'uid': self.uid,
+        }
 
 
 class LdapOU(object):

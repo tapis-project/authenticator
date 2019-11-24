@@ -28,6 +28,7 @@ def get_ldap_connection(ldap_server, ldap_port, bind_dn, bind_password, use_ssl=
     conn = Connection(server, bind_dn, bind_password, auto_bind=True)
     return conn
 
+
 def get_tapis_ldap_server_info():
     """
     Returns dictionary of Tapis LDAP server connection information.
@@ -42,7 +43,9 @@ def get_tapis_ldap_server_info():
         "use_ssl": conf.dev_ldap_use_ssl
     }
 
+
 tapis_ldap = get_tapis_ldap_server_info()
+
 
 def get_tapis_ldap_connection():
     """
@@ -141,23 +144,72 @@ def get_tenant_ldap_connection(tenant_id, bind_dn=None, bind_password=None):
                                bind_password=tenant['ldap_bind_credential'],
                                use_ssl=tenant['ldap_use_ssl'])
 
-def list_tenant_users(tenant_id):
+
+def list_tenant_users(tenant_id, limit=None, offset=0):
     """
-    List all users in a tenant
+    List users in a tenant
     :param tenant_id: (str) the tenant id to use.
+    :param limit (int): The maximum number of users to return.
+    :param offset (int): A position to start the paged search.
     :return:
     """
+    logger.debug(f'top of list_tenant_users; tenant_id: {tenant_id}; limit: {limit}; offset: {offset}')
     tenant = get_tenant_config(tenant_id)
+    if not limit:
+        limit = conf.default_page_limit
     conn = get_tenant_ldap_connection(tenant_id)
-    result = conn.search(tenant['ldap_user_dn'], '(cn=*)', attributes=['*'])
+    cookie = None
+    # As per RFC2696, the page cookie for paging can only be used by the same connection; we take the following
+    # approach:
+    # if the offset is not 0, we first pull the first <offset> entries to get the cookie, then we get use the returned
+    # cookie to get the actual page of results that we want.
+    if offset > 0:
+        # we only need really need the cookie so we just get the cn attribute
+        result = conn.search(tenant['ldap_user_dn'], '(cn=*)', attributes=['cn'], paged_size=offset)
+        if not result:
+            msg = f'Error retrieving users; debug information: {conn.result}'
+            logger.error(msg)
+            raise DAOError(msg)
+        cookie = conn.result['controls']['1.2.840.113556.1.4.319']['value']['cookie']
+    result = conn.search(tenant['ldap_user_dn'], '(cn=*)', attributes=['*'], paged_size=limit, paged_cookie=cookie)
     if not result:
+        # it is possible to get a "success" result when there are no users in the OU -
+        if hasattr(conn.result, 'description') and conn.result.description == 'success':
+            return [], None
         msg = f'Error retrieving users; debug information: {conn.result}'
         logger.error(msg)
         raise DAOError(msg)
     result = []
     for ent in conn.entries:
-        result.append(ent.entry_attributes_as_dict)
-    return result
+        # create LdapUser objects for each entry:
+        user = LdapUser.from_ldap3_entry(tenant_id, ent.entry_attributes_as_dict)
+        result.append(user)
+    return result, offset+len(result)
+
+
+def get_tenant_user(tenant_id, username):
+    """
+    Get the profile of a specific user in a tenant.
+    :param tenant_id:
+    :param username:
+    :return:
+    """
+    tenant = get_tenant_config(tenant_id)
+    conn = get_tenant_ldap_connection(tenant_id)
+    tenant_base_dn = tenant['ldap_user_dn']
+    logger.debug(f'searching with params: {tenant_base_dn}; username: {username}')
+    result = conn.search(f'{tenant_base_dn}', f'(cn={username})', attributes=['*'])
+    if not result:
+        # it is possible to get a "success" result when there are no users in the OU -
+        if hasattr(conn.result, 'description') and conn.result.description == 'success':
+            return [], None
+        msg = f'Error retrieving user; debug information: {conn.result}'
+        logger.error(msg)
+        raise DAOError(msg)
+    result = []
+    logger.debug(f'conn.entries: {conn.entries}')
+    user = LdapUser.from_ldap3_entry(tenant_id, conn.entries[0].entry_attributes_as_dict)
+    return user
 
 def get_dn(tenant_id, username):
     """
@@ -170,6 +222,7 @@ def get_dn(tenant_id, username):
     ldap_user_dn = tenant['ldap_user_dn']
     return f'cn={username},{ldap_user_dn}'
 
+
 def check_username_password(tenant_id, username, password):
     """
     Check 
@@ -180,7 +233,7 @@ def check_username_password(tenant_id, username, password):
     """
     bind_dn = get_dn(tenant_id, username)
     try:
-        conn = get_tenant_ldap_connection(tenant_id, bind_dn=bind_dn, bind_password=password)
+        get_tenant_ldap_connection(tenant_id, bind_dn=bind_dn, bind_password=password)
     except LDAPBindError as e:
         logger.debug(f'got exception checking password: {e}')
         raise InvalidPasswordError("Invalid username/password combination.")
@@ -195,6 +248,7 @@ def add_user(tenant_id, user):
     """
     conn = get_tenant_ldap_connection(tenant_id)
     user.save(conn)
+
 
 def add_test_user(tenant_id, username):
     """
@@ -213,3 +267,33 @@ def add_test_user(tenant_id, username):
                     userPassword=username)
     # now call the generic add user for the tenant id:
     add_user(tenant_id, user)
+
+
+def populate_test_ldap(tenant_id='dev'):
+    """
+    Initialize the test LDAP with an OU and set of test accounts.
+    :return:
+    """
+    # number of users to create -
+    NUM_USERS = 10
+    # first check if the OU already exists
+    ous = list_tapis_ous()
+    found = False
+    for ou in ous:
+        if ou['ou'][0] == f'tenants.{tenant_id}':
+            found = True
+            logger.debug(f"OU tenants.{tenant_id} already present.")
+    if not found:
+        logger.debug(f'adding OU tenants.{tenant_id}')
+        create_tapis_ldap_tenant_ou(tenant_id)
+    users, _ = list_tenant_users(tenant_id)
+    usernames = [u.serialize['username'] for u in users]
+    for i in range(1, NUM_USERS+1):
+        username = f'testuser{i}'
+        if username not in usernames:
+            logger.debug(f"adding user {username}")
+            add_test_user(tenant_id, username)
+        else:
+            logger.debug(f"user {username} already present.")
+
+
