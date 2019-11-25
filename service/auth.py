@@ -63,8 +63,8 @@ def authentication():
 
 def get_basic_auth_parts():
     """
-    Checks if the request contains the neceassary headers for basic authentication, and if so, returns a dictionary
-    containing the tenant_id, username, and passwrod. Otherwise, returns None.
+    Checks if the request contains the necessary headers for basic authentication, and if so, returns a dictionary
+    containing the tenant_id, username, and password. Otherwise, returns None.
     NOTE: This method DOES NOT actually validate the password. That is the role of the caller.
     :return: (dict or None) - Either a python dictionary with the following keys:
         * tenant_id: The tenant_id to use to check this basic auth.

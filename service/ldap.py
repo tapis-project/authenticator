@@ -167,6 +167,9 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
         # we only need really need the cookie so we just get the cn attribute
         result = conn.search(tenant['ldap_user_dn'], '(cn=*)', attributes=['cn'], paged_size=offset)
         if not result:
+            # it is possible to get a "success" result when there are no users in the OU -
+            if hasattr(conn.result, 'get') and conn.result.get('description') == 'success':
+                return [], None
             msg = f'Error retrieving users; debug information: {conn.result}'
             logger.error(msg)
             raise DAOError(msg)
@@ -174,7 +177,7 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
     result = conn.search(tenant['ldap_user_dn'], '(cn=*)', attributes=['*'], paged_size=limit, paged_cookie=cookie)
     if not result:
         # it is possible to get a "success" result when there are no users in the OU -
-        if hasattr(conn.result, 'description') and conn.result.description == 'success':
+        if hasattr(conn.result, 'get') and conn.result.get('description') == 'success':
             return [], None
         msg = f'Error retrieving users; debug information: {conn.result}'
         logger.error(msg)
