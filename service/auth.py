@@ -33,6 +33,11 @@ def authentication():
     if not hasattr(request, 'url_rule') or not hasattr(request.url_rule, 'rule') or not request.url_rule.rule:
         raise common_errors.ResourceError("The endpoint and HTTP method combination "
                                           "are not available from this service.")
+
+    # no credentials required on the login page
+    if '/v3/oauth2/authorize' in request.url_rule.rule:
+        return True
+
     # the profiles endpoints always use standard Tapis Token auth -
     if '/v3/oauth2/profiles' in request.url_rule.rule:
         auth.authentication()

@@ -1,4 +1,4 @@
-from flask import g, request, Response
+from flask import g, request, Response, render_template, make_response, send_from_directory
 from flask_restful import Resource
 from openapi_core.shortcuts import RequestValidator
 from openapi_core.wrappers.flask import FlaskOpenAPIRequest
@@ -118,3 +118,22 @@ class ProfileResource(Resource):
             tenant_id = g.tenant_id
         user = get_tenant_user(tenant_id=tenant_id, username=username)
         return utils.ok(result=user.serialize, msg="User profile retrieved successfully.")
+
+
+class AuthorizeResource(Resource):
+    def get(self):
+        headers = {'Content-Type': 'text/html'}
+
+        return make_response(render_template('authorize.html'), 200, headers)
+
+
+class LoginResource(Resource):
+    def get(self):
+        headers = {'Content-Type': 'text/html'}
+
+        return make_response(render_template('authorize.html'), 200, headers)
+
+
+class StaticFilesResource(Resource):
+    def get(self, path):
+        return send_from_directory('templates', path)
