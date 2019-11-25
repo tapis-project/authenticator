@@ -23,6 +23,7 @@ def get_ldap_connection(tenant_id, bind_dn=None, bind_credential=None):
         conn = Connection(server, tenant['ldap_bind_dn'], tenant['ldap_bind_credential'], auto_bind=True)
     return conn
 
+
 def get_dn(tenant_id, username):
     """
     Get the DN for a specific username within a tenant.
@@ -33,6 +34,7 @@ def get_dn(tenant_id, username):
     tenant = get_tenant_config(tenant_id)
     ldap_user_dn = tenant['ldap_user_dn']
     return f'uid={username},{ldap_user_dn}'
+
 
 def check_username_password(tenant_id, username, password):
     """
@@ -48,6 +50,7 @@ def check_username_password(tenant_id, username, password):
     except LDAPBindError as e:
         logger.debg(f'got exception checking password: {e}')
         raise InvalidPasswordError("Invalid username/password combination.")
+
 
 def add_user(tenant_id, username, password):
     """

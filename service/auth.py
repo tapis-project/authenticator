@@ -29,8 +29,8 @@ def authentication():
     # with OAuth client credentials
     logger.warning(f"URL RULE: {request.url_rule}")
     if '/v3/clients' in request.url_rule.rule \
-        or '/profiles' in request.url_rule.rule \
-            or '/oauth2' in request.url_rule.rule:
+        or '/v3/profiles' in request.url_rule.rule \
+            or '/v3/oauth2' in request.url_rule.rule:
         # use the standard Tapis request token to
         auth.authentication()
 

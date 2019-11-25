@@ -122,27 +122,27 @@ paths:
 
 
   /v3/oauth2/tokens:
-      post:
-        tags:
-          - Oauth2Tokens
-        operationId: createToken
-        requestBody:
-          required: true
+    post:
+      tags:
+        - Tokens
+      operationId: createToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewToken'
+      responses:
+        '201':
+          description: Created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NewToken'
-        responses:
-          '201':
-            description: Created
-            content:
-              application/json:
-                schema:
-                  allOf:
-                    - $ref: '#/components/schemas/BasicResponse'
-                  properties:
-                    result:
-                      $ref: '#/components/schemas/Token'
+                allOf:
+                  - $ref: '#/components/schemas/BasicResponse'
+                properties:
+                  result:
+                    $ref: '#/components/schemas/Token'
 
 
 components:
