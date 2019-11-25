@@ -18,6 +18,7 @@ def add_tenant_ldaps():
             tenant['ldap_url'] = conf.dev_ldap_url
             tenant['ldap_port'] = conf.dev_ldap_port
             tenant['ldap_use_ssl'] = conf.dev_ldap_use_ssl
+            tenant['dev_ldap_tenants_base_dn'] = conf.dev_ldap_tenants_base_dn
             tenant['ldap_user_dn'] = conf.dev_ldap_user_dn
             tenant['ldap_bind_dn'] = conf.dev_ldap_bind_dn
             tenant['ldap_bind_credential'] = conf.dev_ldap_bind_credential

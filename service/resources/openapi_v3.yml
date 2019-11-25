@@ -18,11 +18,11 @@ servers:
   description: Local Development
 
 paths:
-  /v3/clients:
+  /v3/oauth2/clients:
     get:
       tags:
         - Clients
-      operationId: listClients
+      operationId: list_clients
       parameters:
       - name: limit
         in: query
@@ -47,8 +47,8 @@ paths:
                     $ref: '#/components/schemas/arrayOfClients'
     post:
       tags:
-        - Cients
-      operationId: createClient
+        - Clients
+      operationId: create_client
       requestBody:
         required: true
         content:
@@ -67,13 +67,13 @@ paths:
                   result:
                     $ref: '#/components/schemas/Client'
 
-  /v3/clients/{client_id}:
+  /v3/oauth2/clients/{client_id}:
     get:
       tags:
       - Clients
       summary: Get client details
       description: Get details of a specific client by its id.
-      operationId: getClient
+      operationId: get_client
       parameters:
       - name: client_id
         in: path
@@ -97,7 +97,7 @@ paths:
       - Clients
       summary: Delete a tenant
       description: Permenantly delete a client.
-      operationId: deleteClient
+      operationId: delete_client
       parameters:
       - name: client_id
         in: path
@@ -125,7 +125,7 @@ paths:
     post:
       tags:
         - Tokens
-      operationId: createToken
+      operationId: create_token
       requestBody:
         required: true
         content:
@@ -144,6 +144,57 @@ paths:
                   result:
                     $ref: '#/components/schemas/Token'
 
+  /v3/oauth2/profiles:
+    get:
+      tags:
+        - Profiles
+      operationId: list_profiles
+      parameters:
+      - name: limit
+        in: query
+        description: limit the number of profiles returned.
+        schema:
+          type: integer
+      - name: offset
+        in: query
+        description: index (offset) to start list.
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BasicResponse'
+                properties:
+                  result:
+                    $ref: '#/components/schemas/arrayOfProfiles'
+
+  /v3/oauth2/profiles/{username}:
+    get:
+      tags:
+        - Profiles
+      operationId: get_profile
+      parameters:
+      - name: username
+        in: path
+        description: Username to retrieve.
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BasicResponse'
+                properties:
+                  result:
+                    $ref: '#/components/schemas/Profile'
 
 components:
   schemas:
@@ -216,8 +267,25 @@ components:
           type: string
           description: A jwt token.
 
-
     arrayOfClients:
       type: array
       items:
         $ref: '#/components/schemas/Client'
+
+    Profile:
+      type: object
+      properties:
+        username:
+          type: string
+          description: The username associated with the profile.
+        email:
+          type: string
+          description: The email address associated with the profile.
+        name:
+          type: string
+          description: The full name of the user.
+
+    arrayOfProfiles:
+      type: array
+      items:
+        $ref: '#/components/schemas/Profile'

@@ -15,7 +15,7 @@ cwd=$(shell pwd)
 # ----- build images
 
 build.api:
-	cd $(cwd); touch service.log; docker build -t tapis/$(api) .;
+	cd $(cwd); touch service.log; chmod a+w service.log; docker build -t tapis/$(api) .;
 
 build.migrations:
 	cd $(cwd); docker build -f Dockerfile-migrations -t tapis/$(api)-migrations .
@@ -27,7 +27,7 @@ build: build.api build.migrations build.test
 
 # ----- run tests
 test: build.test
-	cd $(cwd); touch service.log; docker-compose run $(api)-tests;
+	cd $(cwd); touch service.log; chmod a+w service.log; docker-compose run $(api)-tests;
 
 # ----- shutdown the currently running services
 down:
