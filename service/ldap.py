@@ -214,6 +214,7 @@ def get_tenant_user(tenant_id, username):
     user = LdapUser.from_ldap3_entry(tenant_id, conn.entries[0].entry_attributes_as_dict)
     return user
 
+
 def get_dn(tenant_id, username):
     """
     Get the DN for a specific username within a tenant.
@@ -224,6 +225,7 @@ def get_dn(tenant_id, username):
     tenant = get_tenant_config(tenant_id)
     ldap_user_dn = tenant['ldap_user_dn']
     return f'cn={username},{ldap_user_dn}'
+
 
 
 def check_username_password(tenant_id, username, password):
@@ -247,7 +249,7 @@ def add_user(tenant_id, user):
     Add an LDAP record representing a user in a specific tenant.
     :param tenant_id: (str) The tenant id of the tenant where the user should be added.
     :param user: (LdapUser) An LdapUser object containing the details of the user to add.
-    :return: 
+    :return:
     """
     conn = get_tenant_ldap_connection(tenant_id)
     user.save(conn)

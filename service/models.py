@@ -300,3 +300,42 @@ class LdapOU(object):
 
     def __unicode__(self):
         return self.ou
+
+
+class Token(object):
+
+    token = None
+
+    def __init__(self, client_id=None, client_secret=None, username=None, password=None):
+        """
+        oauth2 token
+        """
+        pass
+        # self.client_id = client_id
+        # self.client_secret = client_secret
+        # self.username = username
+        # self.password = password
+
+    @property
+    def serialize(self):
+     return {
+         'token': self.token,
+         # 'expires_in': self.ttl,
+         # 'expires_at': self.expires_at
+     }
+
+    @classmethod
+    def get_derived_values(cls, data):
+        """
+        Computes derived values for the client from input and defaults.
+        :param data:
+        :return: dict (result)
+        """
+        result = {}
+        result['tenant_id'] = g.tenant_id
+        result['username'] = getattr(data, 'username')
+        result['password'] = getattr(data, 'password')
+        result['client_id'] = getattr(data, 'client_id')
+        result['client_secret'] = getattr(data, 'client_secret')
+
+        return result

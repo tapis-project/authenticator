@@ -6,7 +6,7 @@ from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 from common import utils, errors
 
 from service.errors import InvalidPasswordError
-from service.models import db, Client
+from service.models import db, Client, Token
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 
 # get the logger instance -
@@ -70,9 +70,26 @@ class TokensResource(Resource):
         if result.errors:
             raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
         validated_body = result.body
+        data = Token.get_derived_values(validated_body)
+        # token = Token(**data)
 
-        return validated_body
-        # return utils.ok(result=client.serialize, msg="Client created successfully.")
+        # check that client is in db
+        logger.debug("Checking that client exists.")
+        client = Client.query.filter_by(client_id=data['client_id']).first()
+        if not client:
+            raise errors.ResourceError(msg=f'No client found with id {data["client_id"]}.')
+        if not client.username == data['username']:
+            raise errors.PermissionsError("Not authorized for this client.")
+
+        # get ldap for the tenant
+
+        # validate user/pass against ldap
+
+        # call /v3/tokens to generate access token for the user
+
+        token = Token()
+
+        return utils.ok(result=token.serialize, msg="Token created successfully.")
 
 
 class ProfilesResource(Resource):
