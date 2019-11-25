@@ -1,9 +1,9 @@
 import datetime
-import enum
 from flask import Flask, g
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from hashids import Hashids
+import secrets
 import uuid
 
 from common.config import conf
@@ -14,6 +14,8 @@ logger = get_logger(__name__)
 from service import get_tenant_config
 
 app = Flask(__name__)
+# app.secret_key = b"\x00" + secrets.token_bytes(12) + b"\x00"
+app.secret_key = b"AGHsjfh!#%$SNFJqw"
 app.config['SQLALCHEMY_DATABASE_URI'] = conf.sql_db_url
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)

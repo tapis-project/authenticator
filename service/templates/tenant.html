@@ -2,8 +2,8 @@
 {% block content %}
 <body>
 
-<h2> Tapis Authorization - Tenant {{ tenant_id }}</h2>
- <p> You are logged in as user {{ username }}. A client is requesting a Tapis access token on your behalf.</p>
+<h2> Tapis Tenant </h2>
+
  <form action="" method="post">
   <div class="imgcontainer">
     <img src="authorize/tapis.jpg" alt="Tapis" class="avatar">
@@ -16,11 +16,13 @@
      {% endif %}
 
      <div class="container">
-        <label>
-          <input type="checkbox" checked="checked" name="approve"> Approve
-        </label>
-        <button type="submit">Submit</button>
-     </div>
+    <label for="tenant"><b>Select Tenant</b></label>
+    <select placeholder="Select Tenant" name="tenant" required>
+        <option value="dev">Dev Tenant</option>
+        <option value="tacc">TACC Tenant</option>
+    </select>
+    <button type="submit">Submit</button>
+  </div>
 
 </form>
 {% endblock %}
