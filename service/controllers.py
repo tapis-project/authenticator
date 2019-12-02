@@ -1,6 +1,7 @@
 import requests
 import json
 from flask import g, request, Response, render_template, make_response, send_from_directory
+from flask import g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
 from flask_restful import Resource
 from openapi_core.shortcuts import RequestValidator
 from openapi_core.wrappers.flask import FlaskOpenAPIRequest
@@ -8,7 +9,9 @@ from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 from common import utils, errors
 
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
+from service.errors import InvalidPasswordError
 from service.models import db, Client, Token
+from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 
 # get the logger instance -
 from common.logs import get_logger
@@ -163,16 +166,81 @@ class ProfileResource(Resource):
 
 class AuthorizeResource(Resource):
     def get(self):
+        if not 'username' in session:
+            return redirect(url_for('loginresource'))
         headers = {'Content-Type': 'text/html'}
+        context = {'error': '',
+                   'username': session['username']}
+        return make_response(render_template('authorize.html',  **context), 200, headers)
 
-        return make_response(render_template('authorize.html'), 200, headers)
+
+class SetTenantResource(Resource):
+    def get(self):
+        headers = {'Content-Type': 'text/html'}
+        error = ''
+        return make_response(render_template('tenant.html', **{'error': error}), 200, headers)
+
+    def post(self):
+        tenant_id = request.form.get("tenant")
+        logger.debug(f"setting session tenant_id to: {tenant_id}")
+        session['tenant_id'] = tenant_id
+        return redirect(url_for('loginresource'))
 
 
 class LoginResource(Resource):
     def get(self):
+        # selecting a tenant id is required before logging in -
+        if not 'tenant_id' in session:
+            logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
+            return redirect(url_for('settenantresource'))
         headers = {'Content-Type': 'text/html'}
+        return make_response(render_template('login.html', **{'error': '', 'tenant_id': session['tenant_id']}), 200, headers)
 
-        return make_response(render_template('authorize.html'), 200, headers)
+    def post(self):
+        # process the login form -
+        if not 'tenant_id' in session:
+            logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
+            return redirect(url_for('settenantresource'))
+        tenant_id = session['tenant_id']
+        headers = {'Content-Type': 'text/html'}
+        username = request.form.get("username")
+        if not username:
+            error = 'Username is required.'
+            return make_response(render_template('login.html', **{'error': error}), 200, headers)
+        password = request.form.get("password")
+        if not password:
+            error = 'Password is required.'
+        try:
+            check_username_password(tenant_id=tenant_id, username=username, password=password)
+        except InvalidPasswordError:
+            error = 'Invalid username/password combination.'
+            return make_response(render_template('login.html', **{'error': error}), 200, headers)
+        # the username and password were accepted; set the session and redirect to the authorization page.
+        session['username'] = username
+        return redirect(url_for('authorizeresource'))
+
+
+class LogoutResource(Resource):
+
+    def get(self):
+        # selecting a tenant id is required before logging in -
+        if not 'tenant_id' in session:
+            logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
+            # reset the session in case there is some weird cruft
+            session.pop('username', None)
+            session.pop('tenant_id', None)
+            return redirect(url_for('settenantresource'))
+        headers = {'Content-Type': 'text/html'}
+        return make_response(render_template('logout.html'), 200, headers)
+
+    def post(self):
+        # process the logout form -
+        if request.form.get("logout"):
+            session.pop('username', None)
+            session.pop('tenant_id', None)
+            return redirect(url_for('settenantresource'))
+        # if they submitted the logout form but did not check the box then just return them to the logout form -
+        return redirect(url_for('logoutresource'))
 
 
 class StaticFilesResource(Resource):

@@ -4,7 +4,7 @@ from common.utils import TapisApi, handle_error, flask_errors_dict
 
 from service.auth import authn_and_authz
 from service.controllers import AuthorizeResource, ClientsResource, ClientResource, TokensResource, \
-    ProfilesResource, ProfileResource, StaticFilesResource, LoginResource
+    ProfilesResource, ProfileResource, StaticFilesResource, LoginResource, SetTenantResource, LogoutResource
 from service.ldap import populate_test_ldap
 from service.models import db, app
 import threading
@@ -44,4 +44,6 @@ api.add_resource(ProfilesResource, '/v3/oauth2/profiles')
 api.add_resource(ProfileResource, '/v3/oauth2/profiles/<username>')
 api.add_resource(AuthorizeResource, '/v3/oauth2/authorize')
 api.add_resource(LoginResource, '/v3/oauth2/login')
+api.add_resource(SetTenantResource, '/v3/oauth2/tenant')
+api.add_resource(LogoutResource, '/v3/oauth2/logout')
 api.add_resource(StaticFilesResource, '/v3/oauth2/authorize/<path>')

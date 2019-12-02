@@ -29,7 +29,7 @@ def authentication():
     # The authenticator uses different authentication methods for different endpoints. For example, the service
     # APIs such as clients and profiles use pure JWT authentication, while the OAuth endpoints use Basic Authentication
     # with OAuth client credentials.
-    logger.debug(f"URL RULE: {request.url_rule}")
+    logger.debug(f"base_url: {request.base_url}; url_rule: {request.url_rule}")
     if not hasattr(request, 'url_rule') or not hasattr(request.url_rule, 'rule') or not request.url_rule.rule:
         raise common_errors.ResourceError("The endpoint and HTTP method combination "
                                           "are not available from this service.")
