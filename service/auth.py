@@ -34,8 +34,8 @@ def authentication():
         raise common_errors.ResourceError("The endpoint and HTTP method combination "
                                           "are not available from this service.")
 
-    # no credentials required on the login page
-    if '/v3/oauth2/authorize' in request.url_rule.rule:
+    # no credentials required on the authorize and login pages
+    if '/v3/oauth2/authorize' in request.url_rule.rule or '/v3/oauth2/login' in request.url_rule.rule:
         return True
 
     # the profiles endpoints always use standard Tapis Token auth -

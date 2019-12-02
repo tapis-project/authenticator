@@ -51,6 +51,11 @@
       "type": "string",
       "description": "Bind credential for the test LDAP db.",
       "default": "a1r2c3HKvv0"
+    },
+    "dev_token_service": {
+      "type": "string",
+      "description": "full URL to the tokens service to use when use_sk is False.",
+      "default": "https://dev.develop.tapis.io/v3/tokens"
     }
-    }
+  }
 }

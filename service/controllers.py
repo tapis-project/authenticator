@@ -84,7 +84,7 @@ class TokensResource(Resource):
             raise errors.ResourceError(msg=f'Invalid or missing granttype. Exception: {e}')
         # get headers
         try:
-            tenant_id = request.headers.get('X-Tapis-Tenant-Id')
+            tenant_id = request.headers.get('X-Tapis-Tenant')
             auth = request.authorization
             client_id = auth.username
             client_secret = auth.password
@@ -95,15 +95,11 @@ class TokensResource(Resource):
         logger.debug("Checking that client exists.")
         client = Client.query.filter_by(client_id=client_id, client_key=client_secret).first()
         if not client:
-            raise errors.ResourceError(msg=f'No client found with id {data["client_id"]}.')
-        if not client.username == data['username']:
-            raise errors.PermissionsError("Not authorized for this client.")
+            raise errors.ResourceError(msg=f'Invalid client credentials: {client_id}, {client_secret}.')
 
         # validate user/pass against ldap
         check_ldap = check_username_password(tenant_id, data['username'], data['password'])
         logger.debug(f"LOOK {check_ldap}")
-
-
 
         # call /v3/tokens to generate access token for the user
         url = 'https://dev.develop.tapis.io/v3/tokens'

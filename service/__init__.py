@@ -6,7 +6,7 @@ from common.logs import get_logger
 logger = get_logger(__name__)
 
 
-def add_tenant_ldaps():
+def add_tenant_ldaps_and_tokens():
     """
     :return: 
     """
@@ -22,6 +22,7 @@ def add_tenant_ldaps():
             tenant['ldap_user_dn'] = conf.dev_ldap_user_dn
             tenant['ldap_bind_dn'] = conf.dev_ldap_bind_dn
             tenant['ldap_bind_credential'] = conf.dev_ldap_bind_credential
+            tenant['token_service'] = conf.dev_token_service
             result.append(tenant)
         else:
             # TODO -- get ldap data from the Tenants API and get the ldap bind secret from the security kernel...
