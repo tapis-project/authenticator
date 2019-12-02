@@ -228,18 +228,15 @@ components:
     NewToken:
       type: object
       properties:
-        client_id:
-          type: string
-          description: A unique identifier for the client. Must be unique for the tenant.
-        client_secret:
-          type: string
-          description: A secret key for authenticating the client.
         username:
           type: string
-          description: A valid username
+          description: A unique identifier for the client. Must be unique for the tenant.
         password:
           type: string
-          description: A corresponding password for the username given.
+          description: A secret key for authenticating the client.
+        granttype:
+          type: string
+          description: Specify whether this is a password grant or other type.
 
     Client:
       type: object

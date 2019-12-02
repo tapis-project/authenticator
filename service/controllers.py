@@ -1,3 +1,5 @@
+import requests
+import json
 from flask import g, request, Response, render_template, make_response, send_from_directory
 from flask_restful import Resource
 from openapi_core.shortcuts import RequestValidator
@@ -5,7 +7,7 @@ from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 
 from common import utils, errors
 
-from service.ldap import list_tenant_users, get_tenant_user
+from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 from service.models import db, Client, Token
 
 # get the logger instance -
@@ -69,26 +71,48 @@ class TokensResource(Resource):
         if result.errors:
             raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
         validated_body = result.body
+        logger.debug(f"BODY: {validated_body}")
         data = Token.get_derived_values(validated_body)
         # token = Token(**data)
 
+        try:
+            granttype = data['granttype']
+        except Exception as e:
+            raise errors.ResourceError(msg=f'Invalid or missing granttype. Exception: {e}')
+        # get headers
+        try:
+            tenant_id = request.headers.get('X-Tapis-Tenant-Id')
+            auth = request.authorization
+            client_id = auth.username
+            client_secret = auth.password
+        except Exception as e:
+            raise errors.ResourceError(msg=f'Invalid headers. Exception: {e}')
         # check that client is in db
+
         logger.debug("Checking that client exists.")
-        client = Client.query.filter_by(client_id=data['client_id']).first()
+        client = Client.query.filter_by(client_id=client_id, client_key=client_secret).first()
         if not client:
             raise errors.ResourceError(msg=f'No client found with id {data["client_id"]}.')
         if not client.username == data['username']:
             raise errors.PermissionsError("Not authorized for this client.")
 
-        # get ldap for the tenant
-
         # validate user/pass against ldap
+        check_ldap = check_username_password(tenant_id, data['username'], data['password'])
+        logger.debug(f"LOOK {check_ldap}")
+
+
 
         # call /v3/tokens to generate access token for the user
+        url = 'https://dev.develop.tapis.io/v3/tokens'
+        content = {
+            "token_tenant_id": f"{tenant_id}",
+            "account_type": "service",
+            "token_username": f"{data['username']}",
+        }
+        r = requests.post(url, json=content)
+        json_resp = json.loads(r.text)
 
-        token = Token()
-
-        return utils.ok(result=token.serialize, msg="Token created successfully.")
+        return utils.ok(result=json_resp, msg="Token created successfully.")
 
 
 class ProfilesResource(Resource):

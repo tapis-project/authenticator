@@ -42,3 +42,5 @@ def get_tenant_config(tenant_id):
         if tenant['tenant_id'] == tenant_id:
             return tenant
     raise errors.BaseTapisError("invalid tenant id.")
+
+

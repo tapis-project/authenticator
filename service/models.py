@@ -330,10 +330,8 @@ class Token(object):
         :return: dict (result)
         """
         result = {}
-        result['tenant_id'] = g.tenant_id
         result['username'] = getattr(data, 'username')
         result['password'] = getattr(data, 'password')
-        result['client_id'] = getattr(data, 'client_id')
-        result['client_secret'] = getattr(data, 'client_secret')
+        result['granttype'] = getattr(data, 'granttype')
 
         return result

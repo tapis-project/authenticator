@@ -78,6 +78,7 @@ def get_basic_auth_parts():
                 'password': auth.password}
     return None
 
+
 def authorization():
     """
     Entry point for checking authorization for all requests to the authenticator.
