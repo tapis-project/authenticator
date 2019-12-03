@@ -36,7 +36,7 @@ class Client(db.Model):
     callback_url = db.Column(db.String(200), unique=False, nullable=True)
     create_time = db.Column(db.DateTime, nullable=False)
     last_update_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
-    display_name = db.Column(db.String(50), unique=True, nullable=True)
+    display_name = db.Column(db.String(50), unique=False, nullable=True)
     description = db.Column(db.String(70), unique=False, nullable=True)
 
     HASH_SALT = 'hQb9xTr7j8vSu'
