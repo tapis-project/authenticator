@@ -224,6 +224,12 @@ components:
         callback_url:
           type: string
           description: URL for application to receive OAuth callbacks for executing flows such as authorization_code.
+        display_name:
+          type: string
+          description: A name for this client that will be displayed to a user.
+        description:
+          type: string
+          description: A description of this client. Optional.
 
     NewToken:
       type: object
@@ -256,6 +262,12 @@ components:
         last_update_time:
           type: string
           description: The time the client was last updated.
+        display_name:
+          type: string
+          description: The display name that will represent this client.
+        description:
+          type: string
+          description: A description of this client.
 
     Token:
       type: object

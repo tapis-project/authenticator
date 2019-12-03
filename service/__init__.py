@@ -30,7 +30,7 @@ def add_tenant_ldaps_and_tokens():
     return result
 
 
-tenants = add_tenant_ldaps()
+tenants = add_tenant_ldaps_and_tokens()
 
 
 def get_tenant_config(tenant_id):

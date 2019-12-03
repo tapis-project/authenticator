@@ -36,6 +36,8 @@ class Client(db.Model):
     callback_url = db.Column(db.String(200), unique=False, nullable=True)
     create_time = db.Column(db.DateTime, nullable=False)
     last_update_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    display_name = db.Column(db.String(50), unique=True, nullable=True)
+    description = db.Column(db.String(70), unique=False, nullable=True)
 
     HASH_SALT = 'hQb9xTr7j8vSu'
 
@@ -50,7 +52,9 @@ class Client(db.Model):
             "owner": self.username,
             "callback_url": self.callback_url,
             "create_time": self.create_time,
-            "last_update_time": self.last_update_time
+            "last_update_time": self.last_update_time,
+            "display_name": self.display_name,
+            "description": self.description
         }
 
     @classmethod
@@ -87,7 +91,27 @@ class Client(db.Model):
             result['callback_url'] = getattr(data, 'callback_url')
         except AttributeError:
             result['callback_url'] = ''
+
+        try:
+            result['display_name'] = getattr(data, 'display_name')
+        except AttributeError:
+            result['display_name'] = result['callback_url']
+
+        try:
+            result['description'] = getattr(data, 'description')
+        except AttributeError:
+            result['description'] = ''
+
+        # try:
+        #     if result['callback_url'] != '':
+        #         result['display_name'] = getattr(data, 'display_name')
+        # except AttributeError:
+        #     msg = f'The field display_name is required when callback_url is provided.'
+        #     raise DAOError(msg)
+
         return result
+
+
 
 
 class AuthorizationCode(db.Model):
