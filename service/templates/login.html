@@ -22,6 +22,11 @@
     <label for="password"><b>Password</b></label>
     <input type="password" placeholder="Enter Password" name="password" required>
 
+    <input type="hidden" name="client_id" value="{{ client_id }}">
+    <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
+    <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
+    <input type="hidden" name="client_state" value="{{ client_state }}">
+
     <button type="submit">Login</button>
   </div>
 

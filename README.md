@@ -63,7 +63,60 @@ There are three primary collections supported by this API - `/clients`, `/profil
 
 #### Work With Clients
 
-TBD
+Create a client with a callback URL and display name:
+```
+curl -H "X-Tapis-Token: $jwt" localhost:5000/v3/oauth2/clients -H "content-type: application/json" -d '{"callback_url": "http://localhost:5000/oauth2/webapp/callback", "display_name": "Tapis Token Webapp"}'| jq
+
+{
+  "message": "Client created successfully.",
+  "result": {
+    "callback_url": "http://localhost:5000/oauth2/webapp/callback",
+    "client_id": "0GaE2eEZRYMd",
+    "client_key": "ka0zMQm5N13d",
+    "create_time": "Wed, 04 Dec 2019 19:05:20 GMT",
+    "description": "",
+    "display_name": "Tapis Token Webapp",
+    "last_update_time": "Wed, 04 Dec 2019 19:05:20 GMT",
+    "owner": "jstubbs"
+  },
+  "status": "success",
+  "version": "dev"
+}
+
+```
+
+#### Work With The Authorization Code Grant Type
+
+The authorization code grant type requires a pre-registered client
+with a callback URL. See the "Work With Clients" section for an 
+example of how to register a client.
+
+Once the client has been registered, start the OAuth2 flow by
+navigating to:
+
+```
+1) http://localhost:5000/v3/oauth2/authorize?client_id=<client_id>&redirect_uri=<redirec_uri>&response_type=code
+
+```
+
+For example,
+```
+http://localhost:5000/v3/oauth2/authorize?client_id=8dmkwnY8WkZlg&redirect_uri=http://localhost:5000/oauth2/webapp/callback&response_type=code
+```
+
+This will redirect the user to the Tenant Selection form, here:
+
+```
+2) http://localhost:5000/v3/oauth2/tenant
+```
+
+
+You can clear your cookie-based web session using logging out page; submit
+the form here:
+
+```
+http://localhost:5000/v3/oauth2/logout
+``` 
 
 #### Work With Tokens
 
@@ -71,7 +124,56 @@ TBD
 
 #### Work With Profiles
 
-TBD
+List all profiles:
+```
+curl -H "X-Tapis-Token: $jwt" localhost:5000/v3/oauth2/profiles
+{
+  "message": "Profiles retrieved successfully.",
+  "result": [
+    {
+      "create_time": null,
+      "dn": "cn=testuser1,ou=tenants.dev,dc=tapis",
+      "email": "testuser1@test.tapis.io",
+      "given_name": "testuser1",
+      "last_name": "testuser1",
+      "mobile_phone": null,
+      "phone": null,
+      "uid": null,
+      "username": "testuser1"
+    },
+    . . .
+    ],
+  "status": "success",
+  "version": "dev"    
+ } 
+
+```
+
+Use pagination to page through the profiles:
+
+```
+curl -H "X-Tapis-Token: $jwt" 'localhost:5000/v3/oauth2/profiles?limit=1&offset=2'
+
+{
+  "message": "Profiles retrieved successfully.",
+  "result": [
+    {
+      "create_time": null,
+      "dn": "cn=testuser3,ou=tenants.dev,dc=tapis",
+      "email": "testuser3@test.tapis.io",
+      "given_name": "testuser3",
+      "last_name": "testuser3",
+      "mobile_phone": null,
+      "phone": null,
+      "uid": null,
+      "username": "testuser3"
+    }
+  ],
+  "status": "success",
+  "version": "dev"
+}
+
+```
 
 ### Beyond the Quickstart
 

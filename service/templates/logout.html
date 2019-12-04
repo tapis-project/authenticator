@@ -4,12 +4,16 @@
 
 <h2> Tapis Logout </h2>
 
+{% if logout_message %}
+<p>{{ logout_message}}</p>
+
+{% else %}
  <form action="" method="post">
   <div class="imgcontainer">
     <img src="authorize/tapis.jpg" alt="Tapis" class="avatar">
   </div>
 
-     <div class="container">
+ <div class="container">
         <label>
           <input type="checkbox" checked="checked" name="logout"> Logout
         </label>
@@ -17,4 +21,5 @@
      </div>
 
 </form>
+{% endif %}
 {% endblock %}

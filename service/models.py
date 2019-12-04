@@ -3,7 +3,8 @@ from flask import Flask, g
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from hashids import Hashids
-import secrets
+import string
+import random
 import uuid
 
 from common.config import conf
@@ -136,6 +137,22 @@ class AuthorizationCode(db.Model):
             "expiry_time": self.expiry_time
         }
 
+    # character set to use to generate random strings from to serve as the actual athorization codes themselves.
+    UNICODE_ASCII_CHARACTER_SET = string.ascii_letters + string.digits
+
+    # time-to-live for authrorization codes, in seconds.
+    CODE_TTL = 600
+
+    @classmethod
+    def generate_code(cls, length=40, chars=UNICODE_ASCII_CHARACTER_SET):
+        """Generate an authorization code string."""
+        rand = random.SystemRandom()
+        return ''.join(rand.choice(chars) for _ in range(length))
+
+    @classmethod
+    def compute_expiry(cls):
+        """Computes the expiry of an authorization code created now."""
+        return datetime.datetime.utcnow() + datetime.timedelta(seconds=AuthorizationCode.CODE_TTL)
 
 class LdapUser(object):
     """

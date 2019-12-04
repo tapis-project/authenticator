@@ -15,13 +15,17 @@
    </div>
      {% endif %}
 
-     <div class="container">
-    <label for="tenant"><b>Select Tenant</b></label>
-    <select placeholder="Select Tenant" name="tenant" required>
-        <option value="dev">Dev Tenant</option>
-        <option value="tacc">TACC Tenant</option>
-    </select>
-    <button type="submit">Submit</button>
+   <div class="container">
+        <label for="tenant"><b>Select Tenant</b></label>
+        <select placeholder="Select Tenant" name="tenant" required>
+            <option value="dev">Dev Tenant</option>
+            <option value="tacc">TACC Tenant</option>
+        </select>
+        <input type="hidden" name="client_id" value="{{ client_id }}">
+        <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
+        <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
+        <input type="hidden" name="client_state" value="{{ client_state }}">
+        <button type="submit">Submit</button>
   </div>
 
 </form>
