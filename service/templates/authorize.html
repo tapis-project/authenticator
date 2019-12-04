@@ -2,13 +2,12 @@
 {% block content %}
 <body>
 
+<div class="container">
 <h2> Tapis Authorization - Tenant {{ tenant_id }}</h2>
  <p> You are logged in as user {{ username }}. The client application {{ client_display_name }} is requesting a Tapis
      access token on your behalf.</p>
+
  <form action="" method="post">
-  <div class="imgcontainer">
-    <img src="authorize/tapis.jpg" alt="Tapis" class="avatar">
-  </div>
 
      {% if error %}
    <div class="container">
@@ -28,4 +27,5 @@
      </div>
 
 </form>
+</div>
 {% endblock %}
