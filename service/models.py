@@ -154,6 +154,18 @@ class AuthorizationCode(db.Model):
         """Computes the expiry of an authorization code created now."""
         return datetime.datetime.utcnow() + datetime.timedelta(seconds=AuthorizationCode.CODE_TTL)
 
+    @classmethod
+    def validate_code(cls, code, client_id, client_key):
+        """
+        Validate the use of an authorization code. This method checks the code expiry and
+        :param code: (str) The authorization code.
+        :param client_id: (str) The client_id owning the code.
+        :param client_key: (str) Associated client_secret.
+        :return:
+        """
+        code_result = cls.query.filter_by(code=code, lient_id=client_id, client_key=client_key).first()
+        
+
 class LdapUser(object):
     """
     Class for representing an LDAP user entry.

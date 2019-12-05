@@ -102,13 +102,18 @@ class TokensResource(Resource):
             check_ldap = check_username_password(tenant_id, data['username'], data['password'])
             logger.debug(f"returned: {check_ldap}")
         elif grant_type == 'authorization_code':
+            # check the redirect uri -
+            redirect_uri = data.get('redirect_uri')
+            if not redirect_uri:
+                raise errors.ResourceError("Required redirect_uri parameter missing.")
+            if not redirect_uri == client.callback_url:
+                raise errors.ResourceError("Invalid redirect_uri parameter: does not match "
+                                           "callback URL registered with client.")
             # validate the authorization code
             code = data.get('code')
             if not code:
                 raise errors.ResourceError("Required authorization_code parameter missing.")
-            # check the redirect uri -
-            redirect_uri = data.get('redirect_uri')
-            # todo - actually check the auth code
+
         else:
             raise errors.ResourceError("Invalid grant_type")
 
@@ -143,17 +148,11 @@ class ProfilesResource(Resource):
             limit = int(request.args.get('limit'))
         except:
             limit = None
-        offset = None
+        offset = 0
         try:
             offset = int(request.args.get('offset'))
-            # b64_offset = request.args.get('offset')
-            # logger.debug(f'b64_offset: {b64_offset}')
-            # if b64_offset:
-            #     offset = base64.b64decode(b64_offset)
-            #     logger.debug(f'offset: {offset}')
         except Exception as e:
             logger.debug(f'get exception parsing offset; exception: {e}; setting offset to none.')
-            offset = 0
         users, offset = list_tenant_users(tenant_id=tenant_id, limit=limit, offset=offset)
         resp = utils.ok(result=[u.serialize for u in users], msg="Profiles retrieved successfully.")
         resp.headers['X-Tapis-Offset'] = offset
