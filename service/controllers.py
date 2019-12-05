@@ -242,3 +242,38 @@ class LogoutResource(Resource):
 class StaticFilesResource(Resource):
     def get(self, path):
         return send_from_directory('templates', path)
+
+
+##### Portal views #####
+
+class PortalLogin(Resource):
+    def get(self):
+        # selecting a tenant id is required before logging in -
+        if not 'tenant_id' in session:
+            logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
+            return redirect(url_for('settenantresource'))
+        headers = {'Content-Type': 'text/html'}
+        return make_response(render_template('login.html', **{'error': '', 'tenant_id': session['tenant_id']}), 200, headers)
+
+    def post(self):
+        # process the login form -
+        if not 'tenant_id' in session:
+            logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
+            return redirect(url_for('settenantresource'))
+        tenant_id = session['tenant_id']
+        headers = {'Content-Type': 'text/html'}
+        username = request.form.get("username")
+        if not username:
+            error = 'Username is required.'
+            return make_response(render_template('login.html', **{'error': error}), 200, headers)
+        password = request.form.get("password")
+        if not password:
+            error = 'Password is required.'
+        try:
+            check_username_password(tenant_id=tenant_id, username=username, password=password)
+        except InvalidPasswordError:
+            error = 'Invalid username/password combination.'
+            return make_response(render_template('login.html', **{'error': error}), 200, headers)
+        # the username and password were accepted; set the session and redirect to the authorization page.
+        session['username'] = username
+        return redirect(url_for('authorizeresource'))
