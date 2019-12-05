@@ -2,11 +2,11 @@
 {% block content %}
 <body>
 
- <div class="container">
-    <h2> Tapis Authorization - Tenant {{ tenant_id }}</h2>
+<div class="container">
+<h2> Tapis Authorization - Tenant {{ tenant_id }}</h2>
+ <p> You are logged in as user {{ username }}. The client application {{ client_display_name }} is requesting a Tapis
+     access token on your behalf.</p>
 
-
- <p> You are logged in as user {{ username }}. A client is requesting a Tapis access token on your behalf.</p>
  <form action="" method="post">
 
      {% if error %}
@@ -18,6 +18,10 @@
      <div class="container">
         <label>
           <input type="checkbox" checked="checked" name="approve"> Approve
+            <input type="hidden" name="client_id" value="{{ client_id }}">
+            <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
+            <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
+            <input type="hidden" name="client_state" value="{{ client_state }}">
         </label>
         <button type="submit">Submit</button>
      </div>

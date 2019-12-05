@@ -39,7 +39,7 @@ clean: down
 
 # ----- start databases
 run_dbs: build.api down
-	cd $(cwd); docker-compose up -d postgres
+	cd $(cwd); docker-compose up -d postgres; docker-compose up -d ldap
 
 # ----- connect to db as root
 connect_db:

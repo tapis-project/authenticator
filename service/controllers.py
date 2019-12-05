@@ -10,7 +10,7 @@ from common import utils, errors
 
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 from service.errors import InvalidPasswordError
-from service.models import db, Client, Token
+from service.models import db, Client, Token, AuthorizationCode
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 
 # get the logger instance -
@@ -159,44 +159,137 @@ class ProfileResource(Resource):
         user = get_tenant_user(tenant_id=tenant_id, username=username)
         return utils.ok(result=user.serialize, msg="User profile retrieved successfully.")
 
+def check_client():
+    """
+    Checks the request for associated client query parameters, validates them against the client registered in the DB
+    and returns the associated objects.
+    """
+    # required query parameters:
+    client_id = request.args.get('client_id')
+    client_redirect_uri = request.args.get('redirect_uri')
+    response_type = request.args.get('response_type')
+    # state is optional -
+    client_state = request.args.get('state')
+    if not client_id:
+        raise errors.ResourceError("Required query parameter client_id missing.")
+    if not client_redirect_uri:
+        raise errors.ResourceError("Required query parameter redirect_uri missing.")
+    if not response_type == 'code':
+        raise errors.ResourceError("Required query parameter response_type missing or not supported.")
+    # make sure the client exists and the redirect_uri matches
+    client = Client.query.filter_by(client_id=client_id).first()
+    if not client:
+        raise errors.ResourceError("Invalid client.")
+    if not client.callback_url == client_redirect_uri:
+        raise errors.ResourceError(
+            "redirect_uri query parameter does not match the registered callback_url for the client.")
+    return client_id, client_redirect_uri, client_state, client
 
 class AuthorizeResource(Resource):
     def get(self):
+        client_id, client_redirect_uri, client_state, client = check_client()
         if not 'username' in session:
-            return redirect(url_for('loginresource'))
+            return redirect(url_for('loginresource',
+                                    client_id=client_id,
+                                    redirect_uri=client_redirect_uri,
+                                    state=client_state,
+                                    response_type='code'))
+        client_id, client_redirect_uri, client_state, client = check_client()
         headers = {'Content-Type': 'text/html'}
         context = {'error': '',
-                   'username': session['username']}
+                   'username': session['username'],
+                   'client_display_name': client.display_name,
+                   'client_id': client_id,
+                   'client_redirect_uri': client_redirect_uri,
+                   'client_state': client_state}
+
         return make_response(render_template('authorize.html',  **context), 200, headers)
 
+    def post(self):
+        tenant_id = session.get('tenant_id')
+        if not tenant_id:
+            raise errors.ResourceError('Tenant ID missing from session. Please logout and select a tenant.')
+        client_display_name = request.form.get('client_display_name')
+        approve = request.form.get("approve")
+        if not approve:
+            headers = {'Content-Type': 'text/html'}
+            context = {'error': f'To proceed with authorization application {client_display_name}, you '
+                                f'must approve the request.'}
+            return make_response(render_template('authorize.html', **context), 200, headers)
+
+        state = request.form.get("state")
+        # retrieve client data from form and db -
+        client_id = request.form.get('client_id')
+        if not client_id:
+            raise errors.ResourceError("client_id missing.")
+        client = Client.query.filter_by(client_id=client_id).first()
+        if not client:
+            raise errors.ResourceError('Invalid client.')
+        # create the authorization code for the client -
+        authz_code = AuthorizationCode(tenant_id=tenant_id,
+                                       client_id=client_id,
+                                       client_key=client.client_key,
+                                       redirect_url=client.callback_url,
+                                       code=AuthorizationCode.generate_code(),
+                                       expiry_time=AuthorizationCode.compute_expiry())
+        # issue redirect to client callback_url with authorization code:
+        url = f'{client.callback_url}?code={authz_code}&state={state}'
+
+        return redirect(url)
 
 class SetTenantResource(Resource):
     def get(self):
         headers = {'Content-Type': 'text/html'}
-        error = ''
-        return make_response(render_template('tenant.html', **{'error': error}), 200, headers)
+        client_id, client_redirect_uri, client_state, client = check_client()
+        context = {'error': '',
+                   'client_display_name': client.display_name,
+                   'client_id': client_id,
+                   'client_redirect_uri': client_redirect_uri,
+                   'client_state': client_state}
+        return make_response(render_template('tenant.html', **context), 200, headers)
 
     def post(self):
         tenant_id = request.form.get("tenant")
         logger.debug(f"setting session tenant_id to: {tenant_id}")
+        client_id = request.form.get('client_id')
+        client_redirect_uri = request.form.get('client_redirect_uri')
+        client_state = request.form.get('client_state')
+        client_display_name = request.form.get('client_display_name')
         session['tenant_id'] = tenant_id
-        return redirect(url_for('loginresource'))
+        return redirect(url_for('loginresource',
+                                client_id=client_id,
+                                redirect_uri=client_redirect_uri,
+                                state=client_state,
+                                client_display_name=client_display_name,
+                                response_type='code'))
 
 
 class LoginResource(Resource):
     def get(self):
+        client_id, client_redirect_uri, client_state, client = check_client()
         # selecting a tenant id is required before logging in -
         if not 'tenant_id' in session:
             logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
-            return redirect(url_for('settenantresource'))
+            return redirect(url_for('settenantresource',
+                                    client_id=client_id,
+                                    redirect_uri=client_redirect_uri,
+                                    state=client_state,
+                                    response_type='code'))
         headers = {'Content-Type': 'text/html'}
-        return make_response(render_template('login.html', **{'error': '', 'tenant_id': session['tenant_id']}), 200, headers)
+        context = {'error': '',
+                   'client_display_name': client.display_name,
+                   'client_id': client_id,
+                   'client_redirect_uri': client_redirect_uri,
+                   'client_state': client_state,
+                   'tenant_id': session['tenant_id']}
+        return make_response(render_template('login.html', **context), 200, headers)
 
     def post(self):
         # process the login form -
         if not 'tenant_id' in session:
+            client_id, client_redirect_uri, client_state, client = check_client()
             logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
-            return redirect(url_for('settenantresource'))
+            raise errors.ResourceError("Invalid session; please return to the original application or logout of this session.")
         tenant_id = session['tenant_id']
         headers = {'Content-Type': 'text/html'}
         username = request.form.get("username")
@@ -213,28 +306,39 @@ class LoginResource(Resource):
             return make_response(render_template('login.html', **{'error': error}), 200, headers)
         # the username and password were accepted; set the session and redirect to the authorization page.
         session['username'] = username
-        return redirect(url_for('authorizeresource'))
+        client_id = request.form.get('client_id')
+        client_redirect_uri = request.form.get('client_redirect_uri')
+        client_state = request.form.get('client_state')
+        client_display_name = request.form.get('client_display_name')
+
+        return redirect(url_for('authorizeresource',
+                                client_id=client_id,
+                                redirect_uri=client_redirect_uri,
+                                state=client_state,
+                                client_display_name=client_display_name,
+                                response_type='code'))
 
 
 class LogoutResource(Resource):
 
     def get(self):
         # selecting a tenant id is required before logging in -
+        headers = {'Content-Type': 'text/html'}
         if not 'tenant_id' in session:
             logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
             # reset the session in case there is some weird cruft
             session.pop('username', None)
             session.pop('tenant_id', None)
-            return redirect(url_for('settenantresource'))
-        headers = {'Content-Type': 'text/html'}
+            make_response(render_template('logout.html', logout_message='You have been logged out.'), 200, headers)
         return make_response(render_template('logout.html'), 200, headers)
 
     def post(self):
+        headers = {'Content-Type': 'text/html'}
         # process the logout form -
         if request.form.get("logout"):
             session.pop('username', None)
             session.pop('tenant_id', None)
-            return redirect(url_for('settenantresource'))
+            make_response(render_template('logout.html', logout_message='You have been logged out.'), 200, headers)
         # if they submitted the logout form but did not check the box then just return them to the logout form -
         return redirect(url_for('logoutresource'))
 
