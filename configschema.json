@@ -56,6 +56,26 @@
       "type": "string",
       "description": "full URL to the tokens service to use when use_sk is False.",
       "default": "https://dev.develop.tapis.io/v3/tokens"
+    },
+    "dev_client_id": {
+      "type": "string",
+      "description": "Test client id",
+      "default": "testclient"
+    },
+    "dev_client_key": {
+      "type": "string",
+      "description": "Test client key",
+      "default": "testclientkey"
+    },
+    "dev_client_callback": {
+      "type": "string",
+      "description": "Test client callback url",
+      "default": "/oauth2/webapp/callback"
+    },
+    "dev_client_display_name": {
+      "type": "string",
+      "description": "Test client display name",
+      "default": "The Test Client"
     }
   }
 }
