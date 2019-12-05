@@ -79,9 +79,9 @@ class TokensResource(Resource):
         # token = Token(**data)
 
         try:
-            granttype = data['granttype']
+            grant_type = data['grant_type']
         except Exception as e:
-            raise errors.ResourceError(msg=f'Invalid or missing granttype. Exception: {e}')
+            raise errors.ResourceError(msg=f'Invalid or missing grant_type. Exception: {e}')
         # get headers
         try:
             tenant_id = request.headers.get('X-Tapis-Tenant')
@@ -96,10 +96,21 @@ class TokensResource(Resource):
         client = Client.query.filter_by(client_id=client_id, client_key=client_secret).first()
         if not client:
             raise errors.ResourceError(msg=f'Invalid client credentials: {client_id}, {client_secret}.')
-
-        # validate user/pass against ldap
-        check_ldap = check_username_password(tenant_id, data['username'], data['password'])
-        logger.debug(f"LOOK {check_ldap}")
+        # check grant type:
+        if grant_type == 'password':
+            # validate user/pass against ldap
+            check_ldap = check_username_password(tenant_id, data['username'], data['password'])
+            logger.debug(f"returned: {check_ldap}")
+        elif grant_type == 'authorization_code':
+            # validate the authorization code
+            code = data.get('code')
+            if not code:
+                raise errors.ResourceError("Required authorization_code parameter missing.")
+            # check the redirect uri -
+            redirect_uri = data.get('redirect_uri')
+            # todo - actually check the auth code
+        else:
+            raise errors.ResourceError("Invalid grant_type")
 
         # call /v3/tokens to generate access token for the user
         url = 'https://dev.develop.tapis.io/v3/tokens'

@@ -242,6 +242,7 @@ def check_username_password(tenant_id, username, password):
     except LDAPBindError as e:
         logger.debug(f'got exception checking password: {e}')
         raise InvalidPasswordError("Invalid username/password combination.")
+    return True
 
 
 def add_user(tenant_id, user):
