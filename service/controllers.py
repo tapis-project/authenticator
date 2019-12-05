@@ -362,7 +362,32 @@ class StaticFilesResource(Resource):
 ##### Webapp Views #####
 
 class WebappRedirect(Resource):
+# /oauth2/webapp/index.html
     def get(self):
+        # Make sure test client exists
+
+        # check if session exists
+
+        # if not, redirect to login
+
         pass
-    def post(self):
+
+
+class WebappTokenGen(Resource):
+# /oauth2/webapp/callback
+    def get(self):
+        # Get query parameters from request
+
+        # Receive the code
+
+        #  POST to oauth2/tokens (passing code, client id, client secret)
+
+        #  Redirect to oauth2/webapp/token-display
+        pass
+
+class WebappTokenDisplay(Resource):
+# /oauth2/webapp/token-display
+    def get(self):
+        # Get token from request
+        # Display token to user 
         pass
