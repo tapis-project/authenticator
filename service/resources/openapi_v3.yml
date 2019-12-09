@@ -240,7 +240,7 @@ components:
         password:
           type: string
           description: A secret key for authenticating the client.
-        granttype:
+        grant_type:
           type: string
           description: Specify whether this is a password grant or other type.
 

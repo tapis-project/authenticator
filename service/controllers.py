@@ -79,28 +79,33 @@ class TokensResource(Resource):
         logger.debug(f"BODY: {validated_body}")
         data = Token.get_derived_values(validated_body)
 
-        try:
-            grant_type = data['grant_type']
-        except Exception as e:
-            raise errors.ResourceError(msg=f'Invalid or missing grant_type. Exception: {e}')
+        grant_type = data['grant_type']
+        if not grant_type:
+            raise errors.ResourceError(msg=f'Missing the required grant_type parameter.')
+
+        tenant_id = g.request_tenant_id
         # get headers
         try:
-            tenant_id = request.headers.get('X-Tapis-Tenant')
             auth = request.authorization
             client_id = auth.username
             client_key = auth.password
         except Exception as e:
-            raise errors.ResourceError(msg=f'Invalid headers. Exception: {e}')
+            raise errors.ResourceError(msg=f'Invalid headers. Basic authentication with client id and k'
+                                           f'ey required but missing.')
         # check that client is in db
-
         logger.debug("Checking that client exists.")
-        client = Client.query.filter_by(client_id=client_id, client_key=client_key).first()
+        client = Client.query.filter_by(tenant_id=tenant_id, client_id=client_id, client_key=client_key).first()
         if not client:
             raise errors.ResourceError(msg=f'Invalid client credentials: {client_id}, {client_key}.')
         # check grant type:
         if grant_type == 'password':
             # validate user/pass against ldap
-            check_ldap = check_username_password(tenant_id, data['username'], data['password'])
+            username = data.get('username')
+            password = data.get('password')
+            if not username or not password:
+                raise errors.ResourceError("Missing requried payload data; username and password are required for "
+                                           "the password grant type.")
+            check_ldap = check_username_password(tenant_id, username, password)
             logger.debug(f"returned: {check_ldap}")
         elif grant_type == 'authorization_code':
             # check the redirect uri -

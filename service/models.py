@@ -397,8 +397,13 @@ class Token(object):
         :return: dict (result)
         """
         result = {}
-        result['username'] = getattr(data, 'username')
-        result['password'] = getattr(data, 'password')
-        result['granttype'] = getattr(data, 'granttype')
+        # always required:
+        result['grant_type'] = getattr(data, 'grant_type', None)
+        # depends on grant type
+        # password grant:
+        result['username'] = getattr(data, 'username', None)
+        result['password'] = getattr(data, 'password', None)
+        # authorization code grant:
+        result['redirect_uri'] = getattr(data, 'redirect_uri', None)
 
         return result
