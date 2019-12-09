@@ -101,7 +101,7 @@ navigating to:
 
 For example,
 ```
-http://localhost:5000/v3/oauth2/authorize?client_id=8dmkwnY8WkZlg&redirect_uri=http://localhost:5000/oauth2/webapp/callback&response_type=code
+http://localhost:5000/v3/oauth2/authorize?client_id=8dmkwnY8WkZlg&redirect_uri=http://localhost:5000/v3/oauth2/webapp/callback&response_type=code
 ```
 
 This will redirect the user to the Tenant Selection form, here:
