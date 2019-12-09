@@ -10,6 +10,8 @@ import uuid
 from common.config import conf
 from common.errors import DAOError
 from common.logs import get_logger
+import errors
+
 logger = get_logger(__name__)
 
 from service import get_tenant_config
@@ -155,15 +157,25 @@ class AuthorizationCode(db.Model):
         return datetime.datetime.utcnow() + datetime.timedelta(seconds=AuthorizationCode.CODE_TTL)
 
     @classmethod
-    def validate_code(cls, code, client_id, client_key):
+    def validate_code(cls, tenant_id, code, client_id, client_key):
         """
         Validate the use of an authorization code. This method checks the code expiry and
+        :param tenant_id (str) The tenant_id for which the authorization code belongs.
         :param code: (str) The authorization code.
         :param client_id: (str) The client_id owning the code.
         :param client_key: (str) Associated client_secret.
         :return:
         """
-        code_result = cls.query.filter_by(code=code, lient_id=client_id, client_key=client_key).first()
+        code_result = cls.query.filter_by(tenant_id=tenant_id,
+                                          code=code,
+                                          client_id=client_id,
+                                          client_key=client_key).first()
+        if not code_result:
+            raise errors.InvalidAuthorizationCodeError(msg="authorization code not valid.")
+        # check for an expired code, plus a fudge factor for clock skew:
+        if not datetime.datetime.utcnow() <= code_result.expiry_time + datetime.timedelta(seconds=6):
+            raise errors.InvalidAuthorizationCodeError(msg="authorization code has expired.")
+        return True
         
 
 class LdapUser(object):

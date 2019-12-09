@@ -65,7 +65,9 @@ class ClientResource(Resource):
 
 class TokensResource(Resource):
     """
-    Work with OAuth client objects
+    Implements the oauth2/tokens endpoint for generating tokens for the following grant types:
+      * password
+      * authorization_code
     """
 
     def post(self):
@@ -76,7 +78,6 @@ class TokensResource(Resource):
         validated_body = result.body
         logger.debug(f"BODY: {validated_body}")
         data = Token.get_derived_values(validated_body)
-        # token = Token(**data)
 
         try:
             grant_type = data['grant_type']
@@ -87,15 +88,15 @@ class TokensResource(Resource):
             tenant_id = request.headers.get('X-Tapis-Tenant')
             auth = request.authorization
             client_id = auth.username
-            client_secret = auth.password
+            client_key = auth.password
         except Exception as e:
             raise errors.ResourceError(msg=f'Invalid headers. Exception: {e}')
         # check that client is in db
 
         logger.debug("Checking that client exists.")
-        client = Client.query.filter_by(client_id=client_id, client_key=client_secret).first()
+        client = Client.query.filter_by(client_id=client_id, client_key=client_key).first()
         if not client:
-            raise errors.ResourceError(msg=f'Invalid client credentials: {client_id}, {client_secret}.')
+            raise errors.ResourceError(msg=f'Invalid client credentials: {client_id}, {client_key}.')
         # check grant type:
         if grant_type == 'password':
             # validate user/pass against ldap
@@ -113,12 +114,15 @@ class TokensResource(Resource):
             code = data.get('code')
             if not code:
                 raise errors.ResourceError("Required authorization_code parameter missing.")
-
+            AuthorizationCode.validate_code(tenant_id=tenant_id,
+                                            code=code,
+                                            client_id=client_id,
+                                            client_key=client_key)
         else:
             raise errors.ResourceError("Invalid grant_type")
 
         # call /v3/tokens to generate access token for the user
-        url = 'https://dev.develop.tapis.io/v3/tokens'
+        url = f'{g.request_tenant_base_url}/v3/tokens'
         content = {
             "token_tenant_id": f"{tenant_id}",
             "account_type": "service",
@@ -162,10 +166,7 @@ class ProfilesResource(Resource):
 class ProfileResource(Resource):
     def get(self, username):
         logger.debug(f'top of GET /profiles/{username}')
-        tenant_id = getattr(g, 'x_tapis_tenant', None)
-        if not tenant_id:
-            logger.debug("didn't find x_tapis_tenant; using tenant id in token.")
-            tenant_id = g.tenant_id
+        tenant_id = g.request_tenant_id
         user = get_tenant_user(tenant_id=tenant_id, username=username)
         return utils.ok(result=user.serialize, msg="User profile retrieved successfully.")
 
@@ -174,6 +175,12 @@ def check_client():
     Checks the request for associated client query parameters, validates them against the client registered in the DB
     and returns the associated objects.
     """
+    # tenant_id should be determined by the request URL -
+    tenant_id = g.request_tenant_id
+    if not tenant_id:
+        tenant_id = session['tenant_id']
+    if not tenant_id:
+        raise errors.ResourceError("tenant_id missing.")
     # required query parameters:
     client_id = request.args.get('client_id')
     client_redirect_uri = request.args.get('redirect_uri')
@@ -187,7 +194,7 @@ def check_client():
     if not response_type == 'code':
         raise errors.ResourceError("Required query parameter response_type missing or not supported.")
     # make sure the client exists and the redirect_uri matches
-    client = Client.query.filter_by(client_id=client_id).first()
+    client = Client.query.filter_by(tenant_id=tenant_id, client_id=client_id).first()
     if not client:
         raise errors.ResourceError("Invalid client.")
     if not client.callback_url == client_redirect_uri:
@@ -216,7 +223,10 @@ class AuthorizeResource(Resource):
         return make_response(render_template('authorize.html',  **context), 200, headers)
 
     def post(self):
-        tenant_id = session.get('tenant_id')
+        # selecting a tenant id is required before logging in -
+        tenant_id = g.request_tenant_id
+        if not tenant_id:
+            tenant_id = session['tenant_id']
         if not tenant_id:
             raise errors.ResourceError('Tenant ID missing from session. Please logout and select a tenant.')
         client_display_name = request.form.get('client_display_name')
@@ -278,7 +288,10 @@ class LoginResource(Resource):
     def get(self):
         client_id, client_redirect_uri, client_state, client = check_client()
         # selecting a tenant id is required before logging in -
-        if not 'tenant_id' in session:
+        tenant_id = g.request_tenant_id
+        if not tenant_id:
+            tenant_id = session['tenant_id']
+        if not tenant_id:
             logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
             return redirect(url_for('settenantresource',
                                     client_id=client_id,
@@ -291,16 +304,18 @@ class LoginResource(Resource):
                    'client_id': client_id,
                    'client_redirect_uri': client_redirect_uri,
                    'client_state': client_state,
-                   'tenant_id': session['tenant_id']}
+                   'tenant_id': tenant_id}
         return make_response(render_template('login.html', **context), 200, headers)
 
     def post(self):
         # process the login form -
-        if not 'tenant_id' in session:
+        tenant_id = g.request_tenant_id
+        if not tenant_id:
+            tenant_id = session['tenant_id']
+        if not tenant_id:
             client_id, client_redirect_uri, client_state, client = check_client()
             logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
             raise errors.ResourceError("Invalid session; please return to the original application or logout of this session.")
-        tenant_id = session['tenant_id']
         headers = {'Content-Type': 'text/html'}
         username = request.form.get("username")
         if not username:
@@ -334,7 +349,10 @@ class LogoutResource(Resource):
     def get(self):
         # selecting a tenant id is required before logging in -
         headers = {'Content-Type': 'text/html'}
-        if not 'tenant_id' in session:
+        tenant_id = g.request_tenant_id
+        if not tenant_id:
+            tenant_id = session['tenant_id']
+        if not tenant_id:
             logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
             # reset the session in case there is some weird cruft
             session.pop('username', None)
