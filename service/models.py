@@ -10,7 +10,7 @@ import uuid
 from common.config import conf
 from common.errors import DAOError
 from common.logs import get_logger
-import errors
+from common import errors
 
 logger = get_logger(__name__)
 
