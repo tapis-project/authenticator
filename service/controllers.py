@@ -7,6 +7,7 @@ from openapi_core.shortcuts import RequestValidator
 from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 
 from common import utils, errors
+from common.config import conf
 
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 from service.errors import InvalidPasswordError
@@ -365,12 +366,28 @@ class WebappRedirect(Resource):
 # /oauth2/webapp/index.html
     def get(self):
         # Make sure test client exists
+        data = {
+            "client_id": conf.dev_client_id,
+            "client_key": conf.dev_client_key,
+            "callback_url": conf.dev_client_callback,
+            "display_name": conf.dev_client_display_name
+        }
+        client = Client.query.filter_by(
+            client_id=conf.dev_client_id,
+            client_key=conf.dev_client_key
+        )
+        if not client:
+            client = Client(**data)
+            db.session.add(client)
+            db.session.commit()
 
         # check if session exists
+        logger.debug(f'LOOK HERE {client}')
+        # if not, redirect to login (oauth2/authorize)
+            # maybe pass csrf token as well (state var)
+            # get tenant_id based on url
 
-        # if not, redirect to login
-
-        pass
+        return "test"
 
 
 class WebappTokenGen(Resource):
@@ -378,9 +395,12 @@ class WebappTokenGen(Resource):
     def get(self):
         # Get query parameters from request
 
-        # Receive the code
+        # Receive the code (and state if passed)
 
-        #  POST to oauth2/tokens (passing code, client id, client secret)
+        #  POST to oauth2/tokens (passing code, client id, client secret, and redirect uri)
+            # redirect uri is just callback url
+
+        # Get token from POST response
 
         #  Redirect to oauth2/webapp/token-display
         pass
@@ -389,5 +409,5 @@ class WebappTokenDisplay(Resource):
 # /oauth2/webapp/token-display
     def get(self):
         # Get token from request
-        # Display token to user 
+        # Display token to user
         pass

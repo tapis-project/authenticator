@@ -49,4 +49,4 @@ api.add_resource(SetTenantResource, '/v3/oauth2/tenant')
 api.add_resource(LogoutResource, '/v3/oauth2/logout')
 api.add_resource(StaticFilesResource, '/v3/oauth2/authorize/<path>')
 # Portal resources
-api.add_resource(WebappRedirect, '/v3/oauth2/portal-login')
+api.add_resource(WebappRedirect, '/v3/oauth2/webapp')
