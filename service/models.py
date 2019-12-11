@@ -10,6 +10,8 @@ import uuid
 from common.config import conf
 from common.errors import DAOError
 from common.logs import get_logger
+import errors
+
 logger = get_logger(__name__)
 
 from service import get_tenant_config
@@ -153,6 +155,28 @@ class AuthorizationCode(db.Model):
     def compute_expiry(cls):
         """Computes the expiry of an authorization code created now."""
         return datetime.datetime.utcnow() + datetime.timedelta(seconds=AuthorizationCode.CODE_TTL)
+
+    @classmethod
+    def validate_code(cls, tenant_id, code, client_id, client_key):
+        """
+        Validate the use of an authorization code. This method checks the code expiry and
+        :param tenant_id (str) The tenant_id for which the authorization code belongs.
+        :param code: (str) The authorization code.
+        :param client_id: (str) The client_id owning the code.
+        :param client_key: (str) Associated client_secret.
+        :return:
+        """
+        code_result = cls.query.filter_by(tenant_id=tenant_id,
+                                          code=code,
+                                          client_id=client_id,
+                                          client_key=client_key).first()
+        if not code_result:
+            raise errors.InvalidAuthorizationCodeError(msg="authorization code not valid.")
+        # check for an expired code, plus a fudge factor for clock skew:
+        if not datetime.datetime.utcnow() <= code_result.expiry_time + datetime.timedelta(seconds=6):
+            raise errors.InvalidAuthorizationCodeError(msg="authorization code has expired.")
+        return True
+        
 
 class LdapUser(object):
     """
@@ -373,8 +397,13 @@ class Token(object):
         :return: dict (result)
         """
         result = {}
-        result['username'] = getattr(data, 'username')
-        result['password'] = getattr(data, 'password')
-        result['granttype'] = getattr(data, 'granttype')
+        # always required:
+        result['grant_type'] = getattr(data, 'grant_type', None)
+        # depends on grant type
+        # password grant:
+        result['username'] = getattr(data, 'username', None)
+        result['password'] = getattr(data, 'password', None)
+        # authorization code grant:
+        result['redirect_uri'] = getattr(data, 'redirect_uri', None)
 
         return result

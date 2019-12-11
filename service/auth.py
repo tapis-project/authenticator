@@ -36,11 +36,15 @@ def authentication():
 
     # no credentials required on the authorize and login pages
     if '/v3/oauth2/authorize' in request.url_rule.rule or '/v3/oauth2/login' in request.url_rule.rule:
+        # always resolve the request tenant id based on the URL:
+        auth.resolve_tenant_id_for_request()
         return True
 
     # the profiles endpoints always use standard Tapis Token auth -
     if '/v3/oauth2/profiles' in request.url_rule.rule:
         auth.authentication()
+        # always resolve the request tenant id based on the URL:
+        auth.resolve_tenant_id_for_request()
         return True
 
     # the clients endpoints need to accept both standard Tapis Token auth and basic auth,
@@ -49,16 +53,27 @@ def authentication():
         parts = get_basic_auth_parts()
         if parts:
             # do basic auth against the ldap
+            # always resolve the request tenant id based on the URL:
+            auth.resolve_tenant_id_for_request()
             check_username_password(parts['tenant_id'], parts['username'], parts['password'])
             return True
         else:
             # check for a Tapis token
             auth.authentication()
+            # always resolve the request tenant id based on the URL:
+            auth.resolve_tenant_id_for_request()
             return True
 
     if '/v3/oauth2/tokens' in request.url_rule.rule:
-        # todo - any any custom logic for the tokens API
-        pass
+        # the tokens endpoint uses basic auth with the client; logic handled in the controller.
+        # however, it does require the request tenant id:
+        auth.resolve_tenant_id_for_request()
+
+    if '/v3/oauth2/logout' in request.url_rule.rule \
+        or '/v3/oauth2/login' in request.url_rule.rule \
+        or '/v3/oauth2/tenant' in request.url_rule.rule \
+        or '/v3/oauth2/portal-login' in request.url_rule.rule:
+        auth.resolve_tenant_id_for_request()
 
 
 def get_basic_auth_parts():
