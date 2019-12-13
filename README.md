@@ -174,6 +174,38 @@ curl -H "X-Tapis-Token: $jwt" 'localhost:5000/v3/oauth2/profiles?limit=1&offset=
 }
 
 ```
+### Testing Auth Code Workflow
+
+There is a webapp within this repo that goes through the Authentication Code workflow.
+
+To begin, you will need to create a client with a callback url.
+The webapp will be running at /oauth2/webapp, so we are using `/v3/oauth2/webapp/callback` as our callback url
+
+```
+curl -H "X-Tapis-Token: $jwt" localhost:5000/v3/oauth2/clients -H "content-type: application/json" -d '{"callback_url": "http://localhost:5000/oauth2/webapp/callback", "display_name": "Tapis Token Webapp"}'| jq
+
+{
+  "message": "Client created successfully.",
+  "result": {
+    "callback_url": "http://localhost:5000/oauth2/webapp/callback",
+    "client_id": "0GaE2eEZRYMd",
+    "client_key": "ka0zMQm5N13d",
+    "create_time": "Wed, 04 Dec 2019 19:05:20 GMT",
+    "description": "",
+    "display_name": "Tapis Token Webapp",
+    "last_update_time": "Wed, 04 Dec 2019 19:05:20 GMT",
+    "owner": "jstubbs"
+  },
+  "status": "success",
+  "version": "dev"
+}
+```
+
+Then, to test the auth code redirect, you will go to your browser to the following link:
+`http://localhost:5000/v3/oauth2/authorize?client_id=<client_id>&redirect_uri=http://localhost:5000/v3/oauth2/webapp/callback&response_type=code`
+You will need to replace `<client_id>` with your client_id. 
+
+After you log in, you will be asked to approve the authorization. After clicking submit, the authorization occurs and a token is retrieved from the Tokens Api and is displayed to the user.
 
 ### Beyond the Quickstart
 
