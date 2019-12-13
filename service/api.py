@@ -5,7 +5,7 @@ from common.utils import TapisApi, handle_error, flask_errors_dict
 from service.auth import authn_and_authz
 from service.controllers import AuthorizeResource, ClientsResource, ClientResource, TokensResource, \
     ProfilesResource, ProfileResource, StaticFilesResource, LoginResource, SetTenantResource, LogoutResource, \
-    WebappRedirect
+    WebappRedirect, WebappTokenGen, WebappTokenDisplay
 from service.ldap import populate_test_ldap
 from service.models import db, app
 import threading
@@ -49,4 +49,7 @@ api.add_resource(SetTenantResource, '/v3/oauth2/tenant')
 api.add_resource(LogoutResource, '/v3/oauth2/logout')
 api.add_resource(StaticFilesResource, '/v3/oauth2/authorize/<path>')
 # Portal resources
+api.add_resource(WebappTokenGen, '/v3/oauth2/webapp/callback')
+api.add_resource(WebappTokenDisplay, '/v3/oauth2/webapp/token-display')
 api.add_resource(WebappRedirect, '/v3/oauth2/webapp')
+

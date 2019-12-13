@@ -72,6 +72,8 @@ def authentication():
     if '/v3/oauth2/logout' in request.url_rule.rule \
         or '/v3/oauth2/login' in request.url_rule.rule \
         or '/v3/oauth2/tenant' in request.url_rule.rule \
+        or '/v3/oauth2/webapp/callback' \
+        or '/v3/oauth2/webapp/token-display' \
         or '/v3/oauth2/portal-login' in request.url_rule.rule:
         auth.resolve_tenant_id_for_request()
 

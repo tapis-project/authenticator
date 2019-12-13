@@ -176,6 +176,7 @@ class ProfileResource(Resource):
         user = get_tenant_user(tenant_id=tenant_id, username=username)
         return utils.ok(result=user.serialize, msg="User profile retrieved successfully.")
 
+
 def check_client():
     """
     Checks the request for associated client query parameters, validates them against the client registered in the DB
@@ -207,6 +208,7 @@ def check_client():
         raise errors.ResourceError(
             "redirect_uri query parameter does not match the registered callback_url for the client.")
     return client_id, client_redirect_uri, client_state, client
+
 
 class AuthorizeResource(Resource):
     def get(self):
@@ -259,9 +261,10 @@ class AuthorizeResource(Resource):
                                        code=AuthorizationCode.generate_code(),
                                        expiry_time=AuthorizationCode.compute_expiry())
         # issue redirect to client callback_url with authorization code:
-        url = f'{client.callback_url}?code={authz_code}&state={state}'
+        url = f'{client.callback_url}?code={authz_code}&state={state}&client_id={client_id}&client_key={client.client_key}'
 
         return redirect(url)
+
 
 class SetTenantResource(Resource):
     def get(self):
@@ -408,28 +411,67 @@ class WebappRedirect(Resource):
         # if not, redirect to login (oauth2/authorize)
             # maybe pass csrf token as well (state var)
             # get tenant_id based on url
+       # client_id, client_redirect_uri, client_state, client = check_client()
 
-        return "test"
-
+        # return redirect(url_for('authorizeresource',
+        #                         client_id=client_id,
+        #                         redirect_uri=client_redirect_uri,
+        #                         state=client_state,
+        #                         response_type='code'))
+        return redirect(url_for('authorizeresource',
+                                client_id=client.client_id))
 
 class WebappTokenGen(Resource):
 # /oauth2/webapp/callback
     def get(self):
         # Get query parameters from request
-
+        # client_id, client_redirect_uri, client_state, client = check_client()
+        client_id = request.args.get('client_id')
+        client_redirect_uri = request.args.get(' client_redirect_uri')
+        client_state = request.args.get('client_state')
+        client_secret = request.args.get('client_key')
         # Receive the code (and state if passed)
+        username = session['username']
+        code = request.args.get('redirect_uri')
+        tenant_id = g.request_tenant_id
+        logger.debug(f"Client ID: {client_id} - tenant_id: {tenant_id}")
+
+        # Get the client so we can pass the client secret to the tokens api
+        # client = Client.query.filter_by(tenant_id=tenant_id, client_id=client_id).first()
+        # if not client:
+        #     raise errors.ResourceError("Invalid client.")
+        # if not client.callback_url == client_redirect_uri:
+        #     raise errors.ResourceError(
+        #         "redirect_uri query parameter does not match the registered callback_url for the client.")
 
         #  POST to oauth2/tokens (passing code, client id, client secret, and redirect uri)
             # redirect uri is just callback url
+        logger.debug(f"HERE IS THE BASE URL: {g.request_tenant_base_url}")
+        url = f'{g.request_tenant_base_url}/v3/tokens'
+        content = {
+            "token_tenant_id": tenant_id,
+            "account_type": "service",
+            "token_username": username,
+            "claims": {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": client_redirect_uri,
+                "code": code
+            }
+        }
+        r = requests.post(url, json=content)
+        json_resp = json.loads(r.text)
 
         # Get token from POST response
 
         #  Redirect to oauth2/webapp/token-display
-        pass
+        token = json_resp['result']['access_token']['access_token']
+        url = f'http://localhost:5000/v3/oauth2/webapp/token-display?token={token}'
+        return redirect(url)
+
 
 class WebappTokenDisplay(Resource):
 # /oauth2/webapp/token-display
     def get(self):
-        # Get token from request
-        # Display token to user
-        pass
+        token = request.args.get('token')
+        return f"You did it! Here is your token: {token}"
