@@ -450,7 +450,8 @@ class WebappTokenGen(Resource):
 class WebappTokenDisplay(Resource):
 # /oauth2/webapp/token-display
     def get(self):
-        token = session.get('token')
+        token = session['access_token']
+        error = ''
         if not token:
             error = 'An error occurred.'
         context = {'error': error,
