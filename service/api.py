@@ -29,20 +29,26 @@ if conf.populate_dev_ldap:
     logger.info(f'Starting thread {threading.currentThread().ident}')
     populate_test_ldap()
 if conf.dev_client_key:
+    logger.debug("dev client existed in config.")
     data = {
         "client_id": conf.dev_client_id,
         "client_key": conf.dev_client_key,
         "callback_url": conf.dev_client_callback,
-        "display_name": conf.dev_client_display_name
+        "display_name": conf.dev_client_display_name,
+        "tenant_id": "dev",
+        "username": "tapis",
     }
     client = Client.query.filter_by(
                 client_id=conf.dev_client_id,
                 client_key=conf.dev_client_key
             )
     if not client:
+        logger.debug("registering dev client.")
         client = Client(**data)
         db.session.add(client)
         db.session.commit()
+    else:
+        logger.debug("dev client already exists.")
 
 # flask restful API object ----
 api = TapisApi(app, errors=flask_errors_dict)

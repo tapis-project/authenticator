@@ -201,6 +201,7 @@ def check_client():
     if not response_type == 'code':
         raise errors.ResourceError("Required query parameter response_type missing or not supported.")
     # make sure the client exists and the redirect_uri matches
+    logger.debug(f"checking for client with id: {client_id} in tenant {tenant_id}")
     client = Client.query.filter_by(tenant_id=tenant_id, client_id=client_id).first()
     if not client:
         raise errors.ResourceError("Invalid client.")
@@ -396,10 +397,14 @@ class WebappRedirect(Resource):
             # get tenant_id based on url
         # http://localhost:5000/v3/oauth2/authorize?client_id=test_client&redirect_uri=http://localhost:5000/oauth2/webapp/callback&response_type=code
         client_id = conf.client_id
-        redirect_uri = f'http://localhost:5000{conf.client_callback}'
-            # g.request_tenant_base_url + conf.client_callback
+        redirect_uri_path = conf.client_callback
+        if 'localhost' in request.base_url:
+            base_redirect_url = 'http://localhost:5000'
+        else:
+            base_redirect_url = g.request_tenant_base_url
+        redirect_uri = f'{base_redirect_url}{redirect_uri_path}'
         response_type = 'code'
-        url = f'http://localhost:5000/v3/oauth2/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type={response_type}'
+        url = f'{base_redirect_url}/v3/oauth2/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type={response_type}'
         return redirect(url)
 
 class WebappTokenGen(Resource):
@@ -436,18 +441,19 @@ class WebappTokenGen(Resource):
         json_resp = json.loads(r.text)
 
         # Get token from POST response
-
-        #  Redirect to oauth2/webapp/token-display
         token = json_resp['result']['access_token']['access_token']
-        url = f'http://localhost:5000/v3/oauth2/webapp/token-display?token={token}'
-        return redirect(url)
+        session['access_token'] = token
+        #  Redirect to oauth2/webapp/token-display
+        return redirect(url_for('webapptokendisplay'))
 
 
 class WebappTokenDisplay(Resource):
 # /oauth2/webapp/token-display
     def get(self):
-        token = request.args.get('token')
-        context = {'error': '',
+        token = session.get('token')
+        if not token:
+            error = 'An error occurred.'
+        context = {'error': error,
                    'token': token}
         # return f"You did it! Here is your token: {token}"
         headers = {'Content-Type': 'text/html'}

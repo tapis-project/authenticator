@@ -57,7 +57,8 @@ class Client(db.Model):
             "create_time": self.create_time,
             "last_update_time": self.last_update_time,
             "display_name": self.display_name,
-            "description": self.description
+            "description": self.description,
+            "tenant_id": self.tenant_id,
         }
 
     @classmethod
