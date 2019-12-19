@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% block content %}
+<body>
+ <div class="container">
+    <h2> Tapis Tenant </h2>
+ </div>
+     {% if error %}
+   <div class="container">
+      <p>Error: {{ error }}</p>
+   </div>
+     {% endif %}
+
+   <div class="container">
+        You did it! Here is your token:
+       <div class="container p-3 my-3 bg-dark text-white">
+        <p id="tokenString">{{ token }}</p>
+    </div>
+
+
+   </div>
+{% endblock %}

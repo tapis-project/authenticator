@@ -7,7 +7,7 @@ from service.controllers import AuthorizeResource, ClientsResource, ClientResour
     ProfilesResource, ProfileResource, StaticFilesResource, LoginResource, SetTenantResource, LogoutResource, \
     WebappRedirect, WebappTokenGen, WebappTokenDisplay
 from service.ldap import populate_test_ldap
-from service.models import db, app
+from service.models import db, app, Client
 import threading
 
 from common.logs import get_logger
@@ -28,6 +28,21 @@ migrate = Migrate(app, db)
 if conf.populate_dev_ldap:
     logger.info(f'Starting thread {threading.currentThread().ident}')
     populate_test_ldap()
+if conf.dev_client_key:
+    data = {
+        "client_id": conf.dev_client_id,
+        "client_key": conf.dev_client_key,
+        "callback_url": conf.dev_client_callback,
+        "display_name": conf.dev_client_display_name
+    }
+    client = Client.query.filter_by(
+                client_id=conf.dev_client_id,
+                client_key=conf.dev_client_key
+            )
+    if not client:
+        client = Client(**data)
+        db.session.add(client)
+        db.session.commit()
 
 # flask restful API object ----
 api = TapisApi(app, errors=flask_errors_dict)
@@ -47,9 +62,11 @@ api.add_resource(AuthorizeResource, '/v3/oauth2/authorize')
 api.add_resource(LoginResource, '/v3/oauth2/login')
 api.add_resource(SetTenantResource, '/v3/oauth2/tenant')
 api.add_resource(LogoutResource, '/v3/oauth2/logout')
-api.add_resource(StaticFilesResource, '/v3/oauth2/authorize/<path>')
+
 # Portal resources
 api.add_resource(WebappTokenGen, '/v3/oauth2/webapp/callback')
 api.add_resource(WebappTokenDisplay, '/v3/oauth2/webapp/token-display')
-api.add_resource(WebappRedirect, '/v3/oauth2/webapp')
+api.add_resource(WebappRedirect, '/v3/oauth2/webapp/index')
 
+# Staticfiles
+api.add_resource(StaticFilesResource, '/v3/oauth2/authorize/<path>')

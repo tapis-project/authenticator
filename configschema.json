@@ -76,6 +76,26 @@
       "type": "string",
       "description": "Test client display name",
       "default": "The Test Client"
+    },
+    "client_id": {
+      "type": "string",
+      "description": "Test client id",
+      "default": "testclient"
+    },
+    "client_key": {
+      "type": "string",
+      "description": "Test client key",
+      "default": "testclientkey"
+    },
+    "client_callback": {
+      "type": "string",
+      "description": "Test client callback url",
+      "default": "/v3/oauth2/webapp/callback"
+    },
+    "client_display_name": {
+      "type": "string",
+      "description": "Test client display name",
+      "default": "The Test Client"
     }
   }
 }
