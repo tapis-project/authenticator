@@ -2,7 +2,7 @@
 {% block content %}
 <body>
  <div class="container">
-    <h2> Tapis Tenant </h2>
+    <h2> Tapis Tenant {{ tenant_id }}</h2>
  </div>
      {% if error %}
    <div class="container">
@@ -11,7 +11,7 @@
      {% endif %}
 
    <div class="container">
-        You did it! Here is your token:
+        Token generated:
        <div class="container p-3 my-3 bg-dark text-white">
         <p id="tokenString">{{ token }}</p>
     </div>

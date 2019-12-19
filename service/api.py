@@ -1,11 +1,12 @@
 from flask_migrate import Migrate
 from common.config import conf
 from common.utils import TapisApi, handle_error, flask_errors_dict
+import datetime
 
 from service.auth import authn_and_authz
 from service.controllers import AuthorizeResource, ClientsResource, ClientResource, TokensResource, \
     ProfilesResource, ProfileResource, StaticFilesResource, LoginResource, SetTenantResource, LogoutResource, \
-    WebappRedirect, WebappTokenGen, WebappTokenDisplay
+    WebappTokenGen, WebappTokenAndRedirect
 from service.ldap import populate_test_ldap
 from service.models import db, app, Client
 import threading
@@ -33,22 +34,43 @@ if conf.dev_client_key:
     data = {
         "client_id": conf.dev_client_id,
         "client_key": conf.dev_client_key,
-        "callback_url": conf.dev_client_callback,
-        "display_name": conf.dev_client_display_name,
+        "callback_url": f'http://localhost:5000{conf.client_callback}',
+        "display_name": conf.client_display_name,
         "tenant_id": "dev",
         "username": "tapis",
+        'create_time':  datetime.datetime.utcnow(),
+        'last_update_time': datetime.datetime.utcnow()
     }
-    client = Client.query.filter_by(
-                client_id=conf.dev_client_id,
-                client_key=conf.dev_client_key
-            )
-    if not client:
-        logger.debug("registering dev client.")
-        client = Client(**data)
-        db.session.add(client)
-        db.session.commit()
-    else:
-        logger.debug("dev client already exists.")
+    try:
+        client = Client.query.filter_by(
+                    tenant_id='dev',
+                    client_id=data['client_id'],
+                    client_key=data['client_key']
+                ).first()
+        if not client:
+            logger.debug("registering localhost dev client.")
+            client = Client(**data)
+            db.session.add(client)
+            db.session.commit()
+        else:
+            logger.debug("localhost dev client already exists.")
+        data['callback_url'] = f'https://dev.develop.tapis.io{conf.client_callback}'
+        data['client_id'] = f'dev.develop.{conf.client_id}'
+        data['client_key'] = f'dev.develop.{conf.client_key}'
+        client = Client.query.filter_by(
+                    tenant_id='dev',
+                    client_id=data['client_id'],
+                    client_key=data['client_key']
+                ).first()
+        if not client:
+            logger.debug("registering dev.develop client.")
+            client = Client(**data)
+            db.session.add(client)
+            db.session.commit()
+        else:
+            logger.debug("dev.develop client already exists.")
+    except Exception as e:
+        logger.info(f"Got exception trying to create the token web app client; this better be migrations; e: {e}")
 
 # flask restful API object ----
 api = TapisApi(app, errors=flask_errors_dict)
@@ -71,8 +93,7 @@ api.add_resource(LogoutResource, '/v3/oauth2/logout')
 
 # Portal resources
 api.add_resource(WebappTokenGen, '/v3/oauth2/webapp/callback')
-api.add_resource(WebappTokenDisplay, '/v3/oauth2/webapp/token-display')
-api.add_resource(WebappRedirect, '/v3/oauth2/webapp/index')
+api.add_resource(WebappTokenAndRedirect, '/v3/oauth2/webapp')
 
 # Staticfiles
 api.add_resource(StaticFilesResource, '/v3/oauth2/authorize/<path>')

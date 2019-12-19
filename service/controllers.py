@@ -221,9 +221,13 @@ class AuthorizeResource(Resource):
                                     state=client_state,
                                     response_type='code'))
         client_id, client_redirect_uri, client_state, client = check_client()
+        tenant_id = g.request_tenant_id
+        if not tenant_id:
+            tenant_id = session['tenant_id']
         headers = {'Content-Type': 'text/html'}
         context = {'error': '',
                    'username': session['username'],
+                   'tenant_id': tenant_id,
                    'client_display_name': client.display_name,
                    'client_id': client_id,
                    'client_redirect_uri': client_redirect_uri,
@@ -327,25 +331,31 @@ class LoginResource(Resource):
             logger.debug(f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
             raise errors.ResourceError("Invalid session; please return to the original application or logout of this session.")
         headers = {'Content-Type': 'text/html'}
-        username = request.form.get("username")
-        if not username:
-            error = 'Username is required.'
-            return make_response(render_template('login.html', **{'error': error}), 200, headers)
-        password = request.form.get("password")
-        if not password:
-            error = 'Password is required.'
-        try:
-            check_username_password(tenant_id=tenant_id, username=username, password=password)
-        except InvalidPasswordError:
-            error = 'Invalid username/password combination.'
-            return make_response(render_template('login.html', **{'error': error}), 200, headers)
-        # the username and password were accepted; set the session and redirect to the authorization page.
-        session['username'] = username
         client_id = request.form.get('client_id')
         client_redirect_uri = request.form.get('client_redirect_uri')
         client_state = request.form.get('client_state')
         client_display_name = request.form.get('client_display_name')
-
+        context = {'error': '',
+                   'client_display_name': client_display_name,
+                   'client_id': client_id,
+                   'client_redirect_uri': client_redirect_uri,
+                   'client_state': client_state,
+                   'tenant_id': tenant_id}
+        username = request.form.get("username")
+        if not username:
+            context['error'] = 'Username is required.'
+            return make_response(render_template('login.html', **context), 200, headers)
+        password = request.form.get("password")
+        if not password:
+            context['error'] = 'Password is required.'
+            return make_response(render_template('login.html', **context), 200, headers)
+        try:
+            check_username_password(tenant_id=tenant_id, username=username, password=password)
+        except InvalidPasswordError:
+            context['error'] = 'Invalid username/password combination.'
+            return make_response(render_template('login.html', **context), 200, headers)
+        # the username and password were accepted; set the session and redirect to the authorization page.
+        session['username'] = username
         return redirect(url_for('authorizeresource',
                                 client_id=client_id,
                                 redirect_uri=client_redirect_uri,
@@ -376,9 +386,10 @@ class LogoutResource(Resource):
         if request.form.get("logout"):
             session.pop('username', None)
             session.pop('tenant_id', None)
+            session.pop('access_token', None)
             make_response(render_template('logout.html', logout_message='You have been logged out.'), 200, headers)
         # if they submitted the logout form but did not check the box then just return them to the logout form -
-        return redirect(url_for('logoutresource'))
+        return redirect(url_for('webapptokenandredirect'))
 
 
 class StaticFilesResource(Resource):
@@ -388,18 +399,25 @@ class StaticFilesResource(Resource):
 
 ##### Webapp Views #####
 
-class WebappRedirect(Resource):
-# /oauth2/webapp/index
+class WebappTokenAndRedirect(Resource):
+# /oauth2/webapp
     def get(self):
-
+        token = session.get('access_token')
+        if token:
+            context = {'error': None,
+                       'token': token}
+            headers = {'Content-Type': 'text/html'}
+            return make_response(render_template('token-display.html', **context), 200, headers)
+        # otherwise, if there is no token in the session, start the OAuth2 flow with a redirect ---
         # redirect to login (oauth2/authorize)
             # maybe pass csrf token as well (state var)
             # get tenant_id based on url
         # http://localhost:5000/v3/oauth2/authorize?client_id=test_client&redirect_uri=http://localhost:5000/oauth2/webapp/callback&response_type=code
-        client_id = conf.client_id
+        client_id = f'dev.develop.{conf.client_id}'
         redirect_uri_path = conf.client_callback
         if 'localhost' in request.base_url:
             base_redirect_url = 'http://localhost:5000'
+            client_id = conf.client_id
         else:
             base_redirect_url = g.request_tenant_base_url
         redirect_uri = f'{base_redirect_url}{redirect_uri_path}'
@@ -414,8 +432,10 @@ class WebappTokenGen(Resource):
         # client_id, client_redirect_uri, client_state, client = check_client()
         client_redirect_uri = request.args.get('client_redirect_uri')
         client_state = request.args.get('client_state')
-        client_secret = conf.dev_client_key
-        client_id = conf.dev_client_id
+        client_secret = conf.client_key
+        client_id = f'dev.develop.{conf.client_id}'
+        if 'localhost' in request.base_url:
+            client_id = conf.client_id
         # Receive the code (and state if passed)
         username = session['username']
         code = request.args.get('redirect_uri')
@@ -444,18 +464,4 @@ class WebappTokenGen(Resource):
         token = json_resp['result']['access_token']['access_token']
         session['access_token'] = token
         #  Redirect to oauth2/webapp/token-display
-        return redirect(url_for('webapptokendisplay'))
-
-
-class WebappTokenDisplay(Resource):
-# /oauth2/webapp/token-display
-    def get(self):
-        token = session['access_token']
-        error = ''
-        if not token:
-            error = 'An error occurred.'
-        context = {'error': error,
-                   'token': token}
-        # return f"You did it! Here is your token: {token}"
-        headers = {'Content-Type': 'text/html'}
-        return make_response(render_template('token-display.html', **context), 200, headers)
+        return redirect(url_for('webapptokenandredirect'))
