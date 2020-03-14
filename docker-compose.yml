@@ -16,8 +16,10 @@ services:
             - pgdata:/var/lib/postgresql/data
         networks:
             - authenticator
+        environment:
+            POSTGRES_HOST_AUTH_METHOD: "trust"
 
-    ldap:
+    authenticator-ldap:
         image: tacc/slapd
         networks:
             - authenticator

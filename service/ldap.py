@@ -34,14 +34,25 @@ def get_tapis_ldap_server_info():
     Returns dictionary of Tapis LDAP server connection information.
     :return: (dict)
     """
-    return {
-        "server": conf.dev_ldap_url,
-        "port": conf.dev_ldap_port,
-        "bind_dn": conf.dev_ldap_bind_dn,
-        "bind_password": conf.dev_ldap_bind_credential,
-        "base_dn": conf.dev_ldap_tenants_base_dn,
-        "use_ssl": conf.dev_ldap_use_ssl
-    }
+    if conf.use_tenants:
+        dev_tenant = tenants.get_tenant_config(tenant_id='dev')
+        return {
+            "server": dev_tenant.get('ldap_url'),
+            "port": dev_tenant.get('ldap_port'),
+            "bind_dn": dev_tenant.get('ldap_bind_dn'),
+            "bind_password": dev_tenant.get('ldap_bind_credential'),
+            "base_dn": dev_tenant.get('dev_ldap_tenants_base_dn'),
+            "use_ssl": dev_tenant.get('ldap_use_ssl')
+        }
+    else:
+        return {
+            "server": conf.dev_ldap_url,
+            "port": conf.dev_ldap_port,
+            "bind_dn": conf.dev_ldap_bind_dn,
+            "bind_password": conf.dev_ldap_bind_credential,
+            "base_dn": conf.dev_ldap_tenants_base_dn,
+            "use_ssl": conf.dev_ldap_use_ssl
+        }
 
 
 tapis_ldap = get_tapis_ldap_server_info()

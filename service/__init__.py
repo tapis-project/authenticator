@@ -69,7 +69,7 @@ class AuthenticatorTenants(Tenants):
             elif tenant['tenant_id'] == 'tacc':
                 tenant['ldap_bind_credential'] = conf.dev_tacc_ldap_bind_credential
         else:
-            # TODO -- get ldap data from the Tenants API and get the ldap bind secret from the security kernel...
+            # TODO -- get the ldap bind secret from the security kernel...
             pass
         return tenant
 
