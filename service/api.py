@@ -50,6 +50,8 @@ def create_clients_for_tenant(tenant_id):
     # now register the client with the tenant's base url:
     client_id = f'{tenant_id}.{conf.client_id}'
     callback_url = f'{conf.service_tenant_base_url}{conf.client_callback}'
+    # replace "master" with the tenant_id:
+    callback_url = callback_url.replace("master", tenant_id)
     data['client_id'] = client_id
     data['callback_url'] = callback_url
     add_client_to_db(data)
@@ -68,7 +70,7 @@ def add_client_to_db(data):
                     client_key=data['client_key']
                 ).first()
         if not client:
-            logger.debug(f"registering localhost {data['tenant_id']} client.")
+            logger.debug(f"registering localhost {data['tenant_id']} client; callback_url: {data['callback_url']}.")
             client = Client(**data)
             db.session.add(client)
             db.session.commit()
