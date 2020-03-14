@@ -1,4 +1,4 @@
-from flask import request
+from flask import request, g, session
 
 from common import auth
 from common import errors as common_errors
@@ -18,6 +18,20 @@ def authn_and_authz():
     :return:
     """
     authentication()
+    # when running locally, the g.request_tenant_id will always be 'dev', so we use the session to allow for testing
+    # other tenants locally
+    if 'localhost' in request.base_url:
+        logger.debug("localhost was in request.base_url, so we are looking to override tenant_id based on session.")
+        try:
+            if 'tenant_id' in session and session['tenant_id']:
+                logger.debug(f"overriding tenant_id based on session to {session['tenant_id']}.")
+                g.request_tenant_id = session['tenant_id']
+                logger.debug(f"tenant_id has been set to {g.request_tenant_id}.")
+            else:
+                logger.debug("did not override g.request_tenant_id")
+        except Exception as e:
+            # we swallow any exception because this code should only run in local development.
+            logger.debug(f"Got exception trying to check tenant_id in session; exception: {e}")
     authorization()
 
 
@@ -37,7 +51,12 @@ def authentication():
     # no credentials required on the authorize and login pages
     if '/v3/oauth2/authorize' in request.url_rule.rule or '/v3/oauth2/login' in request.url_rule.rule:
         # always resolve the request tenant id based on the URL:
+        logger.debug("authorize or login page. Resolving tenant_id")
         auth.resolve_tenant_id_for_request()
+        try:
+            logger.debug(f"request_tenant_id: {g.request_tenant_id}")
+        except AttributeError:
+            raise common_errors.BaseTapisError("Unable to resolve tenant_id for request.")
         return True
 
     # the profiles endpoints always use standard Tapis Token auth -
@@ -52,30 +71,53 @@ def authentication():
         # first check for basic auth header:
         parts = get_basic_auth_parts()
         if parts:
+            logger.debug("oauth2 clients page, with basic auth header.")
             # do basic auth against the ldap
             # always resolve the request tenant id based on the URL:
             auth.resolve_tenant_id_for_request()
+            try:
+                logger.debug(f"request_tenant_id: {g.request_tenant_id}")
+            except AttributeError:
+                raise common_errors.BaseTapisError("Unable to resolve tenant_id for request.")
             check_username_password(parts['tenant_id'], parts['username'], parts['password'])
             return True
         else:
+            logger.debug("oauth2 clients page, no basic auth header.")
             # check for a Tapis token
             auth.authentication()
             # always resolve the request tenant id based on the URL:
             auth.resolve_tenant_id_for_request()
+            try:
+                logger.debug(f"request_tenant_id: {g.request_tenant_id}")
+            except AttributeError:
+                raise common_errors.BaseTapisError("Unable to resolve tenant_id for request.")
             return True
 
     if '/v3/oauth2/tokens' in request.url_rule.rule:
+        logger.debug("oauth2 tokens page, with basic auth header.")
         # the tokens endpoint uses basic auth with the client; logic handled in the controller.
         # however, it does require the request tenant id:
         auth.resolve_tenant_id_for_request()
+        try:
+            logger.debug(f"request_tenant_id: {g.request_tenant_id}")
+        except AttributeError:
+            raise common_errors.BaseTapisError("Unable to resolve tenant_id for request.")
+        return True
 
     if '/v3/oauth2/logout' in request.url_rule.rule \
         or '/v3/oauth2/login' in request.url_rule.rule \
         or '/v3/oauth2/tenant' in request.url_rule.rule \
-        or '/v3/oauth2/webapp/callback' \
-        or '/v3/oauth2/webapp/token-display' \
+        or '/v3/oauth2/webapp' in request.url_rule.rule \
         or '/v3/oauth2/portal-login' in request.url_rule.rule:
+        # or '/v3/oauth2/webapp/callback' in request.url_rule.rule \
+        # or '/v3/oauth2/webapp/token-display' in request.url_rule.rule \
+        logger.debug("call for some other token webapp page.")
         auth.resolve_tenant_id_for_request()
+        try:
+            logger.debug(f"request_tenant_id: {g.request_tenant_id}")
+        except AttributeError:
+            raise common_errors.BaseTapisError("Unable to resolve tenant_id for request.")
+        return True
 
 
 def get_basic_auth_parts():
@@ -88,7 +130,7 @@ def get_basic_auth_parts():
         * username: the "username" field of the Basic Auth header (decoded).
         * password: the "password" field of the Basic Auth header (decoded).
     """
-    if 'X-Tapis-Tenant-Id' and 'Authorization' in request.headers:
+    if 'X-Tapis-Tenant' and 'Authorization' in request.headers:
         auth = request.authorization
         return {'tenant_id': request.headers.get('X-Tapis-Tenant-Id'),
                 'username': auth.username,

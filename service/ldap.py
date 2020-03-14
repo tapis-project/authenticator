@@ -2,7 +2,7 @@ from ldap3 import Server, Connection
 from ldap3.core.exceptions import LDAPBindError
 import json
 
-from service import get_tenant_config
+from service import tenants
 from service.errors import InvalidPasswordError
 from service.models import LdapOU, LdapUser
 
@@ -129,7 +129,9 @@ def get_tenant_ldap_connection(tenant_id, bind_dn=None, bind_password=None):
     :param bind_password (str) Optional password to use to bind. Pass this to check validity of a username/password.
     :return: 
     """
-    tenant = get_tenant_config(tenant_id)
+    tenant = tenants.get_tenant_config(tenant_id)
+    logger.debug(f"getting ldap connection for tenant {tenant_id}")
+    logger.debug(f'tenant info: {tenant}')
     # if we are passed specific bind credentials, use those:
     if not bind_dn is None:
         return get_ldap_connection(ldap_server=tenant['ldap_url'],
@@ -154,7 +156,7 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
     :return:
     """
     logger.debug(f'top of list_tenant_users; tenant_id: {tenant_id}; limit: {limit}; offset: {offset}')
-    tenant = get_tenant_config(tenant_id)
+    tenant = tenants.get_tenant_config(tenant_id)
     if not limit:
         limit = conf.default_page_limit
     conn = get_tenant_ldap_connection(tenant_id)
@@ -197,7 +199,7 @@ def get_tenant_user(tenant_id, username):
     :param username:
     :return:
     """
-    tenant = get_tenant_config(tenant_id)
+    tenant = tenants.get_tenant_config(tenant_id)
     conn = get_tenant_ldap_connection(tenant_id)
     tenant_base_dn = tenant['ldap_user_dn']
     logger.debug(f'searching with params: {tenant_base_dn}; username: {username}')
@@ -222,10 +224,14 @@ def get_dn(tenant_id, username):
     :param username: 
     :return: 
     """
-    tenant = get_tenant_config(tenant_id)
+    tenant = tenants.get_tenant_config(tenant_id)
     ldap_user_dn = tenant['ldap_user_dn']
-    return f'cn={username},{ldap_user_dn}'
-
+    # needed for test ldap:
+    if tenant['ldap_bind_dn'].startswith('cn'):
+        return f'cn={username},{ldap_user_dn}'
+    # needed for tacc:
+    else:
+        return f'uid={username},{ldap_user_dn}'
 
 
 def check_username_password(tenant_id, username, password):
@@ -236,11 +242,13 @@ def check_username_password(tenant_id, username, password):
     :param password: 
     :return: 
     """
+    logger.debug(f"top of check_username_password for: {tenant_id}; {username}")
     bind_dn = get_dn(tenant_id, username)
+    logger.debug(f"got bind_dn: {bind_dn}")
     try:
         get_tenant_ldap_connection(tenant_id, bind_dn=bind_dn, bind_password=password)
     except LDAPBindError as e:
-        logger.debug(f'got exception checking password: {e}')
+        logger.debug(f'got exception checking password: {e}; type(e): {type(e)}')
         raise InvalidPasswordError("Invalid username/password combination.")
     return True
 

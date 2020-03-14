@@ -14,7 +14,7 @@ from common import errors
 
 logger = get_logger(__name__)
 
-from service import get_tenant_config
+from service import tenants
 
 app = Flask(__name__)
 # app.secret_key = b"\x00" + secrets.token_bytes(12) + b"\x00"
@@ -258,7 +258,7 @@ class LdapUser(object):
         # the cn is the uid/username
         attrs['uid'] = cn
         # compute the DN from the CN
-        tenant = get_tenant_config(tenant_id)
+        tenant = tenants.get_tenant_config(tenant_id)
         ldap_user_dn = tenant['ldap_user_dn']
         attrs['dn'] = f'cn={cn},{ldap_user_dn}'
         # the remaining params are computed directly in the same way -- as the first entry in an array of bytes

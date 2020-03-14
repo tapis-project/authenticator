@@ -11,7 +11,7 @@ We are automating the management of the lifecycle workflow with `make`. You will
 to use the steps bellow.
 
 The make system is generic and used by multiple Tapis services. Before following any of the sections below,
-be sure to
+be sure to run:
 
 ```
 $ export API_NAME=authenticator
@@ -26,7 +26,8 @@ Starting the API the first time requires some initial setup. Do the following st
 1. `make init_dbs` - creates a new docker volume, `authenticator_pgdata`, creates a new Postrgres
 Docker container with the volume created, and creates the initial (empty) database and database user.
 2. `make migrate.upgrade` - runs the migrations contained within the `migrations/versions` directory.
-3. `docker-compose up -d authenticator` - starts the Authenticator.
+3. `docker-compose up -d ldap` - starts the development LDAP db (required for running locally).
+4. `docker-compose up -d authenticator` - starts the Authenticator.
 
 #### Updating the API After the First Setup
 Once the First Time Setup has been done a machine, updates can be fetched applied as follows:
@@ -85,7 +86,33 @@ curl -H "X-Tapis-Token: $jwt" localhost:5000/v3/oauth2/clients -H "content-type:
 
 ```
 
-#### Work With The Authorization Code Grant Type
+### Using the Token Web Application
+This project includes a basic "Token Web Application" that can be used to demonstrate
+the authorization_code flow in a real application and can be used by any user wanting to 
+retrieve an access token using a graphical interface.
+
+There are different entrypoints to the application, but for a simple start:
+
+```
+1) Navigate to http://localhost:5000/v3/oauth2/webapp
+``` 
+
+This should redirect your browser to the "Login App" which should provide you with a 
+form to enter your username and password. It should also display the tenant that you
+are interacting with, in this case, "dev".
+
+#### Why is it the "dev" Tenant?
+In general, the Token Web Application is "multi-tenant", and the tenant is derived 
+from the base URL. When running locally during development, the base URL is always
+"localhost", so the application defaults to using the "dev" tenant in that case.
+
+
+```
+2) Enter your username and password
+```
+
+
+#### Work With The Authorization Code Grant Type In Your Own Application
 
 The authorization code grant type requires a pre-registered client
 with a callback URL. See the "Work With Clients" section for an 
@@ -175,6 +202,7 @@ curl -H "X-Tapis-Token: $jwt" 'localhost:5000/v3/oauth2/profiles?limit=1&offset=
 
 ```
 ### Testing Auth Code Workflow
+TODO -- this section is outdated and needs to be updated.
 
 There is a webapp within this repo that goes through the Authentication Code workflow.
 

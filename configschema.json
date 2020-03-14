@@ -12,6 +12,11 @@
       "description": "The default maximum number of results to return for each listing endpoint.",
       "default": 100
     },
+    "populate_all_clients": {
+      "type": "boolean",
+      "description": "At start up, ensure the Token Webapp has clients for all tenants it is configured to serve.",
+      "default": true
+    },
     "populate_dev_ldap": {
       "type": "boolean",
       "description": "At start up, ensure the test LDAP db is populated with an OU and set of user accounts for the dev tenant.",
@@ -39,7 +44,7 @@
     },
     "dev_ldap_user_dn": {
       "type": "string",
-      "description": "Base DN for users withint the dev tenant in the test LDAP db.",
+      "description": "Base DN for users within the dev tenant in the test LDAP db.",
       "default": "ou=tenants.dev,dc=tapis"
     },
     "dev_ldap_bind_dn": {
@@ -51,6 +56,11 @@
       "type": "string",
       "description": "Bind credential for the test LDAP db.",
       "default": "a1r2c3HKvv0"
+    },
+    "dev_tacc_ldap_bind_credential": {
+      "type": "string",
+      "description": "Bind credential for testing the TACC LDAP db.",
+      "default": "Def@ult$"
     },
     "dev_token_service": {
       "type": "string",
@@ -79,23 +89,23 @@
     },
     "client_id": {
       "type": "string",
-      "description": "Test client id",
-      "default": "testclient"
+      "description": "Base string for the Token Webapp client id's; the full client id for a given tenant will include the tenant id.",
+      "default": "CIC.tokenapp"
     },
     "client_key": {
       "type": "string",
-      "description": "Test client key",
-      "default": "testclientkey"
+      "description": "Base string for the Token Webapp client secrets.",
+      "default": "Wcke39x^481rZ"
     },
     "client_callback": {
       "type": "string",
-      "description": "Test client callback url",
+      "description": "URL path for the Token Webapp client callback url",
       "default": "/v3/oauth2/webapp/callback"
     },
     "client_display_name": {
       "type": "string",
-      "description": "Test client display name",
-      "default": "The Test Client"
+      "description": "The display name used by the Tapis Token Webapp",
+      "default": "Tapis Token Webapp"
     }
   }
 }
