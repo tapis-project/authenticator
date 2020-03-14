@@ -9,7 +9,7 @@ from common import utils, errors
 from common.config import conf
 
 from service.errors import InvalidPasswordError
-from service.models import db, Client, Token, AuthorizationCode
+from service.models import db, Client, Token, AuthorizationCode, token_webapp_clients
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 
 # get the logger instance -
@@ -163,7 +163,7 @@ class SetTenantResource(Resource):
         tokenapp_client = get_tokenapp_client()
         return redirect(url_for('loginresource',
                                 client_id=tokenapp_client['client_id'],
-                                redirect_uri=tokenapp_client['redirect_uri'],
+                                redirect_uri=tokenapp_client['callback_url'],
                                 state=client_state,
                                 client_display_name=tokenapp_client['display_name'],
                                 response_type='code'))
@@ -407,20 +407,12 @@ def get_tokenapp_client(tenant_id=None):
     if not tenant_id:
         logger.error("get_tokenapp_client could not determine the tenant_id.")
         raise errors.ResourceError(msg=f'The tenant could not be established from the session.')
-    #
-    client_id = f'{tenant_id}.{conf.client_id}'
-    client_key = conf.client_key
-    redirect_uri_path = f'{conf.service_tenant_base_url}{conf.client_callback}'
-    # if the authenticator is running locally, override with the local client data:
+    # look up the client data by tenant id:
+    client_data = token_webapp_clients[tenant_id]
+    # if the authenticator is running locally, get the "local" client data:
     if 'localhost' in request.base_url:
-        redirect_uri_path = f'http://localhost:5000{conf.client_callback}'
-        client_id = f'local.{tenant_id}.{conf.client_id}'
-    return {
-        'client_id': client_id,
-        'client_key': client_key,
-        'redirect_uri': redirect_uri_path,
-        'display_name': conf.client_display_name
-    }
+        client_data = token_webapp_clients[f'local.{tenant_id}']
+    return client_data
 
 
 class WebappTokenAndRedirect(Resource):
@@ -446,7 +438,7 @@ class WebappTokenAndRedirect(Resource):
         # todo - in general, do not want to hard-code "dev.develop..."
         tokenapp_client = get_tokenapp_client()
         client_id = tokenapp_client['client_id']
-        client_redirect_uri = tokenapp_client['redirect_uri']
+        client_redirect_uri = tokenapp_client['callback_url']
         # if the authenticator is running locally, redirect to the local instance of the Authorization server:
         if 'localhost' in request.base_url:
             base_redirect_url = 'http://localhost:5000'
@@ -466,21 +458,15 @@ class WebappTokenGen(Resource):
     """
 
     def get(self):
-        # Get query parameters from request
-        # client_id, client_redirect_uri, client_state, client = check_client()
-        client_redirect_uri = request.args.get('client_redirect_uri')
-        client_state = request.args.get('client_state')
-        client_secret = conf.client_key
-        client_id = f'dev.develop.{conf.client_id}'
-        if 'localhost' in request.base_url:
-            client_id = conf.client_id
-        # Receive the code (and state if passed)
+        client_data = get_tokenapp_client()
+        client_id = client_data['client_id']
+        client_redirect_uri = client_data['callback_url']
+        # the user should already be authenticated and in the session --
         username = session.get('username')
         if not username:
             logger.error("GET request to /v3/oauth2/webapp/callback made but WebappTokenGen could not "
                          "find username in the session! ")
             raise errors.ResourceError(msg=f'The username could not be established from the session.')
-        code = request.args.get('redirect_uri')
         tenant_id = g.request_tenant_id
         logger.debug(f"Client ID: {client_id} - tenant_id: {tenant_id}")
 
@@ -495,9 +481,7 @@ class WebappTokenGen(Resource):
             "token_username": username,
             "claims": {
                 "client_id": client_id,
-                "client_secret": client_secret,
                 "redirect_uri": client_redirect_uri,
-                "code": code
             }
         }
         r = requests.post(url, json=content)
