@@ -475,7 +475,11 @@ class WebappTokenGen(Resource):
         if 'localhost' in request.base_url:
             client_id = conf.client_id
         # Receive the code (and state if passed)
-        username = session['username']
+        username = session.get('username')
+        if not username:
+            logger.error("GET request to /v3/oauth2/webapp/callback made but WebappTokenGen could not "
+                         "find username in the session! ")
+            raise errors.ResourceError(msg=f'The username could not be established from the session.')
         code = request.args.get('redirect_uri')
         tenant_id = g.request_tenant_id
         logger.debug(f"Client ID: {client_id} - tenant_id: {tenant_id}")
