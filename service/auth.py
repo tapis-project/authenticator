@@ -2,7 +2,6 @@ from flask import request, g, session
 
 from common import auth
 from common import errors as common_errors
-from tapy.dyna import DynaTapy
 
 from service.ldap import check_username_password
 
@@ -94,7 +93,7 @@ def authentication():
             return True
 
     if '/v3/oauth2/tokens' in request.url_rule.rule:
-        logger.debug("oauth2 tokens page, with basic auth header.")
+        logger.debug("oauth2 tokens URL")
         # the tokens endpoint uses basic auth with the client; logic handled in the controller. # however, it does
         # require the request tenant id:
 
@@ -102,6 +101,7 @@ def authentication():
         # generating new tokens, but we also don't want to fail for an expired token. So, we remove the token header
         # if it
         if 'X-Tapis-Token' in request.headers:
+            logger.debug("Got an X-Tapis-Token header.")
             try:
                 auth.add_headers()
                 auth.validate_request_token()
@@ -109,7 +109,13 @@ def authentication():
                 # we need to set the token claims because the resolve_tenant_id_for_request method depends on it:
                 g.token_claims = {}
         # now, resolve the tenant_id
-        auth.resolve_tenant_id_for_request()
+        try:
+            auth.resolve_tenant_id_for_request()
+        except:
+            # we need to catch and swallow permissions errors having to do with an invalid JWT; if the JWT is invalid,
+            # its claims (including its tenant claim) will be ignored, but then resolve_tenant_id_for_request() will
+            # throw an error because the None tenant_id claim will not match the tenant_id of the URL.
+            pass
         try:
             logger.debug(f"request_tenant_id: {g.request_tenant_id}")
         except AttributeError:
