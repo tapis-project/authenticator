@@ -125,7 +125,7 @@ class AuthorizationCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(50), unique=True, nullable=False)
     tenant_id = db.Column(db.String(50), unique=False, nullable=False)
-    client_id = db.Column(db.String(80), db.ForeignKey('clients.client_id'), unique=True, nullable=False)
+    client_id = db.Column(db.String(80), db.ForeignKey('clients.client_id'), unique=False, nullable=False)
     client_key = db.Column(db.String(80), unique=False, nullable=False)
     redirect_url = db.Column(db.String(200), unique=False, nullable=True)
     create_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
@@ -141,7 +141,7 @@ class AuthorizationCode(db.Model):
             "expiry_time": self.expiry_time
         }
 
-    # character set to use to generate random strings from to serve as the actual athorization codes themselves.
+    # character set to use to generate random strings from to serve as the actual authorization codes themselves.
     UNICODE_ASCII_CHARACTER_SET = string.ascii_letters + string.digits
 
     # time-to-live for authrorization codes, in seconds.
@@ -161,7 +161,8 @@ class AuthorizationCode(db.Model):
     @classmethod
     def validate_code(cls, tenant_id, code, client_id, client_key):
         """
-        Validate the use of an authorization code. This method checks the code expiry and
+        Validate the use of an authorization code. This method checks the code expiry and client credentials against the
+        AuthorizationCode table.
         :param tenant_id (str) The tenant_id for which the authorization code belongs.
         :param code: (str) The authorization code.
         :param client_id: (str) The client_id owning the code.
@@ -177,8 +178,28 @@ class AuthorizationCode(db.Model):
         # check for an expired code, plus a fudge factor for clock skew:
         if not datetime.datetime.utcnow() <= code_result.expiry_time + datetime.timedelta(seconds=6):
             raise errors.InvalidAuthorizationCodeError(msg="authorization code has expired.")
-        return True
+        return code_result
         
+    @classmethod
+    def validate_and_consume_code(cls, tenant_id, code, client_id, client_key):
+        """
+        Validate the use of an authorization code and then consume it. This method checks the code expiry and
+        client credentials against the AuthorizationCode table; if valid the code is then expired.
+        :param tenant_id (str) The tenant_id for which the authorization code belongs.
+        :param code: (str) The authorization code.
+        :param client_id: (str) The client_id owning the code.
+        :param client_key: (str) Associated client_secret.
+        :return:
+        """
+        code = AuthorizationCode.validate_code(tenant_id, code, client_id, client_key)
+        try:
+            db.session.delete(code)
+            db.session.commit()
+            logger.debug(f"validated and consumed authorization code: {code}")
+        except Exception as e:
+            logger.error(f"Got exception trying to delete authorization code; code: {code}; e: {e}; type(e): {type(e)}")
+            raise errors.InvalidAuthorizationCodeError(msg="authorization code could not be deleted.")
+
 
 class LdapUser(object):
     """
@@ -407,7 +428,7 @@ class Token(object):
         result['password'] = getattr(data, 'password', None)
         # authorization code grant:
         result['redirect_uri'] = getattr(data, 'redirect_uri', None)
-
+        result['code'] = getattr(data, 'code', None)
         return result
 
 
