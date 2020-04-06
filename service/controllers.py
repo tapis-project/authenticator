@@ -8,6 +8,7 @@ from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 from common import utils, errors
 from common.config import conf
 
+from service import t
 from service.errors import InvalidPasswordError
 from service.models import db, Client, Token, AuthorizationCode, token_webapp_clients
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
@@ -395,7 +396,7 @@ class TokensResource(Resource):
             raise errors.ResourceError("Invalid grant_type")
 
         # call /v3/tokens to generate access token for the user
-        # TODO -- update to use the service tapy client.
+
         url = f'{g.request_tenant_base_url}/v3/tokens'
         content = {
             "token_tenant_id": f"{tenant_id}",
@@ -417,18 +418,39 @@ class TokensResource(Resource):
         # set the redirect_uri claim when using a web-based flow
         if grant_type == 'authorization_code':
             content['claims']["redirect_uri"] = redirect_uri
+
         try:
-            r = requests.post(url, json=content)
+            tokens = t.tokens.create_token(**content)
+            logger.debug(f"got tokens response: {tokens}")
         except Exception as e:
             logger.error(f"Got exception trying to POST to /v3/tokens endpoint. Exception: {e}")
             raise errors.ResourceError("Failure to generate an access token; please try again later.")
         try:
-            json_resp = json.loads(r.text)
-        except Exception as e:
-            logger.error(f"Got exception trying to get JSON data from POST to /v3/tokens endpoint. Exception: {e}")
-            raise errors.ResourceError("Failure to generate an access token - invalid JSON; please try again later.")
+            result = {'access_token': {'access_token': tokens.access_token.access_token,
+                                       'expires_at': tokens.access_token.expires_at,
+                                       'expires_in': tokens.access_token.expires_in
+                                       },
+                      }
+            if content.get('generate_refresh_token'):
+                result['refresh_token'] = {'refresh_token': tokens.refresh_token.refresh_token,
+                                           'expires_at': tokens.refresh_token.expires_at,
+                                           'expires_in': tokens.refresh_token.expires_in
+                                           }
+        except AttributeError as e:
+            logger.error(f"Got an unexpected AttributeError trying to parse tokens response; e: {e}")
+            raise errors.ResourceError("Failure to parse access token response; please try again later.")
+        # try:
+        #     r = requests.post(url, json=content)
+        # except Exception as e:
+        #     logger.error(f"Got exception trying to POST to /v3/tokens endpoint. Exception: {e}")
+        #     raise errors.ResourceError("Failure to generate an access token; please try again later.")
+        # try:
+        #     json_resp = json.loads(r.text)
+        # except Exception as e:
+        #     logger.error(f"Got exception trying to get JSON data from POST to /v3/tokens endpoint. Exception: {e}")
+        #     raise errors.ResourceError("Failure to generate an access token - invalid JSON; please try again later.")
         # return the token response
-        return utils.ok(result=json_resp['result'], msg="Token created successfully.")
+        return utils.ok(result=result, msg="Token created successfully.")
 
 
 # ------------------
@@ -526,14 +548,12 @@ class WebappTokenGen(Resource):
         code = request.args.get('code')
 
         #  POST to oauth2/tokens (passing code, client id, client secret, and redirect uri)
-        # redirect uri is just callback url
-
-        # TODO -- this request should be going to /v3/oauth2/tokens, passing the client_id, client_secret, code
         logger.debug(f"request.base_url: {request.base_url}")
         base_url = g.request_tenant_base_url
-        # todo -- is this the correct base_url? it needs to target the authorization server on the same URL as the
-        #         Token Webapp itself; e.g., if Token Webapp listening on localhost, base_url should be localhost
-        #                             if request to Token Webapp is to tacc.develop, base_url should be tacc.develop
+        # the common flaskbase code will compute request_tenant_base_url based on the tenant of the request.
+        # we will need to modify this for local development since the computed base url will for example be the
+        # dev.tenants.develop.tapis.io for the dev tenant in the develop instance.
+        # if Token Webapp listening on localhost, base_url should be localhost
 
         # if the authenticator is running locally, use "localhost" for baseurl to interact with OAuth server:
         if 'localhost' in request.base_url:
