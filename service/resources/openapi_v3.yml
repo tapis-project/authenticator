@@ -236,13 +236,20 @@ components:
       properties:
         username:
           type: string
-          description: A unique identifier for the client. Must be unique for the tenant.
+          description: The username being authenticated (for password grant).
         password:
           type: string
-          description: A secret key for authenticating the client.
+          description: The password assoicated with the username being authenticated (for password grant).
         grant_type:
           type: string
-          description: Specify whether this is a password grant or other type.
+          description: The OAuth2 grant type being used; either password or authorization_code.
+        redirect_uri:
+          type: string
+          description: The client's redirect URI (for authorization_code grant).
+        code:
+          type: string
+          description: The authorization code associated with the request (for authorization_code grant).
+
 
     Client:
       type: object
