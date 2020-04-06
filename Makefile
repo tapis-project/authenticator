@@ -35,7 +35,7 @@ down:
 
 # ----- wipe the local environment by removing all data and containers
 clean: down
-	docker volume rm $(api)_pgdata
+	- docker volume rm $(api)_pgdata
 
 # ----- start databases
 run_dbs: build.api down
