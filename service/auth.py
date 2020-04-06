@@ -95,8 +95,20 @@ def authentication():
 
     if '/v3/oauth2/tokens' in request.url_rule.rule:
         logger.debug("oauth2 tokens page, with basic auth header.")
-        # the tokens endpoint uses basic auth with the client; logic handled in the controller.
-        # however, it does require the request tenant id:
+        # the tokens endpoint uses basic auth with the client; logic handled in the controller. # however, it does
+        # require the request tenant id:
+
+        # first, check if an X-Tapis-Token header appears in the request. We do not honor JWT authentication for
+        # generating new tokens, but we also don't want to fail for an expired token. So, we remove the token header
+        # if it
+        if 'X-Tapis-Token' in request.headers:
+            try:
+                auth.add_headers()
+                auth.validate_request_token()
+            except:
+                # we need to set the token claims because the resolve_tenant_id_for_request method depends on it:
+                g.token_claims = {}
+        # now, resolve the tenant_id
         auth.resolve_tenant_id_for_request()
         try:
             logger.debug(f"request_tenant_id: {g.request_tenant_id}")
