@@ -428,13 +428,15 @@ class TokensResource(Resource):
         try:
             result = {'access_token': {'access_token': tokens.access_token.access_token,
                                        'expires_at': tokens.access_token.expires_at,
-                                       'expires_in': tokens.access_token.expires_in
+                                       'expires_in': tokens.access_token.expires_in,
+                                       'jti': tokens.access_token.jti
                                        },
                       }
             if content.get('generate_refresh_token'):
                 result['refresh_token'] = {'refresh_token': tokens.refresh_token.refresh_token,
                                            'expires_at': tokens.refresh_token.expires_at,
-                                           'expires_in': tokens.refresh_token.expires_in
+                                           'expires_in': tokens.refresh_token.expires_in,
+                                           'jti': tokens.refresh_token.jti,
                                            }
         except AttributeError as e:
             logger.error(f"Got an unexpected AttributeError trying to parse tokens response; e: {e}")
