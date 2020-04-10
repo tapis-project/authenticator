@@ -325,7 +325,7 @@ class TokensResource(Resource):
     """
 
     def post(self):
-        logger.debug("top os POST /oauth2/tokens")
+        logger.debug("top of POST /oauth2/tokens")
         validator = RequestValidator(utils.spec)
         result = validator.validate(FlaskOpenAPIRequest(request))
         if result.errors:
