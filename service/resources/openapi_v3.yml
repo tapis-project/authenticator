@@ -22,6 +22,8 @@ servers:
     tenant_id_url:
       default: dev
       description: The tenant_id associated with the request.
+- url: /
+  descrption: catch all
 
 paths:
   /v3/oauth2/clients:
