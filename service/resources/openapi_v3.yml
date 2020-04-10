@@ -16,6 +16,12 @@ info:
 servers:
 - url: http://localhost:5000
   description: Local Development
+- url: http://{tenant_id_url}.develop.tapis.io
+  description: Tapis Develop instance
+  variables:
+    tenant_id_url:
+      default: dev
+      description: The tenant_id associated with the request.
 
 paths:
   /v3/oauth2/clients:
