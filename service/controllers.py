@@ -571,7 +571,11 @@ class WebappTokenGen(Resource):
 
         logger.debug(f"Made request successfully and got JSON. Now parsing JSON data: {json_resp}")
         # Get token from POST response
-        token = json_resp['result']['access_token']['access_token']
+        try:
+            token = json_resp['result']['access_token']['access_token']
+        except TypeError as e:
+            logger.error(f"Got TypeError trying to retrieve access_token from JSON response: {e}")
+            raise errors.ResourceError("Failure to generate an access token; please try again later.")
         session['access_token'] = token
         #  Redirect to oauth2/webapp/token-display
         return redirect(url_for('webapptokenandredirect'))
