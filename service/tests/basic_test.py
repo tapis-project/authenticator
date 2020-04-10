@@ -12,6 +12,7 @@ from common import auth
 # client id and key for the test suite. a client with these credentials is added by the test suite at start up.
 TEST_CLIENT_ID = 'tapis_authn_test_suite_client_id'
 TEST_CLIENT_KEY = 'Dkrio2odj2AbvR'
+TEST_CLIENT_REDIRECT_URI = 'http://localhost:5000/testsuite'
 
 @pytest.fixture
 def client():
@@ -26,7 +27,7 @@ def init_db():
                 'client_id': TEST_CLIENT_ID,
                 'client_key': TEST_CLIENT_KEY,
                 "display_name": "Tapis Authenticator Testsuite",
-                "callback_url": f'http://localhost:5000/testsuite',
+                "callback_url": TEST_CLIENT_REDIRECT_URI,
                 'create_time': datetime.datetime.utcnow(),
                 'last_update_time': datetime.datetime.utcnow()
                 }
@@ -155,3 +156,46 @@ def test_password_grant_valid(client, init_db):
         assert 'expires_at' in response.json['result']['access_token']
         assert 'expires_in' in response.json['result']['access_token']
         assert 'jti' in response.json['result']['access_token']
+
+        assert 'refresh_token' in response.json['result']
+        # refresh_token attributes:
+        assert 'refresh_token' in response.json['result']['refresh_token']
+        assert 'expires_at' in response.json['result']['access_token']
+        assert 'expires_in' in response.json['result']['access_token']
+        assert 'jti' in response.json['result']['access_token']
+
+def test_password_grant_no_client(client, init_db):
+    payload = {
+        'grant_type': 'password',
+        'username': 'testuser1',
+        'password': 'testuser1'
+    }
+    response = client.post(
+        "http://localhost:5000/v3/oauth2/tokens",
+        data=json.dumps(payload),
+        content_type='application/json'
+    )
+    assert response.status_code == 200
+    assert 'access_token' in response.json['result']
+    # access_token attributes:
+    assert 'access_token' in response.json['result']['access_token']
+    assert 'expires_at' in response.json['result']['access_token']
+    assert 'expires_in' in response.json['result']['access_token']
+    assert 'jti' in response.json['result']['access_token']
+    # when not using an oauth client, refresh tokens are not returned:
+    assert 'refresh_token' not in response.json['result']
+
+def test_authorization_code(client, init_db):
+    # simulate the authorization approval -
+    response = client.post('http://localhost:5000/v3/oauth2/authorize',
+                           data={'tenant_id': 'dev',
+                                 'approve': True,
+                                 'client_id': TEST_CLIENT_ID,
+                                 'client_redirect_uri': TEST_CLIENT_REDIRECT_URI,
+                                 })
+    assert response.status_code == 302
+    # print(response.data)
+    # note: response.data is a raw bytes object containing the full HTML returned from the page.
+    response_str = response.data.decode('utf-8')
+    assert 'code=' in response_str
+    assert 'state=' in response_str

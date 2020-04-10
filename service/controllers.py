@@ -441,17 +441,6 @@ class TokensResource(Resource):
         except AttributeError as e:
             logger.error(f"Got an unexpected AttributeError trying to parse tokens response; e: {e}")
             raise errors.ResourceError("Failure to parse access token response; please try again later.")
-        # try:
-        #     r = requests.post(url, json=content)
-        # except Exception as e:
-        #     logger.error(f"Got exception trying to POST to /v3/tokens endpoint. Exception: {e}")
-        #     raise errors.ResourceError("Failure to generate an access token; please try again later.")
-        # try:
-        #     json_resp = json.loads(r.text)
-        # except Exception as e:
-        #     logger.error(f"Got exception trying to get JSON data from POST to /v3/tokens endpoint. Exception: {e}")
-        #     raise errors.ResourceError("Failure to generate an access token - invalid JSON; please try again later.")
-        # return the token response
         return utils.ok(result=result, msg="Token created successfully.")
 
 

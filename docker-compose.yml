@@ -9,6 +9,8 @@ networks:
 volumes:
     pgdata:
 
+    pgadmindata:
+
 services:
     postgres:
         image: postgres:9.4
@@ -46,4 +48,27 @@ services:
             - authenticator
         depends_on:
             - postgres
+
+    authenticator-tests:
+        image: tapis/authenticator-tests
+        volumes:
+            - ./config-local.json:/home/tapis/config.json
+            - ./service.log:/home/tapis/service.log
+        networks:
+            - authenticator
+
+
+    pgadmin:
+        image: dpage/pgadmin4
+        environment:
+          PGADMIN_DEFAULT_EMAIL: "admin@test.com"
+          PGADMIN_DEFAULT_PASSWORD: "password"
+        ports:
+            - "8000:80"
+        networks:
+            - authenticator
+        depends_on:
+          - postgres
+        volumes:
+            - pgadmindata:/var/lib/pgadmin
 
