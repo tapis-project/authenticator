@@ -61,6 +61,8 @@ docker run -it --rm --entrypoint=bash --network=authenticator_authenticator -v $
 Use any HTTP client to interact with the running API. The following examples use `curl`.
 
 There are three primary collections supported by this API - `/clients`, `/profiles` and `/tokens`.
+Most of the functionality contained within the authenticator requires an OAuth client.
+
 
 #### Work With Clients
 
@@ -85,69 +87,6 @@ curl -H "X-Tapis-Token: $jwt" localhost:5000/v3/oauth2/clients -H "content-type:
 }
 
 ```
-
-### Using the Token Web Application
-This project includes a basic "Token Web Application" that can be used to demonstrate
-the authorization_code flow in a real application and can be used by any user wanting to 
-retrieve an access token using a graphical interface.
-
-There are different entrypoints to the application, but for a simple start:
-
-```
-1) Navigate to http://localhost:5000/v3/oauth2/webapp
-``` 
-
-This should redirect your browser to the "Login App" which should provide you with a 
-form to enter your username and password. It should also display the tenant that you
-are interacting with, in this case, "dev".
-
-#### Why is it the "dev" Tenant?
-In general, the Token Web Application is "multi-tenant", and the tenant is derived 
-from the base URL. When running locally during development, the base URL is always
-"localhost", so the application defaults to using the "dev" tenant in that case.
-
-
-```
-2) Enter your username and password
-```
-
-
-#### Work With The Authorization Code Grant Type In Your Own Application
-
-The authorization code grant type requires a pre-registered client
-with a callback URL. See the "Work With Clients" section for an 
-example of how to register a client.
-
-Once the client has been registered, start the OAuth2 flow by
-navigating to:
-
-```
-1) http://localhost:5000/v3/oauth2/authorize?client_id=<client_id>&redirect_uri=<redirec_uri>&response_type=code
-
-```
-
-For example,
-```
-http://localhost:5000/v3/oauth2/authorize?client_id=8dmkwnY8WkZlg&redirect_uri=http://localhost:5000/v3/oauth2/webapp/callback&response_type=code
-```
-
-This will redirect the user to the Tenant Selection form, here:
-
-```
-2) http://localhost:5000/v3/oauth2/tenant
-```
-
-
-You can clear your cookie-based web session using logging out page; submit
-the form here:
-
-```
-http://localhost:5000/v3/oauth2/logout
-``` 
-
-#### Work With Tokens
-
-TBD
 
 #### Work With Profiles
 
@@ -201,6 +140,106 @@ curl -H "X-Tapis-Token: $jwt" 'localhost:5000/v3/oauth2/profiles?limit=1&offset=
 }
 
 ```
+
+### Using the Token Web Application
+This project includes a basic "Token Web Application" that can be used to demonstrate
+the authorization_code flow in a real application and can be used by any user wanting to 
+retrieve an access token using a graphical interface.
+
+There are different entrypoints to the application, but for a simple start:
+
+```
+1) Navigate to http://localhost:5000/v3/oauth2/webapp
+``` 
+
+This should redirect your browser to the "Login App" which should provide you with a 
+form to enter your username and password. It should also display the tenant that you
+are interacting with, in this case, "dev".
+
+#### Why is it the "dev" Tenant?
+In general, the Token Web Application is "multi-tenant", and the tenant is derived 
+from the base URL. When running locally during development, the base URL is always
+"localhost", so the application defaults to using the "dev" tenant in that case.
+
+In order to use a different tentant when running the Authenticator locally, use the
+tenant selector page, 
+```
+Navigate to http://localhost:5000/v3/oauth2/tenant to select a different tenant.
+```
+
+Once you have selected the tenant you wish to work in, you will be prompted to log in.
+If using the dev tenant, be sure to enter valid credentials for a test account. If using 
+the TACC tenant, you should be able to enter your TACC credentials.
+  
+```
+2) Enter your username and password
+```
+
+After entering the credentials, you should be redirected to an "Authorize" page where you will be asked
+to authorize the client to 
+
+```
+3) Submit approve to authorize the Tapis Token Webapp client application to request an access 
+token ob your behalf. 
+```
+
+Once you submit the approval, you should be redirected to a page displaying your Tapis token. The token is 
+a JWT that includes claims corresponding to the user and OAuth client that authenticated.
+ 
+
+#### Work With The Authorization Code Grant Type In Your Own Application
+
+The authorization code grant type requires a pre-registered client
+with a callback URL. See the "Work With Clients" section for an 
+example of how to register a client.
+
+Once the client has been registered, start the OAuth2 flow by
+redirecting your user to the /oauth2/authorize URL and passing the following:
+```
+client_id=<your_client_id>
+redirect_uri=<your_redirect_uri>
+response_tyep=code
+```
+
+For example:
+```
+1) GET http://localhost:5000/v3/oauth2/authorize?client_id=<client_id>&redirect_uri=<redirec_uri>&response_type=code
+
+```
+
+This authorize endpoint will redirect the user to either the login form if they have not yet
+authenticated with the Authenticator or to the authorize form if they have previously authenticated:
+
+```
+2) http://localhost:5000/v3/oauth2/login
+```
+
+Once the user has logged in and approved the request from you client application, the Authenticator
+will make a GET request to your client's callback URL, passing the authorization code as a query parameter called "code".
+
+```
+3) GET http://localhost:5000/v3/oauth2/webapp/callback?code=<some_code>
+``` 
+
+Your client application code should handle this GET request by making a request to the `/oauth2/tokens` endpoint to exchange
+the authorization code for an OAuth token. 
+
+```
+4) POST http://localhost:5000/v3/oauth2/token
+        grant_type=authorization_code
+        code=<some_code>
+        redirect_uri=<your_redirct_uri>
+```
+
+
+#### Work With Tokens
+
+The Authenticator supports OAuth2 flows for generating access (and in some cases, refresh) tokens.
+THe grant types require basic authentication with a valid Tapis OAuth client, however, one can 
+use the password grant without a Tapis client to first get a token.
+
+
+
 ### Testing Auth Code Workflow
 TODO -- this section is outdated and needs to be updated.
 
