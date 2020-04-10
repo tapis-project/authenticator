@@ -23,7 +23,7 @@ servers:
       default: dev
       description: The tenant_id associated with the request.
 - url: /
-  descrption: catch all
+  description: catch-all server definition for other Tapis instances.
 
 paths:
   /v3/oauth2/clients:
