@@ -125,6 +125,7 @@ class AuthorizationCode(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(50), unique=True, nullable=False)
     tenant_id = db.Column(db.String(50), unique=False, nullable=False)
+    username = db.Column(db.String(50), unique=False, nullable=False)
     client_id = db.Column(db.String(80), db.ForeignKey('clients.client_id'), unique=False, nullable=False)
     client_key = db.Column(db.String(80), unique=False, nullable=False)
     redirect_url = db.Column(db.String(200), unique=False, nullable=True)
@@ -199,6 +200,7 @@ class AuthorizationCode(db.Model):
         except Exception as e:
             logger.error(f"Got exception trying to delete authorization code; code: {code}; e: {e}; type(e): {type(e)}")
             raise errors.InvalidAuthorizationCodeError(msg="authorization code could not be deleted.")
+        return code.username
 
 
 class LdapUser(object):

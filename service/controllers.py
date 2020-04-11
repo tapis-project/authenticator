@@ -253,8 +253,10 @@ class AuthorizeResource(Resource):
     """
 
     def get(self):
+        logger.debug("top of GET /oauth2/authorize")
         client_id, client_redirect_uri, client_state, client = check_client()
-        if not 'username' in session:
+        if 'username' not in session:
+            logger.debug("username not in session; issuing redirect to login.")
             return redirect(url_for('loginresource',
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
@@ -276,15 +278,23 @@ class AuthorizeResource(Resource):
         return make_response(render_template('authorize.html', **context), 200, headers)
 
     def post(self):
+        logger.debug("top of POST /oauth2/authorize")
         # selecting a tenant id is required before logging in -
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get('tenant_id')
         if not tenant_id:
+            logger.debug("did not tenant_id on g or in session; raising error.")
             raise errors.ResourceError('Tenant ID missing from session. Please logout and select a tenant.')
         client_display_name = request.form.get('client_display_name')
+        try:
+            username = session['username']
+        except KeyError:
+            logger.debug(f"did not find username in session; this is an error. raising error. session: {session};")
+            raise errors.ResourceError('username missing from session. Please login to continue.')
         approve = request.form.get("approve")
         if not approve:
+            logger.debug("user did not approve.")
             headers = {'Content-Type': 'text/html'}
             context = {'error': f'To proceed with authorization application {client_display_name}, you '
                                 f'must approve the request.'}
@@ -294,17 +304,21 @@ class AuthorizeResource(Resource):
         # retrieve client data from form and db -
         client_id = request.form.get('client_id')
         if not client_id:
+            logger.debug("client_id missing from form.")
             raise errors.ResourceError("client_id missing.")
         client = Client.query.filter_by(client_id=client_id).first()
         if not client:
-            raise errors.ResourceError('Invalid client.')
+            logger.debug(f"client not found in db. client_id: {client_id}")
+            raise errors.ResourceError(f'Invalid client: {client_id}')
         # create the authorization code for the client -
         authz_code = AuthorizationCode(tenant_id=tenant_id,
+                                       username=username,
                                        client_id=client_id,
                                        client_key=client.client_key,
                                        redirect_url=client.callback_url,
                                        code=AuthorizationCode.generate_code(),
                                        expiry_time=AuthorizationCode.compute_expiry())
+        logger.debug("authorization code created.")
         try:
             db.session.add(authz_code)
             db.session.commit()
@@ -313,7 +327,7 @@ class AuthorizeResource(Resource):
             raise errors.ResourceError("Internal error saving authorization code. Please try again later.")
         # issue redirect to client callback_url with authorization code:
         url = f'{client.callback_url}?code={authz_code}&state={state}'
-
+        logger.debug(f"issuing redirect to {client.callback_url}")
         return redirect(url)
 
 
@@ -387,10 +401,10 @@ class TokensResource(Resource):
                 raise errors.ResourceError("Required authorization_code parameter missing.")
             # this server MUST expire the authorization code after a single use; multiple uses of the same
             # authorization code are NOT permitted by the OAuth2 spec: https://tools.ietf.org/html/rfc6749#section-4.1.2
-            AuthorizationCode.validate_and_consume_code(tenant_id=tenant_id,
-                                                        code=code,
-                                                        client_id=client_id,
-                                                        client_key=client_key)
+            username = AuthorizationCode.validate_and_consume_code(tenant_id=tenant_id,
+                                                                   code=code,
+                                                                   client_id=client_id,
+                                                                   client_key=client_key)
         else:
             logger.debug(f"Invalid grant_type: {grant_type}")
             raise errors.ResourceError("Invalid grant_type")
@@ -401,7 +415,7 @@ class TokensResource(Resource):
         content = {
             "token_tenant_id": f"{tenant_id}",
             "account_type": "user",
-            "token_username": f"{data['username']}",
+            "token_username": f"{username}",
             "claims": {
                 "client_id": client_id,
                 "grant_type": grant_type,
@@ -563,6 +577,7 @@ class WebappTokenGen(Resource):
         except Exception as e:
             logger.error(f"Got exception trying to POST to /v3/oauth2/tokens endpoint. Exception: {e}")
             raise errors.ResourceError("Failure to generate an access token; please try again later.")
+
         try:
             json_resp = json.loads(r.text)
         except Exception as e:
