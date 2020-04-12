@@ -431,6 +431,8 @@ class Token(object):
         # authorization code grant:
         result['redirect_uri'] = getattr(data, 'redirect_uri', None)
         result['code'] = getattr(data, 'code', None)
+        # refresh token:
+        result['refresh_token'] = getattr(data, 'refresh_token', None)
         return result
 
 

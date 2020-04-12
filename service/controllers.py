@@ -7,6 +7,8 @@ from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 
 from common import utils, errors
 from common.config import conf
+from common.auth import validate_token
+
 
 from service import t
 from service.errors import InvalidPasswordError
@@ -336,6 +338,7 @@ class TokensResource(Resource):
     Implements the oauth2/tokens endpoint for generating tokens for the following grant types:
       * password
       * authorization_code
+      * refresh_token
     """
 
     def post(self):
@@ -385,8 +388,12 @@ class TokensResource(Resource):
             if not username or not password:
                 raise errors.ResourceError("Missing required payload data; username and password are required for "
                                            "the password grant type.")
-            check_ldap = check_username_password(tenant_id, username, password)
-            logger.debug(f"returned: {check_ldap}")
+            try:
+                check_username_password(tenant_id, username, password)
+            except InvalidPasswordError:
+                msg = 'Invalid username/password combination.'
+                logger.debug(msg)
+                raise errors.ResourceError(msg)
         elif grant_type == 'authorization_code':
             # check the redirect uri -
             redirect_uri = data.get('redirect_uri')
@@ -405,34 +412,75 @@ class TokensResource(Resource):
                                                                    code=code,
                                                                    client_id=client_id,
                                                                    client_key=client_key)
+        elif grant_type == 'refresh_token':
+            logger.debug("performing refresh token checks.")
+            refresh_token = data.get('refresh_token')
+            if not refresh_token:
+                logger.debug("no refresh_token found in the request.")
+                raise errors.ResourceError("Required refresh_token parameter missing.")
+            # validate the refresh token
+            try:
+                claims = validate_token(refresh_token)
+            except Exception as e:
+                logger.debug(f"unable to validate the refresh_token found in the request. e: {e}")
+                raise errors.ResourceError("Invalid refresh_token.")
+            # make sure they actually passed a refresh token:
+            token_type = claims.get('tapis/token_type')
+            if not token_type == 'refresh':
+                logger.debug(f"Did not pass a refresh_token. claims where: {claims}")
+                raise errors.ResourceError(f"Invalid token type. The refresh_token grant type required a token of type "
+                                           f"refresh. Instead a token of type {token_type} was passed.")
+            # get the access token claims associated with this refresh token:
+            access_token_claims = claims.get('tapis/access_token')
+            if not access_token_claims:
+                logger.error(f"Got a refresh token that did NOT have an access_token claim. claims: {claims}")
+                raise errors.ResourceError("Invalid refresh_token format; this token was missing the access_token "
+                                           "claim.")
+            # make sure the client_id matches the client passed in the auth header
+            client_id_claim = access_token_claims.get('tapis/client_id')
+            if not client_id == client_id_claim:
+                msg = f"client_id from header ({client_id}) does not match the client_id in the token claim " \
+                      f"({client_id_claim})."
+                logger.debug(msg)
+                raise errors.ResourceError(msg)
+            username = access_token_claims.get('tapis/username')
         else:
             logger.debug(f"Invalid grant_type: {grant_type}")
             raise errors.ResourceError("Invalid grant_type")
 
         # call /v3/tokens to generate access token for the user
-
         url = f'{g.request_tenant_base_url}/v3/tokens'
         content = {
             "token_tenant_id": f"{tenant_id}",
             "account_type": "user",
             "token_username": f"{username}",
             "claims": {
-                "client_id": client_id,
-                "grant_type": grant_type,
+                "tapis/client_id": client_id,
+                "tapis/grant_type": grant_type,
             },
-            # access token expires in 4 hours
+            # access token expires in 4 hours -- TODO: read from tenant config instead
             "access_token_ttl": 14400,
+            "generate_refresh_token": False
         }
         # only generate a refresh token when OAuth client is passed
         if client_id and client_key:
             content["generate_refresh_token"] = True
-            # refresh token expires in 1 year
+            # refresh token expires in 1 year -- TODO: read from tenant config instead
             content["refresh_token_ttl"] = 31536000
 
-        # set the redirect_uri claim when using a web-based flow
-        if grant_type == 'authorization_code':
-            content['claims']["redirect_uri"] = redirect_uri
-
+        # set the redirect_uri claim when using a web-based flow or when refreshing a token that was
+        # generated using a web-based flow:
+        if grant_type == 'authorization_code' or (grant_type == 'refresh_token'
+                                                  and access_token_claims.get('tapis/redirect_uri')):
+            content['claims']["tapis/redirect_uri"] = client.callback_url
+        # if generating a refresh token, add a claim to count the total refreshes:
+        if content["generate_refresh_token"]:
+            # if the grant_type is refresh_token, there should already be a claim:
+            if grant_type == 'refresh_token':
+                refresh_count = access_token_claims.get('tapis/refresh_count') + 1
+            else:
+                refresh_count = 0
+            content['claims']['tapis/refresh_count'] = refresh_count
         try:
             tokens = t.tokens.create_token(**content)
             logger.debug(f"got tokens response: {tokens}")

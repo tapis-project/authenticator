@@ -206,14 +206,13 @@ def test_password_grant_valid(client, init_db):
         assert 'access_token' in response.json['result']
         # validate access_token:
         claims = validate_access_token(response)
-        assert claims['client_id'] == TEST_CLIENT_ID
-        assert claims['grant_type'] == 'password'
+        assert claims['tapis/client_id'] == TEST_CLIENT_ID
+        assert claims['tapis/grant_type'] == 'password'
 
         # validate refresh_token:
-        assert 'refresh_token' in response.json['result']
         claims = validate_refresh_token(response)
-        assert claims['tapis/access_token']['client_id'] == TEST_CLIENT_ID
-        assert claims['tapis/access_token']['grant_type'] == 'password'
+        assert claims['tapis/access_token']['tapis/client_id'] == TEST_CLIENT_ID
+        assert claims['tapis/access_token']['tapis/grant_type'] == 'password'
 
 def test_password_grant_no_client(client, init_db):
     payload = {
@@ -230,8 +229,8 @@ def test_password_grant_no_client(client, init_db):
     assert 'access_token' in response.json['result']
     # validate access_token:
     claims = validate_access_token(response)
-    assert claims['client_id'] == None
-    assert claims['grant_type'] == 'password'
+    assert claims['tapis/client_id'] == None
+    assert claims['tapis/grant_type'] == 'password'
     # when not using an oauth client, refresh tokens are not returned:
     assert 'refresh_token' not in response.json['result']
 
@@ -287,14 +286,71 @@ def test_authorization_code_grant(client, init_db):
         assert 'access_token' in rs.json['result']
         # validate access_token:
         claims = validate_access_token(rs)
-        assert claims['client_id'] == TEST_CLIENT_ID
-        assert claims['grant_type'] == 'authorization_code'
-        assert claims['redirect_uri'] == TEST_CLIENT_REDIRECT_URI
+        assert claims['tapis/client_id'] == TEST_CLIENT_ID
+        assert claims['tapis/grant_type'] == 'authorization_code'
+        assert claims['tapis/redirect_uri'] == TEST_CLIENT_REDIRECT_URI
+        assert claims['tapis/refresh_count'] == 0
         # refresh tokens are returned on authorization_code grant:
         assert 'refresh_token' in rs.json['result']
         # refresh_token attributes:
         claims = validate_refresh_token(rs)
-        assert claims['tapis/access_token']['client_id'] == TEST_CLIENT_ID
-        assert claims['tapis/access_token']['grant_type'] == 'authorization_code'
-        assert claims['tapis/access_token']['redirect_uri'] == TEST_CLIENT_REDIRECT_URI
+        assert claims['tapis/access_token']['tapis/client_id'] == TEST_CLIENT_ID
+        assert claims['tapis/access_token']['tapis/grant_type'] == 'authorization_code'
+        assert claims['tapis/access_token']['tapis/redirect_uri'] == TEST_CLIENT_REDIRECT_URI
+        # make sure authorization code was deleted from the database -
+        auth_code = models.AuthorizationCode.query.filter_by(code=auth_code.code).first()
+        assert not auth_code
 
+def test_refresh_token(client, init_db):
+    # first, use the password grant with a client to get an access and refresh token:
+    with client:
+        auth_header = {'Authorization': get_basic_auth_header(TEST_CLIENT_ID, TEST_CLIENT_KEY)}
+        payload = {
+            'grant_type': 'password',
+            'username': TEST_USERNAME,
+            'password': TEST_PASSWORD
+        }
+        response = client.post(
+            "http://localhost:5000/v3/oauth2/tokens",
+            headers=auth_header,
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+        assert 'refresh_token' in response.json['result']
+        refresh_token_str = response.json['result']['refresh_token']['refresh_token']
+        # now, use that to get a new token --
+        payload = {
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token_str
+        }
+        response =  client.post(
+            "http://localhost:5000/v3/oauth2/tokens",
+            headers=auth_header,
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+        # check that both an access and refresh token were generated:
+        claims = validate_access_token(response)
+        assert claims['tapis/client_id'] == TEST_CLIENT_ID
+        assert claims['tapis/grant_type'] == 'refresh_token'
+        assert claims['tapis/refresh_count'] == 1
+        refresh_token_str = response.json['result']['refresh_token']['refresh_token']
+        # and one more time --
+        payload = {
+            'grant_type': 'refresh_token',
+            'refresh_token': refresh_token_str
+        }
+        response =  client.post(
+            "http://localhost:5000/v3/oauth2/tokens",
+            headers=auth_header,
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+        # check that both an access and refresh token were generated:
+        claims = validate_access_token(response)
+        assert claims['tapis/client_id'] == TEST_CLIENT_ID
+        assert claims['tapis/grant_type'] == 'refresh_token'
+        assert claims['tapis/refresh_count'] == 2

@@ -250,13 +250,16 @@ components:
           description: The password assoicated with the username being authenticated (for password grant).
         grant_type:
           type: string
-          description: The OAuth2 grant type being used; either password or authorization_code.
+          description: The OAuth2 grant type being used; either password, authorization_code or refresh_token.
         redirect_uri:
           type: string
           description: The client's redirect URI (for authorization_code grant).
         code:
           type: string
           description: The authorization code associated with the request (for authorization_code grant).
+        refresh_token:
+          type: string
+          description: The refresh token associated with the request (for refresh_token grant).
 
 
     Client:
