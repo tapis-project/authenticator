@@ -482,7 +482,7 @@ class TokensResource(Resource):
                 refresh_count = 0
             content['claims']['tapis/refresh_count'] = refresh_count
         try:
-            tokens = t.tokens.create_token(**content)
+            tokens = t.tokens.create_token(**content, use_basic_auth=False)
             logger.debug(f"got tokens response: {tokens}")
         except Exception as e:
             logger.error(f"Got exception trying to POST to /v3/tokens endpoint. Exception: {e}")
