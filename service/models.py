@@ -20,7 +20,12 @@ from service import tenants
 app = Flask(__name__)
 # app.secret_key = b"\x00" + secrets.token_bytes(12) + b"\x00"
 app.secret_key = b"AGHsjfh!#%$SNFJqw"
-app.config['SQLALCHEMY_DATABASE_URI'] = conf.sql_db_url
+try:
+    full_db_url = f'postgres:://{conf.postgres_user}:{conf.postgres_password}@{conf.sql_db_url}'
+except Exception as e:
+    logger.error(f"Got exception trying to build full_db_ulr; e: {e}")
+    raise e
+app.config['SQLALCHEMY_DATABASE_URI'] = full_db_url
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 

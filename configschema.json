@@ -4,8 +4,18 @@
   "properties": {
     "sql_db_url": {
       "type": "string",
-      "description": "full URL, including protocol and database, to the SQL db.",
-      "default": "postgres://authenticator:d3fd6pAssw0rd@postgres:5432/authenticator"
+      "description": "URL to postgres db, including port and database.",
+      "default": "postgres:5432/authenticator"
+    },
+    "postgres_user": {
+      "type": "string",
+      "description": "user for the SQL db.",
+      "default": "authenticator"
+    },
+    "postgres_password": {
+      "type": "string",
+      "description": "password to the SQL db.",
+      "default": "d3fd6pAssw0rd"
     },
     "default_page_limit": {
       "type": "integer",
