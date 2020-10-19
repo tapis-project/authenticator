@@ -288,7 +288,7 @@ class LdapUser(object):
         attrs['uid'] = cn
         # compute the DN from the CN
         tenant = tenants.get_tenant_config(tenant_id)
-        ldap_user_dn = tenant['ldap_user_dn']
+        ldap_user_dn = tenant.ldap_user_dn
         attrs['dn'] = f'cn={cn},{ldap_user_dn}'
         # the remaining params are computed directly in the same way -- as the first entry in an array of bytes
         params = ['givenName', 'sn', 'mail', 'telephoneNumber', 'mobile', 'createTimestamp',
@@ -467,7 +467,7 @@ def create_clients_for_tenant(tenant_id):
     add_client_to_db(local_client)
     # now register the client with the tenant's base url:
     client_id = f'{tenant_id}.{conf.client_id}'
-    callback_url = f'{conf.service_tenant_base_url}{conf.client_callback}'
+    callback_url = f'{conf.primary_site_master_tenant_base_url}{conf.client_callback}'
     # replace "master" with the tenant_id:
     callback_url = callback_url.replace("master", tenant_id)
     client = deepcopy(local_client)

@@ -372,7 +372,7 @@ class TokensResource(Resource):
                 raise errors.ResourceError(msg='Invalid headers. Basic authentication with client id and key '
                                                'required but missing.')
         if not client_id and not client_key and grant_type == 'password':
-            logger.debug("Allowing the password grant request even the auth header missing.")
+            logger.debug("Allowing the password grant request even though the auth header missing.")
         # check that client is in db
         else:
             logger.debug("Checking that client exists.")
@@ -482,10 +482,12 @@ class TokensResource(Resource):
                 refresh_count = 0
             content['claims']['tapis/refresh_count'] = refresh_count
         try:
+            logger.debug(f"calling tokens API to create a token; content: {content}")
             tokens = t.tokens.create_token(**content, use_basic_auth=False)
             logger.debug(f"got tokens response: {tokens}")
         except Exception as e:
-            logger.error(f"Got exception trying to POST to /v3/tokens endpoint. Exception: {e}")
+            logger.error(f"Got exception trying to POST to /v3/tokens endpoint. Exception: {e};"
+                         f"content: {content}")
             raise errors.ResourceError("Failure to generate an access token; please try again later.")
         try:
             result = {'access_token': {'access_token': tokens.access_token.access_token,
@@ -621,11 +623,12 @@ class WebappTokenGen(Resource):
             "code": code
         }
         try:
+            logger.debug(f"making request to {url}")
             r = requests.post(url, json=content, auth=(client_id, client_key))
         except Exception as e:
             logger.error(f"Got exception trying to POST to /v3/oauth2/tokens endpoint. Exception: {e}")
             raise errors.ResourceError("Failure to generate an access token; please try again later.")
-
+        logger.debug(f"made request; got response: {r}")
         try:
             json_resp = json.loads(r.text)
         except Exception as e:
@@ -638,6 +641,9 @@ class WebappTokenGen(Resource):
             token = json_resp['result']['access_token']['access_token']
         except TypeError as e:
             logger.error(f"Got TypeError trying to retrieve access_token from JSON response: {e}")
+            raise errors.ResourceError("Failure to generate an access token; please try again later.")
+        except Exception as e:
+            logger.error(f"Got Exception trying to retrieve access token from JSON response: {e}")
             raise errors.ResourceError("Failure to generate an access token; please try again later.")
         session['access_token'] = token
         #  Redirect to oauth2/webapp/token-display

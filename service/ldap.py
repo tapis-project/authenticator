@@ -142,20 +142,19 @@ def get_tenant_ldap_connection(tenant_id, bind_dn=None, bind_password=None):
     """
     tenant = tenants.get_tenant_config(tenant_id)
     logger.debug(f"getting ldap connection for tenant {tenant_id}")
-    logger.debug(f'tenant info: {tenant}')
     # if we are passed specific bind credentials, use those:
     if not bind_dn is None:
-        return get_ldap_connection(ldap_server=tenant['ldap_url'],
-                                   ldap_port=tenant['ldap_port'],
+        return get_ldap_connection(ldap_server=tenant.ldap_url,
+                                   ldap_port=tenant.ldap_port,
                                    bind_dn=bind_dn,
                                    bind_password=bind_password,
-                                   use_ssl=tenant['ldap_use_ssl'])
+                                   use_ssl=tenant.ldap_use_ssl)
     # otherwise, return the connection associated with the tenant's bind credentials -
-    return get_ldap_connection(ldap_server=tenant['ldap_url'],
-                               ldap_port=tenant['ldap_port'],
-                               bind_dn=tenant['ldap_bind_dn'],
-                               bind_password=tenant['ldap_bind_credential'],
-                               use_ssl=tenant['ldap_use_ssl'])
+    return get_ldap_connection(ldap_server=tenant.ldap_url,
+                               ldap_port=tenant.ldap_port,
+                               bind_dn=tenant.ldap_bind_dn,
+                               bind_password=tenant.ldap_bind_credential,
+                               use_ssl=tenant.ldap_use_ssl)
 
 
 def list_tenant_users(tenant_id, limit=None, offset=0):
@@ -178,7 +177,7 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
     # cookie to get the actual page of results that we want.
     if offset > 0:
         # we only need really need the cookie so we just get the cn attribute
-        result = conn.search(tenant['ldap_user_dn'], '(cn=*)', attributes=['cn'], paged_size=offset)
+        result = conn.search(tenant.ldap_user_dn, '(cn=*)', attributes=['cn'], paged_size=offset)
         if not result:
             # it is possible to get a "success" result when there are no users in the OU -
             if hasattr(conn.result, 'get') and conn.result.get('description') == 'success':
@@ -187,7 +186,7 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
             logger.error(msg)
             raise DAOError(msg)
         cookie = conn.result['controls']['1.2.840.113556.1.4.319']['value']['cookie']
-    result = conn.search(tenant['ldap_user_dn'], '(cn=*)', attributes=['*'], paged_size=limit, paged_cookie=cookie)
+    result = conn.search(tenant.ldap_user_dn, '(cn=*)', attributes=['*'], paged_size=limit, paged_cookie=cookie)
     if not result:
         # it is possible to get a "success" result when there are no users in the OU -
         if hasattr(conn.result, 'get') and conn.result.get('description') == 'success':
@@ -212,7 +211,7 @@ def get_tenant_user(tenant_id, username):
     """
     tenant = tenants.get_tenant_config(tenant_id)
     conn = get_tenant_ldap_connection(tenant_id)
-    tenant_base_dn = tenant['ldap_user_dn']
+    tenant_base_dn = tenant.ldap_user_dn
     logger.debug(f'searching with params: {tenant_base_dn}; username: {username}')
     result = conn.search(f'{tenant_base_dn}', f'(cn={username})', attributes=['*'])
     if not result:
@@ -236,9 +235,9 @@ def get_dn(tenant_id, username):
     :return: 
     """
     tenant = tenants.get_tenant_config(tenant_id)
-    ldap_user_dn = tenant['ldap_user_dn']
+    ldap_user_dn = tenant.ldap_user_dn
     # needed for test ldap:
-    if tenant['ldap_bind_dn'].startswith('cn'):
+    if tenant.ldap_bind_dn.startswith('cn'):
         return f'cn={username},{ldap_user_dn}'
     # needed for tacc:
     else:
