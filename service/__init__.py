@@ -83,4 +83,4 @@ class AuthenticatorTenants(Tenants):
 
 # create the AuthenticatorTenants object and attach it back to the tapis client
 tenants = AuthenticatorTenants()
-t.tenants = tenants
+t.tenant_cache = tenants
