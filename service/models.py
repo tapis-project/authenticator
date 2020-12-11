@@ -467,9 +467,9 @@ def create_clients_for_tenant(tenant_id):
     add_client_to_db(local_client)
     # now register the client with the tenant's base url:
     client_id = f'{tenant_id}.{conf.client_id}'
-    callback_url = f'{conf.primary_site_master_tenant_base_url}{conf.client_callback}'
-    # replace "master" with the tenant_id:
-    callback_url = callback_url.replace("master", tenant_id)
+    callback_url = f'{conf.primary_site_admin_tenant_base_url}{conf.client_callback}'
+    # replace "admin" with the tenant_id:
+    callback_url = callback_url.replace("admin", tenant_id)
     client = deepcopy(local_client)
     client['client_id'] = client_id
     client['callback_url'] = callback_url
