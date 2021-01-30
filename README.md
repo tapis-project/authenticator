@@ -11,8 +11,7 @@ First, make sure the following passwords are set correctly.
 
 1. Within ``config-local.json``, update the ``service_password`` to match the authenticator's service_password stored in the SK
    in develop.
-2. Within ``config-local.json``, update the ``dev_tacc_ldap_bind_credential`` to match the ``password`` key in the secret ``ldap.tapis-dev`` in SK. 
-3. Within ``docker-compose.yml``, update the ``LDAP_ROOTPASS`` to match the ``password`` key in the secret ``ldap.tacc-all`` stored in SK.
+2. Within ``docker-compose.yml``, update the ``LDAP_ROOTPASS`` to match the ``password`` key in the secret ``ldap.tapis-dev`` stored in SK.
 
 #### Working With Secrets in the SK ####
 We are now storing LDAP secrets within the SK. To retrieve them, use the Python SDK with a token representing the

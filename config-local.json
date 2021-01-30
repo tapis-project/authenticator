@@ -4,6 +4,5 @@
   "tenants": ["dev", "tacc"],
   "use_sk": true,
   "log_level": "DEBUG",
-  "dev_tacc_ldap_bind_credential": "<TODO_get_from_stache>",
   "populate_dev_ldap": true
 }
