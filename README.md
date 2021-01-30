@@ -7,6 +7,32 @@ This repository includes build files and other assets needed to start the servic
 repository and follow the steps in the subsequent section.
 
 ### Start the Server Locally
+First, make sure the following passwords are set correctly.
+
+1. Within ``config-local.json``, update the ``service_password`` to match the authenticator's service_password stored in the SK
+   in develop.
+2. Within ``config-local.json``, update the ``dev_tacc_ldap_bind_credential`` to match the ``password`` key in the secret ``ldap.tapis-dev`` in SK. 
+3. Within ``docker-compose.yml``, update the ``LDAP_ROOTPASS`` to match the ``password`` key in the secret ``ldap.tacc-all`` stored in SK.
+
+#### Working With Secrets in the SK ####
+We are now storing LDAP secrets within the SK. To retrieve them, use the Python SDK with a token representing the
+authenticator. For example:
+
+List all secrets:
+
+```
+>>> t.sk.listSecretMeta(secretType='user', tenant='admin', user='authenticator')
+```
+
+Retrieve the dev LDAP secret from SK and get the password:
+
+```
+>>> s = t.sk.readSecret(secretType='user', secretName='ldap.tapis-dev', tenant='admin', user='authenticator')
+>>> s.secretMap.password
+```
+
+
+
 We are automating the management of the lifecycle workflow with `make`. You will need to install `make` it in order
 to use the steps bellow.
 

@@ -356,7 +356,7 @@ class TokensResource(Resource):
             raise errors.ResourceError(msg=f'Missing the required grant_type parameter.')
         logger.debug(f"processing grant_type: {grant_type}")
         tenant_id = g.request_tenant_id
-
+        logger.debug(f"tenant_id: {tenant_id}")
         # get headers
         auth = request.authorization
         # client id and client key are optional on the password grant type to allow new users to generate tokens
@@ -586,6 +586,7 @@ class WebappTokenGen(Resource):
     """
 
     def get(self):
+        logger.debug("top of GET /v3/oauth2/webapp/callback")
         client_data = get_tokenapp_client()
         client_id = client_data['client_id']
         client_key = client_data['client_key']

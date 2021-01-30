@@ -28,7 +28,7 @@ services:
         environment:
           LDAP_DOMAIN: "tapis"
           LDAP_ORGANISATION: "Tapis"
-          LDAP_ROOTPASS: "a1r2c3HKvv0"
+          LDAP_ROOTPASS: "<TODO_get_from_SK>"
 
     migrations:
         image: tapis/authenticator-migrations

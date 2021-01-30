@@ -76,9 +76,68 @@ class AuthenticatorTenants(Tenants):
             elif tenant.tenant_id == 'tacc':
                 tenant.ldap_bind_credential = conf.dev_tacc_ldap_bind_credential
         else:
-            # TODO -- get the ldap bind secret from the security kernel...
-            raise NotImplementedError
+            if tenant_response.user_ldap_connection_id:
+                if not getattr(ldap_response, 'bind_credential'):
+                    msg = f"Error -- ldap object missing bind credential; description: {ldap_response}."
+                    logger.error(msg)
+                    raise errors.BaseTapisError(msg)
+                tenant.ldap_bind_credential = get_ldap_bind_from_sk(ldap_response.bind_credential)
         return tenant
+
+def get_ldap_bind_from_sk(bind_credential_name):
+    """
+    Retrieve the ldap bind secret from SK for a specific ldap id.
+    ldap_response: the ldap object description containing the bind_credential attribute
+    :return:
+    """
+    logger.debug(f'top of get_ldap_bind_from_sk; bind_credential_name: {bind_credential_name}')
+    if not bind_credential_name:
+        msg = f"Error --get_ldap_bind_from_sk did not get a bind_credential_name."
+        logger.error(msg)
+        raise errors.BaseTapisError(msg)
+    try:
+        ldap_bind_secret = t.sk.readSecret(secretType='user',
+                                           secretName=bind_credential_name,
+                                           tenant=conf.service_tenant_id,
+                                           user=conf.service_name)
+    except Exception as e:
+        msg = f"Got exception trying to retrieve ldap bind secret from SK; exception: {e}."
+        logger.error(msg)
+        raise errors.BaseTapisError(msg)
+    # the SK stores secrets in the secretMap attribute, which is a mapping of user-provided string attributes
+    # to string values. for the ldap bind secrets, the convention is that the secretMap should contain one
+    # key, password, containing the actual password
+    try:
+        bind_credential = ldap_bind_secret.secretMap.password
+    except Exception as e:
+        msg = f"got exception trying to retrieve the ldap_bind_password from the SK secret; e: {e}"
+        logger.error(msg)
+        raise errors.BaseTapisError(msg)
+    return bind_credential
+
+
+def store_ldap_bind_secret_in_sk(ldap_connection_id, password, tenant='admin', user='authenticator'):
+    """
+    This utility documents how to create a new LDAP bind secret in SK. It is not actually used by authentcitor
+    but it can be used by another utility for bootstrapping the creation of a tenant that will have a user
+    LDAP.
+
+    :param ldap_connection_id: the id of the ldap object.
+    :param password: The password for the ldap bind.
+    :param tenant: The tenant_id in which the secret belongs; should be the same as the tenant id of the
+                   authetictor service that owns the secret.
+    :param user: The name of the service that owns the secret; defaults to "authenticator".
+    :return:
+    """
+    try:
+        t.sk.writeSecret(secretType='user',
+                         secretName=f'ldap.{ldap_connection_id}',
+                         tenant=tenant,
+                         user=user,
+                         data={'password': password})
+    except Exception as e:
+        msg = f"could not save secret with sk; exception: {e}"
+        logger.error(msg)
 
 
 # create the AuthenticatorTenants object and attach it back to the tapis client
