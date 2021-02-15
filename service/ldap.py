@@ -171,13 +171,27 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
         limit = conf.default_page_limit
     conn = get_tenant_ldap_connection(tenant_id)
     cookie = None
+
+    user_dn = tenant.ldap_user_dn
+    user_search_prefix = '(cn=*)'
+    # if the tenant's user_dn config includes the template variable ${username}, we need to strip it out here and
+    # pull out the user search prefix.
+    if '${username},' in tenant.ldap_user_dn:
+        parts = tenant.ldap_user_dn.split('${username},')
+        if not len(parts) == 2:
+            raise DAOError("Unable to compute LDAP user search DN.")
+        # parts will be split into 'uid=' and 'ou=foo, o=bar, ..."
+        # the user search prefix should therefore be of the form: '(<parts[0])*)'
+        user_search_prefix = f'({parts[0]}*)'
+        user_dn = parts[1]
+    logger.debug(f'using user_dn: {user_dn} and user_search_prefix: {user_search_prefix}')
     # As per RFC2696, the page cookie for paging can only be used by the same connection; we take the following
     # approach:
     # if the offset is not 0, we first pull the first <offset> entries to get the cookie, then we get use the returned
     # cookie to get the actual page of results that we want.
     if offset > 0:
         # we only need really need the cookie so we just get the cn attribute
-        result = conn.search(tenant.ldap_user_dn, '(cn=*)', attributes=['cn'], paged_size=offset)
+        result = conn.search(user_dn, user_search_prefix, attributes=['cn'], paged_size=offset)
         if not result:
             # it is possible to get a "success" result when there are no users in the OU -
             if hasattr(conn.result, 'get') and conn.result.get('description') == 'success':
@@ -186,7 +200,7 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
             logger.error(msg)
             raise DAOError(msg)
         cookie = conn.result['controls']['1.2.840.113556.1.4.319']['value']['cookie']
-    result = conn.search(tenant.ldap_user_dn, '(cn=*)', attributes=['*'], paged_size=limit, paged_cookie=cookie)
+    result = conn.search(user_dn, user_search_prefix, attributes=['*'], paged_size=limit, paged_cookie=cookie)
     if not result:
         # it is possible to get a "success" result when there are no users in the OU -
         if hasattr(conn.result, 'get') and conn.result.get('description') == 'success':
@@ -209,11 +223,21 @@ def get_tenant_user(tenant_id, username):
     :param username:
     :return:
     """
+    logger.debug(f"top of get_tenant_user; tenant_id: {tenant_id}; username: {username}")
     tenant = tenants.get_tenant_config(tenant_id)
     conn = get_tenant_ldap_connection(tenant_id)
     tenant_base_dn = tenant.ldap_user_dn
-    logger.debug(f'searching with params: {tenant_base_dn}; username: {username}')
-    result = conn.search(f'{tenant_base_dn}', f'(cn={username})', attributes=['*'])
+    logger.debug(f"ldap_user_dn on tenant record: {tenant_base_dn}. Checking if we need to replace the "
+                 f"$username token...")
+    user_filter = f'(cn={username})'
+    if '${username},' in tenant.ldap_user_dn:
+        parts = tenant.ldap_user_dn.split('${username},')
+        if not len(parts) == 2:
+            raise DAOError("Unable to calculate search DN.")
+        tenant_base_dn = parts[1]
+        user_filter = f'({parts[0]}{username})'
+    logger.debug(f'searching with params: {tenant_base_dn}; user_filter: {user_filter}')
+    result = conn.search(f'{tenant_base_dn}', user_filter, attributes=['*'])
     if not result:
         # it is possible to get a "success" result when there are no users in the OU -
         if hasattr(conn.result, 'description') and conn.result.description == 'success':
@@ -236,6 +260,12 @@ def get_dn(tenant_id, username):
     """
     tenant = tenants.get_tenant_config(tenant_id)
     ldap_user_dn = tenant.ldap_user_dn
+    if '${username},' in tenant.ldap_user_dn:
+        parts = tenant.ldap_user_dn.split('${username},')
+        if not len(parts) == 2:
+            raise DAOError("Unable to calculate search DN.")
+        ldap_user_dn = parts[1]
+        return f'{parts[0]}{username},{ldap_user_dn}'
     # needed for test ldap:
     if tenant.ldap_bind_dn.startswith('cn'):
         return f'cn={username},{ldap_user_dn}'
