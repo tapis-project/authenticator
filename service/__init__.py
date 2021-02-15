@@ -48,6 +48,7 @@ class AuthenticatorTenants(Tenants):
                 tenant_response = t.tenants.get_tenant(tenant_id=tenant_id)
             except Exception as e:
                 logger.error(f"Got exception trying to look up tenant info for tenant: {tenant_id}; e: {e}")
+                raise e
             if tenant_response.user_ldap_connection_id:
                 logger.debug(f'got a user_ldap_connection_id: {tenant_response.user_ldap_connection_id} for '
                              f'tenant: {tenant_id}. Now looking up LDAP data...')
