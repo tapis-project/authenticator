@@ -349,5 +349,10 @@ def populate_test_ldap(tenant_id='dev'):
             add_test_user(tenant_id, username)
         else:
             logger.debug(f"user {username} already present.")
-
-
+    # Add testadmin user
+    username = f'testadmin'
+    if username not in usernames:
+        logger.debug(f"adding user {username}")
+        add_test_user(tenant_id, username)
+    else:
+        logger.debug(f"user {username} already present.")
