@@ -150,7 +150,7 @@ paths:
                   - $ref: '#/components/schemas/BasicResponse'
                 properties:
                   result:
-                    $ref: '#/components/schemas/Token'
+                    $ref: '#/components/schemas/TokenResponse'
 
   /v3/oauth2/profiles:
     get:
@@ -287,12 +287,42 @@ components:
           type: string
           description: A description of this client.
 
-    Token:
+    TokenResponse:
       type: object
+      required: [access_token]
       properties:
-        token:
-          type: string
-          description: A jwt token.
+        access_token:
+          type: object
+          description: A Tapis access token object.
+          properties:
+            access_token:
+              type: string
+              description: The actual access token as a JWT
+            expires_at:
+              type: string
+              description: The time, as a string in UTC, when the token expires.
+            expires_in:
+              type: integer
+              description: The amount of time, in seconds, when the token will expire.
+            jti:
+              type: string
+              description: Unique identifier for the token
+        refresh_token:
+          type: object
+          description: A Tapis refresh token object.
+          properties:
+            refresh_token:
+              type: string
+              description: The actual refresh token as a JWT
+            expires_at:
+              type: string
+              description: The time, as a string in UTC, when the token expires.
+            expires_in:
+              type: integer
+              description: The amount of time, in seconds, when the token will expire.
+            jti:
+              type: string
+              description: Unique identifier for the token
 
     arrayOfClients:
       type: array
