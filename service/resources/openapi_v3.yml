@@ -219,6 +219,9 @@ components:
           type: string
           description: Whether the request was a success or failure.
           enum: [success, failure]
+        metadata:
+          type: object
+          description: Metadata about the result object, including pagination information
 
     NewClient:
       type: object
