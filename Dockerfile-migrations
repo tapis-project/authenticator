@@ -3,4 +3,10 @@ from tapis/authenticator
 
 COPY migrations /home/tapis/migrations
 
+ENV MIGRATIONS_RUNNING=True
+
+User root
+RUN chown -R tapis:tapis /home/tapis
+USER tapis
+
 ENTRYPOINT ["flask", "db"]
