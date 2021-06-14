@@ -1,14 +1,14 @@
 from flask_migrate import Migrate
 from common.config import conf
 from common.utils import TapisApi, handle_error, flask_errors_dict
-import datetime
 
+from service import MIGRATIONS_RUNNING
 from service.auth import authn_and_authz
 from service.controllers import AuthorizeResource, ClientsResource, ClientResource, TokensResource, \
     ProfilesResource, ProfileResource, StaticFilesResource, LoginResource, SetTenantResource, LogoutResource, \
-    WebappTokenGen, WebappTokenAndRedirect
+    WebappTokenGen, WebappTokenAndRedirect, TenantConfigResource
 from service.ldap import populate_test_ldap
-from service.models import db, app, Client
+from service.models import db, app, initialize_tenant_configs
 
 from common.logs import get_logger
 logger = get_logger(__name__)
@@ -23,6 +23,12 @@ def authnz_for_authenticator():
 db.init_app(app)
 migrate = Migrate(app, db)
 
+
+# create the initial tenantconfig objects for all tenants assigned to this authenticator if they do not exist
+# don't run this during migrations
+if not MIGRATIONS_RUNNING:
+    for tenant_id in conf.tenants:
+        initialize_tenant_configs(tenant_id)
 
 # initialize the test LDAP ---
 # TODO - this code is run by every thread but is not thread safe!
@@ -39,6 +45,7 @@ api.handle_exception = handle_error
 api.handle_user_exception = handle_error
 
 # API resources
+api.add_resource(TenantConfigResource, '/v3/oauth2/admin/config')
 api.add_resource(ClientsResource, '/v3/oauth2/clients')
 api.add_resource(ClientResource, '/v3/oauth2/clients/<client_id>')
 api.add_resource(TokensResource, '/v3/oauth2/tokens')

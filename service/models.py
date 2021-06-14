@@ -1,5 +1,6 @@
 from copy import deepcopy
 import datetime
+import json
 from flask import Flask, g
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
@@ -12,6 +13,8 @@ from common.config import conf
 from common.errors import DAOError
 from common.logs import get_logger
 from common import errors
+
+from service import MIGRATIONS_RUNNING
 
 logger = get_logger(__name__)
 
@@ -32,6 +35,162 @@ migrate = Migrate(app, db)
 # get the logger instance -
 from common.logs import get_logger
 logger = get_logger(__name__)
+
+
+class TenantConfig(db.Model):
+    """
+    Tenant-specific configurations for the Authenticator.
+    """
+    __tablename__ = 'tenantconfig'
+
+    id = db.Column(db.Integer, primary_key=True)
+    tenant_id = db.Column(db.String(50), unique=False, nullable=False)
+
+    # json serialized list of strings of allowable grant types, comma separated
+    # ex:'["authorization_code", "password", "implicit", "device_code", "refresh_token", "impersonation", "delegation"]'
+    allowable_grant_types = db.Column(db.String(500), unique=False, nullable=False)
+
+    # whether to use the LDAP configured in the Tenants API
+    use_ldap = db.Column(db.Boolean(), unique=False, nullable=False)
+
+    # whether to make the Authenticator token web app available
+    use_token_webapp = db.Column(db.Boolean(), unique=False, nullable=False)
+
+    # MFA config is a json-serialized string which includes various details such as which MFA system to use (tacc or
+    # some other one) and configurations for it.
+    mfa_config = db.Column(db.String(2500), unique=False, nullable=False)
+
+    # for the standard grant types, such as password and authorization_code --
+    default_access_token_ttl = db.Column(db.Integer)
+    default_refresh_token_ttl = db.Column(db.Integer)
+
+    # for grant types that allow the caller to specify the ttl --
+    max_access_token_ttl = db.Column(db.Integer)
+    max_refresh_token_ttl = db.Column(db.Integer)
+
+    # configuration for custom IdP's like github OAuth of Custos; stored as a JSON-serialized string.
+    custom_idp_configuration = db.Column(db.String(2500), unique=False, nullable=False)
+
+    @property
+    def serialize(self):
+        return {
+            "allowable_grant_types": json.loads(self.allowable_grant_types),
+            "use_ldap": self.use_ldap,
+            "mfa_config": json.loads(self.mfa_config),
+            "use_token_webapp": self.use_token_webapp,
+            "default_access_token_ttl": self.default_access_token_ttl,
+            "default_refresh_token_ttl": self.default_refresh_token_ttl,
+            "max_access_token_ttl": self.max_access_token_ttl,
+            "max_refresh_token_ttl": self.max_refresh_token_ttl,
+            "custom_idp_configuration": json.loads(self.custom_idp_configuration),
+        }
+
+
+def initialize_tenant_configs(tenant_id):
+    """
+    Checks to see if a TenantConfig record exists for the tenant_id passed, and if it does not, it creates one
+    with the default configs. This function is called at authenticator start up (from api.py) with each tenant id
+    in the authenticator's conf.tenants configuration.
+
+    :param tenant_id: The tenant id to check.
+    :return: config -- the config object assoicated with the tenant.
+    """
+    # first, check for the existence of a record
+    try:
+        config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
+    except Exception as e:
+        logger.error(f"got exception trying to check for the existence of a TenantConfig record for tenant: {tenant_id};"
+                     f"exception: {e}. Giving up..")
+        raise e
+    # if the config doesn't already exist, create it:
+    if config:
+        logger.debug(f"Found config for tenant {tenant_id}; config: {config.serialize}")
+        return config
+    # create the config object because it doesn't exist yet:
+    config = TenantConfig(
+        tenant_id=tenant_id,
+        allowable_grant_types=json.dumps(["password", "authorization_code", "refresh_token"]),
+        use_ldap=True,
+        use_token_webapp=True,
+        mfa_config=json.dumps({}),
+        # 4 hours
+        default_access_token_ttl=14400,
+        # 1 year
+        default_refresh_token_ttl=31536000,
+        max_access_token_ttl=31536000,
+        # 2 years
+        max_refresh_token_ttl=63072000,
+        custom_idp_configuration=json.dumps({})
+    )
+    try:
+        db.session.add(config)
+        db.session.commit()
+    except Exception as e:
+        logger.error(f"Got exception trying to add a new config for tenant {tenant_id} to the db. Exception: {e}."
+                     f" Giving up...")
+        raise e
+
+
+class TenantConfigsCache(object):
+    """
+    Object holding a cache of all tenant configs for this authenticator.
+    """
+
+    def __init__(self):
+        self.tenant_config_models = self.load_tenant_config_cache()
+        # self.cache_lifetime = datetime.timedelta(minutes=5)
+        # todo -- setting this to 1 second for now but we can increase
+        self.cache_lifetime = datetime.timedelta(seconds=1)
+
+    def load_tenant_config_cache(self):
+        """
+        Global cache of all tenant configs
+        :return:
+        """
+        configs = TenantConfig.query.all()
+        self.tenant_config_models = configs
+        self.last_update = datetime.datetime.now()
+        return configs
+
+    def get_config(self, tenant_id):
+        """
+        Returns the config for a specific tenant from the cache.
+        :param tenant_id:
+        :return:
+        """
+        tries = 0
+        # first, check if the cache is older than the configured max cache lifetime.
+        if datetime.datetime.now() > self.last_update + self.cache_lifetime:
+            self.load_tenant_config_cache()
+            # if we just reloaded the cache, we don't need the check below
+            tries = 1
+        while tries < 2:
+            for t in self.tenant_config_models:
+                if t.tenant_id == tenant_id:
+                    return t
+            # the first pass through, if we didn't find the tenant_id, reload the cache and try again
+            if tries==0:
+                self.load_tenant_config_cache()
+                tries = 1
+                continue
+            tries = 2
+        raise errors.ServiceConfigError(f"tenant id {tenant_id} not found in tenant configurations.")
+
+
+# singelton cache object -- when migrations are running the TenantConfig relations in Postgres could not
+# exist
+try:
+    tenant_configs_cache = TenantConfigsCache()
+except Exception as e:
+    if not MIGRATIONS_RUNNING:
+        logger.error(f"got exception trying to load tenant configs cache and migrations were NOT running."
+                     f" giving up; exception: {e}")
+        raise e
+    else:
+        logger.warn(f"got exception try to load tenant configs object while migrations were running. This better "
+                    f"be because the migrations are creating the TenantConfigs relations. Setting cache object to"
+                    f"none. e: {e}")
+        tenant_configs_cache = None
 
 
 class Client(db.Model):
@@ -120,8 +279,6 @@ class Client(db.Model):
         #     raise DAOError(msg)
 
         return result
-
-
 
 
 class AuthorizationCode(db.Model):
@@ -439,7 +596,6 @@ class Token(object):
         # refresh token:
         result['refresh_token'] = getattr(data, 'refresh_token', None)
         return result
-
 
 
 def create_clients_for_tenant(tenant_id):

@@ -4,15 +4,15 @@ from flask import g, request, Response, render_template, redirect, make_response
 from flask_restful import Resource
 from openapi_core.shortcuts import RequestValidator
 from openapi_core.wrappers.flask import FlaskOpenAPIRequest
+import sqlalchemy
 
 from common import utils, errors
 from common.config import conf
 from common.auth import validate_token
 
-
 from service import t
 from service.errors import InvalidPasswordError
-from service.models import db, Client, Token, AuthorizationCode, token_webapp_clients
+from service.models import db, TenantConfig, Client, Token, AuthorizationCode, token_webapp_clients, tenant_configs_cache
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 
 # get the logger instance -
@@ -357,6 +357,13 @@ class TokensResource(Resource):
         logger.debug(f"processing grant_type: {grant_type}")
         tenant_id = g.request_tenant_id
         logger.debug(f"tenant_id: {tenant_id}")
+        config = tenant_configs_cache.get_config(tenant_id)
+        logger.debug(f"tenant config: {config}")
+        # check if grant type is even allowed for this tenant --
+        allowable_grant_types = json.loads(config.allowable_grant_types)
+        if grant_type not in allowable_grant_types:
+            raise errors.ResourceError(f"Invalid grant_type ({grant_type}); this grant type is not allowed for this "
+                                       f"tenant. Allowable grant types: {allowable_grant_types}")
         # get headers
         auth = request.authorization
         # client id and client key are optional on the password grant type to allow new users to generate tokens
@@ -450,6 +457,7 @@ class TokensResource(Resource):
 
         # call /v3/tokens to generate access token for the user
         url = f'{g.request_tenant_base_url}/v3/tokens'
+        acces_token_ttl = config.default_access_token_ttl
         content = {
             "token_tenant_id": f"{tenant_id}",
             "account_type": "user",
@@ -458,15 +466,14 @@ class TokensResource(Resource):
                 "tapis/client_id": client_id,
                 "tapis/grant_type": grant_type,
             },
-            # access token expires in 4 hours -- TODO: read from tenant config instead
-            "access_token_ttl": 14400,
+            "access_token_ttl": acces_token_ttl,
             "generate_refresh_token": False
         }
         # only generate a refresh token when OAuth client is passed
         if client_id and client_key:
             content["generate_refresh_token"] = True
-            # refresh token expires in 1 year -- TODO: read from tenant config instead
-            content["refresh_token_ttl"] = 31536000
+            refresh_token_ttl = config.default_refresh_token_ttl
+            content["refresh_token_ttl"] = refresh_token_ttl
 
         # set the redirect_uri claim when using a web-based flow or when refreshing a token that was
         # generated using a web-based flow:
@@ -506,6 +513,85 @@ class TokensResource(Resource):
             logger.error(f"Got an unexpected AttributeError trying to parse tokens response; e: {e}")
             raise errors.ResourceError("Failure to parse access token response; please try again later.")
         return utils.ok(result=result, msg="Token created successfully.")
+
+
+class TenantConfigResource(Resource):
+    """
+    Implements the /v3/oauth2/admin/config endpoints.
+    """
+
+    def get(self):
+        logger.debug('top of GET /v3/oauth2/admin/config')
+        # we always use the request tenant id because this should either be the same as g.tenant_id (in the case of a
+        # user account) or the token was the authenticator's OWN service token, in whcih case we use the x-tapis-tenant
+        # header set in the reqest (authenticator itself can update all tenants).
+        tenant_id = g.request_tenant_id
+        config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
+        return utils.ok(result=config.serialize, msg="Tenant config object retrieved successfully.")
+
+    def put(self):
+        logger.debug('top of PUT /v3/oauth2/admin/config')
+        tenant_id = g.request_tenant_id
+        config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
+        if not config:
+            raise errors.ResourceError(f"Config for tenant {tenant_id} does not exist. Contact system administrators.")
+        logger.debug(f"update request for tenant {tenant_id}; config: {config.serialize}")
+        validator = RequestValidator(utils.spec)
+        result = validator.validate(FlaskOpenAPIRequest(request))
+        if result.errors:
+            logger.debug(f"openapi_core validation failed. errors: {result.errors}")
+            raise errors.ResourceError(msg=f'Invalid PUT data: {result.errors}.')
+        validated_body = result.body
+        logger.debug("got past validator checks")
+        # check for unsupported fields --
+        if hasattr(validated_body, 'mfa_config'):
+            raise errors.ResourceError("Setting mfa_config not currently supported.")
+        if hasattr(validated_body, 'custom_idp_configuration'):
+            raise errors.ResourceError("Setting custom_idp_configuration not currently supported.")
+        logger.debug("got past additional checks for unsupported fields.")
+        new_allowable_grant_types = getattr(validated_body, 'allowable_grant_types', None)
+        logger.debug(f"got new_allowable_grant_types: {new_allowable_grant_types}")
+        if new_allowable_grant_types:
+            try:
+                new_allowable_grant_types_str = json.dumps(new_allowable_grant_types)
+            except Exception as e:
+                logger.debug(f"got exception trying to parse allowable_grant_types; e: {e} ")
+                raise errors.ResourceError(f"Invalid allowable_grant_type ({new_allowable_grant_types}) -- must be "
+                                           f"JSON serializable")
+            if not type(new_allowable_grant_types) == list:
+                raise errors.ResourceError(f"Invalid allowable_grant_type ({new_allowable_grant_types}) -- must be "
+                                           f"list.")
+        new_use_ldap = getattr(validated_body, 'use_ldap', config.use_ldap)
+        new_use_token_webapp = getattr(validated_body, 'use_token_webapp', config.use_token_webapp)
+        new_default_access_token_ttl = getattr(validated_body, 'default_access_token_ttl',
+                                               config.default_access_token_ttl)
+        new_default_refresh_token_ttl = getattr(validated_body, 'default_refresh_token_ttl',
+                                                config.default_refresh_token_ttl)
+        new_max_access_token_ttl = getattr(validated_body, 'max_access_token_ttl', config.max_access_token_ttl)
+        new_max_refresh_token_ttl = getattr(validated_body, 'max_refresh_token_ttl', config.max_refresh_token_ttl)
+        logger.debug("updating config object with new attributes...")
+        # update the model and commit --
+        if new_allowable_grant_types:
+            logger.debug(f"new_allowable_grant_types_str: {new_allowable_grant_types_str}")
+            config.allowable_grant_types = new_allowable_grant_types_str
+        config.use_ldap = new_use_ldap
+        config.use_token_webapp = new_use_token_webapp
+        config.default_access_token_ttl = new_default_access_token_ttl
+        config.default_refresh_token_ttl = new_default_refresh_token_ttl
+        config.max_access_token_ttl = new_max_access_token_ttl
+        config.max_refresh_token_ttl = new_max_refresh_token_ttl
+        try:
+            db.session.commit()
+            logger.info(f"update to tenant config committed to db. config object: {config}")
+        except (sqlalchemy.exc.SQLAlchemyError, sqlalchemy.exc.DBAPIError) as e:
+            logger.debug(f"got exception trying to commit updated tenant config object to db. Exception: {e}")
+            msg = utils.get_message_from_sql_exc(e)
+            logger.debug(f"returning msg: {msg}")
+            raise errors.ResourceError(f"Invalid PUT data; {msg}")
+        logger.debug("returning serialized tenant object.")
+        # reload the config cache updn update --
+        tenant_configs_cache.load_tenant_config_cache()
+        return utils.ok(result=config.serialize, msg="Tenant config object retrieved successfully.")
 
 
 # ------------------
