@@ -1,3 +1,5 @@
+import os
+
 from common.auth import Tenants, get_service_tapis_client
 from common.auth import tenants as auth_tenants
 from common.config import conf
@@ -5,6 +7,8 @@ from common import errors
 
 from common.logs import get_logger
 logger = get_logger(__name__)
+
+MIGRATIONS_RUNNING = os.environ.get('MIGRATIONS_RUNNING', False)
 
 # there is a chicken and egg problem in that we need a tenants manager object to instantiate the tapis
 # client, but we need a tapis client to create the AuthenticatorTenants manager. so, we first
