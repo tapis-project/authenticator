@@ -1,0 +1,39 @@
+{
+  "$id": "http://github.com/tapis-project/authenticator/custom-idp-configschema.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "Schema for the custom_idp_configuration field",
+  "additionalProperties": false,
+  "type": "object",
+  "properties": {
+    "ldap": {
+      "type": "object",
+      "description": "Properties associated with an LDAP IdP.",
+      "$ref": "#/definitions/ldapObject"
+    }
+   },
+  "definitions": {
+    "ldapObject": {
+      "description": "Properties associated with an LDAP IdP",
+      "type": "object",
+      "properties": {
+        "default_page_limit": {
+          "type": "integer",
+          "description": "The default number of profiles to return from the profiles listing. If not configured, the service uses a default of 100."
+
+        },
+        "user_search_prefix": {
+          "type": "string",
+          "description": "The prefix to use when searching LDAP for users; by default, this is '(cn=*)'"
+        },
+        "user_search_supplemental_filter": {
+          "type": "string",
+          "description": "A single filter clause to append to the user search filter, such as (host=foo.com); note that the string must be incased in parentheses."
+        },
+         "user_search_filter": {
+           "type": "string",
+           "description": "The entire user search filter, including the prefix and one or more supplemental filters. Use this instead of the user_search_prefix and user_search_suplemental_filter to support more complex filters. This must include the entire search filter, including & and parentheses. For example, '(&(cn=*)(host=foo.com))' or '(&(cn=*)(host=foo.org)(host=bar.org))'."
+         }
+      }
+    }
+  }
+}

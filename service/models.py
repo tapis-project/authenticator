@@ -68,7 +68,8 @@ class TenantConfig(db.Model):
     max_access_token_ttl = db.Column(db.Integer)
     max_refresh_token_ttl = db.Column(db.Integer)
 
-    # configuration for custom IdP's like github OAuth of Custos; stored as a JSON-serialized string.
+    # Configuration for customizing the IdP integration, including custom ldap search filters and alternative IdPs
+    # like github OAuth of Custos; stored as a JSON-serialized string.
     custom_idp_configuration = db.Column(db.String(2500), unique=False, nullable=False)
 
     @property

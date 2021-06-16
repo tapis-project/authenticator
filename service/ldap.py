@@ -2,9 +2,9 @@ from ldap3 import Server, Connection
 from ldap3.core.exceptions import LDAPBindError
 import json
 
-from service import tenants
+from service import tenants, MIGRATIONS_RUNNING
 from service.errors import InvalidPasswordError
-from service.models import LdapOU, LdapUser
+from service.models import LdapOU, LdapUser, tenant_configs_cache
 
 from common.config import conf
 from common.errors import DAOError
@@ -156,6 +156,24 @@ def get_tenant_ldap_connection(tenant_id, bind_dn=None, bind_password=None):
                                bind_password=tenant.ldap_bind_credential,
                                use_ssl=tenant.ldap_use_ssl)
 
+def get_custom_ldap_config(tenant_id):
+    """
+    Checks the authenticator tenant config for a custom idp config and returns the attributes
+    as a python dictionary.
+    :return: dictionary of attributes related to customizing the ldap configuration.
+    """
+    # if this is migrations, we won't be able to access the custom authenticator tenant config (in the db) so we just
+    # return immediately --
+    if MIGRATIONS_RUNNING:
+        return {}
+    # this is the authenticator configuration for the tenant --
+    authenticator_tenant_config = tenant_configs_cache.get_config(tenant_id)
+    custom_idp_configuration = json.loads(authenticator_tenant_config.custom_idp_configuration)
+    try:
+        return custom_idp_configuration['ldap']
+    except KeyError:
+        return {}
+
 
 def list_tenant_users(tenant_id, limit=None, offset=0):
     """
@@ -166,14 +184,38 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
     :return:
     """
     logger.debug(f'top of list_tenant_users; tenant_id: {tenant_id}; limit: {limit}; offset: {offset}')
+    # this gets the tenant object from the Tenants API cache --
     tenant = tenants.get_tenant_config(tenant_id)
+    conn = get_tenant_ldap_connection(tenant_id)
+    # this gets the custom authenticator config for the ldap --
+    custom_ldap_config = get_custom_ldap_config(tenant_id)
+    if not limit:
+        limit = custom_ldap_config.get('default_page_limit')
     if not limit:
         limit = conf.default_page_limit
-    conn = get_tenant_ldap_connection(tenant_id)
-    cookie = None
 
+    cookie = None
+    # there are multiple ways to modify the ldap search using the custom_ldap_config. If user_search_filter is provided,
+    # that one is always used.
+    user_search_filter = custom_ldap_config.get('user_search_filter')
+    logger.debug(f"user_search_filter from custom ldap config: {user_search_filter}")
+    # if user_search_filter is not specified, look for a user_search_prefix and/or user_search_supplemental_filter
+    if not user_search_filter:
+        # if user_search_prefix is not set, we default to using '(cn=*)'
+        user_search_prefix = custom_ldap_config.get('user_search_prefix', '(cn=*)')
+        logger.debug(f"user_search_prefix from custom ldap config: {user_search_prefix}")
+        user_search_supplemental_filter = custom_ldap_config.get('user_search_supplemental_filter')
+        logger.debug(f"user_search_supplemental_filter from custom ldap config: {user_search_supplemental_filter}")
+        if user_search_supplemental_filter:
+            user_search_filter = f'(&{user_search_prefix}{user_search_supplemental_filter})'
+        else:
+            user_search_filter = user_search_prefix
+        logger.debug(f"final custom user_search_filter: {user_search_filter}")
+
+    # the user_dn is always stored on the Tenants API's LDAP record. however, there are two possible user_dn
+    # types: one that includes the user_search_prefix and one that does not. to include the user_search_prefix, the
+    # user_dn will have the form <user_search_prefix>=${username},...
     user_dn = tenant.ldap_user_dn
-    user_search_prefix = '(cn=*)'
     # if the tenant's user_dn config includes the template variable ${username}, we need to strip it out here and
     # pull out the user search prefix.
     if '${username},' in tenant.ldap_user_dn:
@@ -182,16 +224,21 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
             raise DAOError("Unable to compute LDAP user search DN.")
         # parts will be split into 'uid=' and 'ou=foo, o=bar, ..."
         # the user search prefix should therefore be of the form: '(<parts[0])*)'
-        user_search_prefix = f'({parts[0]}*)'
+        # we only use this for the user_search_filter if the user_search_filter was NOT set above (i.e., if it is still
+        # just the default, (cn=*):
+        if user_search_filter == '(cn=*)':
+            user_search_filter = f'({parts[0]}*)'
+        # regardless of the user_search_filter though, we need to strip out the ${username}, from the user_dn, so
+        # override that now:
         user_dn = parts[1]
-    logger.debug(f'using user_dn: {user_dn} and user_search_prefix: {user_search_prefix}')
+    logger.debug(f'using user_dn: {user_dn} and user_search_filter: {user_search_filter}')
     # As per RFC2696, the page cookie for paging can only be used by the same connection; we take the following
     # approach:
     # if the offset is not 0, we first pull the first <offset> entries to get the cookie, then we get use the returned
     # cookie to get the actual page of results that we want.
     if offset > 0:
         # we only need really need the cookie so we just get the cn attribute
-        result = conn.search(user_dn, user_search_prefix, attributes=['cn'], paged_size=offset)
+        result = conn.search(user_dn, user_search_filter, attributes=['cn'], paged_size=offset)
         if not result:
             # it is possible to get a "success" result when there are no users in the OU -
             if hasattr(conn.result, 'get') and conn.result.get('description') == 'success':
@@ -200,7 +247,7 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
             logger.error(msg)
             raise DAOError(msg)
         cookie = conn.result['controls']['1.2.840.113556.1.4.319']['value']['cookie']
-    result = conn.search(user_dn, user_search_prefix, attributes=['*'], paged_size=limit, paged_cookie=cookie)
+    result = conn.search(user_dn, user_search_filter, attributes=['*'], paged_size=limit, paged_cookie=cookie)
     if not result:
         # it is possible to get a "success" result when there are no users in the OU -
         if hasattr(conn.result, 'get') and conn.result.get('description') == 'success':
@@ -340,7 +387,7 @@ def populate_test_ldap(tenant_id='dev'):
     if not found:
         logger.debug(f'adding OU tenants.{tenant_id}')
         create_tapis_ldap_tenant_ou(tenant_id)
-    users, _ = list_tenant_users(tenant_id)
+    users, _ = list_tenant_users(tenant_id, limit=NUM_USERS+1)
     usernames = [u.serialize['username'] for u in users]
     for i in range(1, NUM_USERS+1):
         username = f'testuser{i}'

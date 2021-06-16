@@ -323,6 +323,9 @@ components:
         max_refresh_token_ttl:
           type: integer
           description: The maxiumum refresh token TTL, in seconds, for grant types that allow the caller to specify the TTL.
+        custom_idp_configuration:
+          type: object
+          description: Configuration for customizing the IdP integration, including custom ldap search filters and alternative IdPs like github OAuth of Custos; must be a JSON-serializable object.
 
     NewClient:
       type: object

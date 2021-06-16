@@ -546,11 +546,10 @@ class TenantConfigResource(Resource):
         # check for unsupported fields --
         if hasattr(validated_body, 'mfa_config'):
             raise errors.ResourceError("Setting mfa_config not currently supported.")
-        if hasattr(validated_body, 'custom_idp_configuration'):
-            raise errors.ResourceError("Setting custom_idp_configuration not currently supported.")
         logger.debug("got past additional checks for unsupported fields.")
         new_allowable_grant_types = getattr(validated_body, 'allowable_grant_types', None)
         logger.debug(f"got new_allowable_grant_types: {new_allowable_grant_types}")
+        # deal with the JSON columns first --
         if new_allowable_grant_types:
             try:
                 new_allowable_grant_types_str = json.dumps(new_allowable_grant_types)
@@ -561,6 +560,26 @@ class TenantConfigResource(Resource):
             if not type(new_allowable_grant_types) == list:
                 raise errors.ResourceError(f"Invalid allowable_grant_type ({new_allowable_grant_types}) -- must be "
                                            f"list.")
+        # since custom_idp_configuration is of type object, the validate() method returns an
+        # openapi_core.extensions.models.factories.Model object, which cannot be serialized, so we go directly to the
+        # flask request json object
+        new_custom_idp_configuration = request.json.get('custom_idp_configuration')
+        if new_custom_idp_configuration:
+            try:
+                new_custom_idp_configuration_str = json.dumps(new_custom_idp_configuration)
+            except Exception as e:
+                logger.debug(f"got exception trying to parse new_custom_idp_configuration; e: {e}")
+                raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_custom_idp_configuration}) -- "
+                                           f"must be JSON serializable")
+            if not type(new_custom_idp_configuration) == dict:
+                raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_custom_idp_configuration}) -- "
+                                           f"must be an object mapping (i.e., dictionary).")
+            # todo -- update once additional custom configuration types are supported; should use the jsonschema to
+            # validate.
+            if 'ldap' not in new_custom_idp_configuration.keys():
+                raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_custom_idp_configuration}) -- "
+                                           f"'ldap' key required.")
+        # non-JSON columns ---
         new_use_ldap = getattr(validated_body, 'use_ldap', config.use_ldap)
         new_use_token_webapp = getattr(validated_body, 'use_token_webapp', config.use_token_webapp)
         new_default_access_token_ttl = getattr(validated_body, 'default_access_token_ttl',
@@ -569,11 +588,14 @@ class TenantConfigResource(Resource):
                                                 config.default_refresh_token_ttl)
         new_max_access_token_ttl = getattr(validated_body, 'max_access_token_ttl', config.max_access_token_ttl)
         new_max_refresh_token_ttl = getattr(validated_body, 'max_refresh_token_ttl', config.max_refresh_token_ttl)
+
         logger.debug("updating config object with new attributes...")
         # update the model and commit --
         if new_allowable_grant_types:
             logger.debug(f"new_allowable_grant_types_str: {new_allowable_grant_types_str}")
             config.allowable_grant_types = new_allowable_grant_types_str
+        if new_custom_idp_configuration:
+            config.custom_idp_configuration = new_custom_idp_configuration_str
         config.use_ldap = new_use_ldap
         config.use_token_webapp = new_use_token_webapp
         config.default_access_token_ttl = new_default_access_token_ttl
