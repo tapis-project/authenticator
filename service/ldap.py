@@ -186,7 +186,13 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
     logger.debug(f'top of list_tenant_users; tenant_id: {tenant_id}; limit: {limit}; offset: {offset}')
     # this gets the tenant object from the Tenants API cache --
     tenant = tenants.get_tenant_config(tenant_id)
-    conn = get_tenant_ldap_connection(tenant_id)
+    if hasattr(tenant, 'ldap_bind_db') and hasattr(tenant, 'ldap_bind_credential'):
+        logger.debug(f"tenant {tenant} had ldap bind credentials; using those")
+        conn = get_tenant_ldap_connection(tenant_id,
+                                          bind_dn=tenant.ldap_bind_dn,
+                                          bind_password=tenant.ldap_bind_credential)
+    else:
+        conn = get_tenant_ldap_connection(tenant_id)
     # this gets the custom authenticator config for the ldap --
     custom_ldap_config = get_custom_ldap_config(tenant_id)
     if not limit:
@@ -272,7 +278,14 @@ def get_tenant_user(tenant_id, username):
     """
     logger.debug(f"top of get_tenant_user; tenant_id: {tenant_id}; username: {username}")
     tenant = tenants.get_tenant_config(tenant_id)
-    conn = get_tenant_ldap_connection(tenant_id)
+    if hasattr(tenant, 'ldap_bind_dn') and hasattr(tenant, 'ldap_bind_credential'):
+        logger.debug(f"tenant {tenant} had ldap bind credentials; using those")
+        conn = get_tenant_ldap_connection(tenant_id,
+                                          bind_dn=tenant.ldap_bind_dn,
+                                          bind_password=tenant.ldap_bind_credential)
+    else:
+        logger.debug(f"tenant {tenant} did NOT have ldap bind credentials...")
+        conn = get_tenant_ldap_connection(tenant_id)
     tenant_base_dn = tenant.ldap_user_dn
     logger.debug(f"ldap_user_dn on tenant record: {tenant_base_dn}. Checking if we need to replace the "
                  f"$username token...")
