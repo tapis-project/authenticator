@@ -95,6 +95,14 @@ class ProfilesResource(Resource):
         return resp
 
 
+class UserInfoResource(Resource):
+    def get(self):
+        logger.debug(f'top of GET /userinfo')
+        tenant_id = g.request_tenant_id
+        user = get_tenant_user(tenant_id=tenant_id, username=g.username)
+        return utils.ok(result=user.serialize, msg="User profile retrieved successfully.")
+
+
 class ProfileResource(Resource):
     def get(self, username):
         logger.debug(f'top of GET /profiles/{username}')

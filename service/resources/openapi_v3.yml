@@ -193,6 +193,24 @@ paths:
                   result:
                     $ref: '#/components/schemas/TokenResponse'
 
+  /v3/oauth2/userinfo:
+    get:
+      tags:
+        - Profiles
+      operationId: get_userinfo
+      description: Return the user profile associated with the Tapis Token. Also can be used to validate the token.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BasicResponse'
+                properties:
+                  result:
+                    $ref: '#/components/schemas/Profile'
+
   /v3/oauth2/profiles:
     get:
       tags:

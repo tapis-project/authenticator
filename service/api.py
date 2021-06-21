@@ -6,7 +6,7 @@ from service import MIGRATIONS_RUNNING
 from service.auth import authn_and_authz
 from service.controllers import AuthorizeResource, ClientsResource, ClientResource, TokensResource, \
     ProfilesResource, ProfileResource, StaticFilesResource, LoginResource, SetTenantResource, LogoutResource, \
-    WebappTokenGen, WebappTokenAndRedirect, TenantConfigResource
+    WebappTokenGen, WebappTokenAndRedirect, TenantConfigResource, UserInfoResource
 from service.ldap import populate_test_ldap
 from service.models import db, app, initialize_tenant_configs
 
@@ -49,6 +49,7 @@ api.add_resource(TenantConfigResource, '/v3/oauth2/admin/config')
 api.add_resource(ClientsResource, '/v3/oauth2/clients')
 api.add_resource(ClientResource, '/v3/oauth2/clients/<client_id>')
 api.add_resource(TokensResource, '/v3/oauth2/tokens')
+api.add_resource(UserInfoResource, '/v3/oauth2/userinfo')
 api.add_resource(ProfilesResource, '/v3/oauth2/profiles')
 api.add_resource(ProfileResource, '/v3/oauth2/profiles/<username>')
 api.add_resource(AuthorizeResource, '/v3/oauth2/authorize')

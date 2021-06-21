@@ -120,7 +120,8 @@ def authentication():
         return True
 
     # the profiles endpoints always use standard Tapis Token auth -
-    if '/v3/oauth2/profiles' in request.url_rule.rule:
+    if '/v3/oauth2/profiles' in request.url_rule.rule or \
+            '/v3/oauth2/userinfo' in request.url_rule.rule:
         auth.authentication()
         # always resolve the request tenant id based on the URL:
         auth.resolve_tenant_id_for_request()
