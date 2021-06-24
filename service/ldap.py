@@ -3,7 +3,7 @@ from ldap3.core.exceptions import LDAPBindError
 import json
 
 from service import tenants, MIGRATIONS_RUNNING
-from service.errors import InvalidPasswordError
+from service.errors import InvalidPasswordError, InvalidTenantUserError
 from service.models import LdapOU, LdapUser, tenant_configs_cache
 
 from common.config import conf
@@ -289,15 +289,39 @@ def get_tenant_user(tenant_id, username):
     tenant_base_dn = tenant.ldap_user_dn
     logger.debug(f"ldap_user_dn on tenant record: {tenant_base_dn}. Checking if we need to replace the "
                  f"$username token...")
-    user_filter = f'(cn={username})'
+    # check if the ldap_user_dn on the tenant record has a ${username} token in it -- if so, this is providing
+    # the default user filter prefix and we need to remove it to form the tenant_base_dn.
+    default_user_filter_prefix = '(cn=*)'
     if '${username},' in tenant.ldap_user_dn:
         parts = tenant.ldap_user_dn.split('${username},')
         if not len(parts) == 2:
             raise DAOError("Unable to calculate search DN.")
         tenant_base_dn = parts[1]
-        user_filter = f'({parts[0]}{username})'
-    logger.debug(f'searching with params: {tenant_base_dn}; user_filter: {user_filter}')
-    result = conn.search(f'{tenant_base_dn}', user_filter, attributes=['*'])
+        default_user_filter_prefix = f'({parts[0]}=*)'
+    logger.debug(f"default_user_filter_prefix: {default_user_filter_prefix}")
+
+    # this gets the custom authenticator config for the ldap --
+    custom_ldap_config = get_custom_ldap_config(tenant_id)
+    user_search_filter = custom_ldap_config.get('user_search_filter')
+    logger.debug(f"user_search_filter from custom ldap config: {user_search_filter}")
+    # if user_search_filter is not specified, look for a user_search_prefix and/or user_search_supplemental_filter
+    if not user_search_filter:
+        # if user_search_prefix is not set, we default to using '(cn=*)'
+        user_search_prefix = custom_ldap_config.get('user_search_prefix', default_user_filter_prefix)
+        logger.debug(f"user_search_prefix from custom ldap config: {user_search_prefix}")
+        user_search_supplemental_filter = custom_ldap_config.get('user_search_supplemental_filter')
+        logger.debug(f"user_search_supplemental_filter from custom ldap config: {user_search_supplemental_filter}")
+        if user_search_supplemental_filter:
+            user_search_filter = f'(&{user_search_prefix}{user_search_supplemental_filter})'
+        else:
+            user_search_filter = user_search_prefix
+    # the user_search_filter is formatted with a wildcard ( star (*) character) for retrieving all profiles, but
+    # here we only want to retrieve a single profile, so we need to replace it with the username:
+    user_search_filter = user_search_filter.replace('*', username)
+    logger.debug(f"final custom user_search_filter: {user_search_filter}")
+
+    logger.debug(f'searching with params: {tenant_base_dn}; user_filter: {user_search_filter}')
+    result = conn.search(f'{tenant_base_dn}', user_search_filter, attributes=['*'])
     if not result:
         # it is possible to get a "success" result when there are no users in the OU -
         if hasattr(conn.result, 'description') and conn.result.description == 'success':
@@ -350,6 +374,15 @@ def check_username_password(tenant_id, username, password):
     except LDAPBindError as e:
         logger.debug(f'got exception checking password: {e}; type(e): {type(e)}')
         raise InvalidPasswordError("Invalid username/password combination.")
+    # the bind above just checks that the uername/password combination are in the underlying ldap; it does
+    # not check that the user is in the user search filter for the tenant. for simplicty, we check that here
+    try:
+        get_tenant_user(tenant_id, username)
+    except Exception as e:
+        logger.debug(f"got exception trying to check that user {username} was in the ldap user search filter via"
+                     f"a call to get_tenant_user; e: {e}")
+        raise InvalidTenantUserError(f"Invalid username; user {username} does not have access to the {tenant_id} "
+                                     f"tenant.")
     return True
 
 

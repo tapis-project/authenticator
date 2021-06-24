@@ -27,7 +27,7 @@
         },
         "user_search_supplemental_filter": {
           "type": "string",
-          "description": "A single filter clause to append to the user search filter, such as (host=foo.com); note that the string must be incased in parentheses."
+          "description": "A single filter clause to append to the user search filter, such as (host=foo.com); note that the string must be encased in parentheses."
         },
          "user_search_filter": {
            "type": "string",
