@@ -14,6 +14,8 @@ from service import t
 from service.errors import InvalidPasswordError
 from service.models import db, TenantConfig, Client, Token, AuthorizationCode, token_webapp_clients, tenant_configs_cache
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
+from service.oauth2ext import OAuth2ProviderExtension
+
 
 # get the logger instance -
 from common.logs import get_logger
@@ -111,10 +113,14 @@ class ProfileResource(Resource):
         return utils.ok(result=user.serialize, msg="User profile retrieved successfully.")
 
 
-def check_client():
+def check_client(use_session=False):
     """
     Checks the request for associated client query parameters, validates them against the client registered in the DB
     and returns the associated objects.
+
+    If use_session is True, this function will check for the client credentials out of the session. This is
+    used when the tenant is configured with a 3rd-party OAuth2 sever that does not pass back the original
+    client credentials.
     """
     # tenant_id should be determined by the request URL -
     tenant_id = session.get('tenant_id')
@@ -124,12 +130,18 @@ def check_client():
         raise errors.ResourceError("tenant_id missing.")
     if not tenant_id in conf.tenants:
         raise errors.ResourceError(f"This application is not configured to serve the requested tenant {tenant_id}.")
-    # required query parameters:
-    client_id = request.args.get('client_id')
-    client_redirect_uri = request.args.get('redirect_uri')
-    response_type = request.args.get('response_type')
-    # state is optional -
-    client_state = request.args.get('state')
+    if use_session:
+        client_id = session.get('orig_client_id')
+        client_redirect_uri = session.get('orig_client_redirect_uri')
+        response_type = session.get('orig_client_response_type')
+        client_state = session.get('orig_client_state')
+    else:
+        # required query parameters:
+        client_id = request.args.get('client_id')
+        client_redirect_uri = request.args.get('redirect_uri')
+        response_type = request.args.get('response_type')
+        # state is optional -
+        client_state = request.args.get('state')
     if not client_id:
         raise errors.ResourceError("Required query parameter client_id missing.")
     if not client_redirect_uri:
@@ -174,12 +186,13 @@ class SetTenantResource(Resource):
         client_state = request.form.get('client_state')
         session['tenant_id'] = tenant_id
         tokenapp_client = get_tokenapp_client()
-        return redirect(url_for('loginresource',
-                                client_id=tokenapp_client['client_id'],
-                                redirect_uri=tokenapp_client['callback_url'],
-                                state=client_state,
-                                client_display_name=tokenapp_client['display_name'],
-                                response_type='code'))
+        return redirect(url_for('webapptokenandredirect'))
+        # return redirect(url_for('loginresource',
+        #                         client_id=tokenapp_client['client_id'],
+        #                         redirect_uri=tokenapp_client['callback_url'],
+        #                         state=client_state,
+        #                         client_display_name=tokenapp_client['display_name'],
+        #                         response_type='code'))
 
 
 class LoginResource(Resource):
@@ -265,7 +278,29 @@ class AuthorizeResource(Resource):
     def get(self):
         logger.debug("top of GET /oauth2/authorize")
         client_id, client_redirect_uri, client_state, client = check_client()
+        tenant_id = session.get('tenant_id')
+        if not tenant_id:
+            tenant_id = g.request_tenant_id
+            session['tenant_id'] = tenant_id
+        # if the user has not already authenticated, we need to issue a redirect to the login screen;
+        # the login screen will depend on the tenant's IdP configuration
         if 'username' not in session:
+            # if the tenant is configured with a custom oa2 extension, start the redirect for that --
+            if tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id):
+                logger.debug(f"username not in session; issuing redirect to 3rd party oauth URL.")
+                is_local_development = 'localhost' in request.base_url
+                oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development)
+                logger.debug(f"oa2ext.identity_redirect_url: {oa2ext.identity_redirect_url}")
+                # we need to save the original client in the session in this case, because there is no
+                # way to pass it through the third party OAuth server
+                session['orig_client_id'] = client_id
+                session['orig_client_redirect_uri'] = client_redirect_uri
+                session['orig_client_response_type'] = 'code'
+                session['orig_client_state'] = client_state
+                url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}'
+                logger.debug(f"final redirect URL: {url}")
+                return redirect(url)
+
             logger.debug("username not in session; issuing redirect to login.")
             return redirect(url_for('loginresource',
                                     client_id=client_id,
@@ -341,6 +376,38 @@ class AuthorizeResource(Resource):
         return redirect(url)
 
 
+class OAuth2ProviderExtCallback(Resource):
+    """
+    This controller is used for IdPs based on OAuth2 provider servers. It is the target of the Tapis callback
+    URL registered with the 3rd party OAuth2 provider.
+    It implements the following endpoint:
+      GET /v3/oauth2/extensions/oa2/callback -- receive the authorization code and exchange it for a token.
+    """
+    def get(self):
+        logger.debug("top of GET /oauth2/extensions/oa2/callback")
+        # use tenant id to look up the tenant config
+        tenant_id = g.request_tenant_id
+        tenant_config = tenant_configs_cache.get_config(tenant_id=tenant_id)
+        session['tenant_id'] = tenant_id
+        logger.debug(f"request for tenant {tenant_id}")
+        is_local_development = 'localhost' in request.base_url
+        oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development)
+        # get the authorization code and validate the state variable.
+        oa2ext.get_auth_code_from_callback(request)
+        # exchange the authorization code for a token
+        oa2ext.get_token_using_auth_code()
+        # derive the user's identity from the token
+        session['username'] = oa2ext.get_user_from_token()
+        #  Get the origin client out of the session and then redirect to authorization page
+        client_id, client_redirect_uri, client_state, client = check_client(use_session=True)
+        return redirect(url_for('authorizeresource',
+                                client_id=client_id,
+                                redirect_uri=client_redirect_uri,
+                                state=client_state,
+                                client_display_name=client.display_name,
+                                response_type='code'))
+
+
 class TokensResource(Resource):
     """
     Implements the oauth2/tokens endpoint for generating tokens for the following grant types:
@@ -364,6 +431,17 @@ class TokensResource(Resource):
             raise errors.ResourceError(msg=f'Missing the required grant_type parameter.')
         logger.debug(f"processing grant_type: {grant_type}")
         tenant_id = g.request_tenant_id
+        # when running locally (ONLY), we will check for a special header, X-Tapis-Local-Tenant, to allow
+        # the sample webapp (also running on localhost) to set a tenant other than dev.
+        if 'localhost' in request.base_url:
+            logger.debug("localhost was in the request.base_url so we are looking for X-Tapis-Local-Tenant header..")
+            if request.headers.get('X-Tapis-Local-Tenant'):
+                tenant_id = request.headers.get('X-Tapis-Local-Tenant')
+                logger.debug(f"ffound X-Tapis-Local-Tenant; override tenant to: {tenant_id}")
+            else:
+                logger.debug("did not find X-Tapis-Local-Tenant header.")
+        else:
+            logger.debug(f"localhost was NOT in request.base_urL: {request.base_url}")
         logger.debug(f"tenant_id: {tenant_id}")
         config = tenant_configs_cache.get_config(tenant_id)
         logger.debug(f"tenant config: {config}")
@@ -393,7 +471,9 @@ class TokensResource(Resource):
             logger.debug("Checking that client exists.")
             client = Client.query.filter_by(tenant_id=tenant_id, client_id=client_id, client_key=client_key).first()
             if not client:
-                raise errors.ResourceError(msg=f'Invalid client credentials: {client_id}, {client_key}.')
+                # todo -- remove session
+                raise errors.ResourceError(msg=f'Invalid client credentials: {client_id}, {client_key}. '
+                                               f'session: {session}')
 
         # checks by grant type:
         if grant_type == 'password':
@@ -674,7 +754,12 @@ class WebappTokenAndRedirect(Resource):
                        'token': token}
             headers = {'Content-Type': 'text/html'}
             return make_response(render_template('token-display.html', **context), 200, headers)
-        # otherwise, if there is no token in the session, start the OAuth2 flow with a redirect ---
+        # otherwise, if there is no token in the session, check the type of OAuth configured for this tenant;
+        tenant_id = session.get('tenant_id')
+        if not tenant_id:
+            tenant_id = g.request_tenant_id
+            session['tenant_id'] = tenant_id
+        # start the standard Tapis OAuth2 flow with a redirect ---
         # redirect to login (oauth2/authorize)
         # maybe pass csrf token as well (state var)
         # get tenant_id based on url
@@ -727,10 +812,14 @@ class WebappTokenGen(Resource):
         # dev.tenants.develop.tapis.io for the dev tenant in the develop instance.
         # if Token Webapp listening on localhost, base_url should be localhost
 
-        # if the authenticator is running locally, use "localhost" for baseurl to interact with OAuth server:
+        # if the authenticator is running locally, use "localhost" for baseurl to interact with OAuth server
+        # and we pass the tenant-id in as a special header:
+        headers = {}
         if 'localhost' in request.base_url:
             logger.debug("using localhost for base_url.")
             base_url = 'http://localhost:5000'
+            headers['X-Tapis-Local-Tenant'] = tenant_id
+            logger.debug(f"setting X-Tapis-Local-Tenant header to: {tenant_id}")
         logger.debug(f"Final base_url: {base_url}")
 
         url = f'{base_url}/v3/oauth2/tokens'
@@ -741,7 +830,7 @@ class WebappTokenGen(Resource):
         }
         try:
             logger.debug(f"making request to {url}")
-            r = requests.post(url, json=content, auth=(client_id, client_key))
+            r = requests.post(url, json=content, auth=(client_id, client_key), headers=headers)
         except Exception as e:
             logger.error(f"Got exception trying to POST to /v3/oauth2/tokens endpoint. Exception: {e}")
             raise errors.ResourceError("Failure to generate an access token; please try again later.")

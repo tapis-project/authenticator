@@ -140,8 +140,9 @@ class TenantConfigsCache(object):
     def __init__(self):
         self.tenant_config_models = self.load_tenant_config_cache()
         # self.cache_lifetime = datetime.timedelta(minutes=5)
-        # todo -- setting this to 1 second for now but we can increase
-        self.cache_lifetime = datetime.timedelta(seconds=1)
+        # todo -- setting this to 4 seconds for now but we can increase; 4 seconds should allow us to
+        # use one cache instance throughout the life of a single request.
+        self.cache_lifetime = datetime.timedelta(seconds=4)
 
     def load_tenant_config_cache(self):
         """
@@ -177,8 +178,22 @@ class TenantConfigsCache(object):
             tries = 2
         raise errors.ServiceConfigError(f"tenant id {tenant_id} not found in tenant configurations.")
 
+    def get_custom_oa2_extension_type(self, tenant_id):
+        """
+        Returns the custom OAuth2 extension type being used by the given tenant_id, or None if not.
+        :param tenant_id: the tenant_id to check
+        :return: string or None
+        """
+        config = self.get_config(tenant_id)
+        custom_idp_config = json.loads(config.custom_idp_configuration)
+        # check whether the tenant config has one of the OAuth2 extension configuration properties.
+        # this check will expand over time as we add support for additional types of OAuth2 extension modules.
+        if 'github' in custom_idp_config.keys():
+            return 'github'
+        return None
 
-# singelton cache object -- when migrations are running the TenantConfig relations in Postgres could not
+
+# singleton cache object -- when migrations are running the TenantConfig relations in Postgres could not
 # exist
 try:
     tenant_configs_cache = TenantConfigsCache()
@@ -662,7 +677,7 @@ def add_client_to_db(data):
 token_webapp_clients = {}
 
 if conf.populate_all_clients:
-    logger.debug("populting all clients...")
+    logger.debug("populating all clients...")
     # generate a client for every tenant assigned to this instance -
     for tenant_id in conf.tenants:
         local_client, client = create_clients_for_tenant(tenant_id)

@@ -9,6 +9,11 @@
       "type": "object",
       "description": "Properties associated with an LDAP IdP.",
       "$ref": "#/definitions/ldapObject"
+    },
+      "github": {
+        "type": "object",
+          "description": "Properties associated with github OAuth",
+          "$ref": "#/definitions/githubObject"
     }
    },
   "definitions": {
@@ -34,6 +39,20 @@
            "description": "The entire user search filter, including the prefix and one or more supplemental filters. Use this instead of the user_search_prefix and user_search_suplemental_filter to support more complex filters. This must include the entire search filter, including & and parentheses. For example, '(&(cn=*)(host=foo.com))' or '(&(cn=*)(host=foo.org)(host=bar.org))'."
          }
       }
+     },
+     "githubObject": {
+       "type": "object",
+         "properties": {
+           "client_key": {
+             "type": "string",
+             "description": "The github client key Tapis uses for this tenant."
+           },
+           "client_secret": {
+             "type": "string",
+             "description": "The github client secret Tapis uses for this tenant."
+           }
+         }
+
     }
   }
 }

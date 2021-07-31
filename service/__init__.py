@@ -53,7 +53,9 @@ class AuthenticatorTenants(Tenants):
             except Exception as e:
                 logger.error(f"Got exception trying to look up tenant info for tenant: {tenant_id}; e: {e}")
                 raise e
-            if tenant_response.user_ldap_connection_id:
+            # tenants with a custom IdP will not necessarily have a user_ldap_connection_id attribute...
+            if hasattr(tenant_response, 'user_ldap_connection_id') and \
+                    tenant_response.user_ldap_connection_id:
                 logger.debug(f'got a user_ldap_connection_id: {tenant_response.user_ldap_connection_id} for '
                              f'tenant: {tenant_id}. Now looking up LDAP data...')
                 try:
@@ -72,8 +74,7 @@ class AuthenticatorTenants(Tenants):
                     logger.error(f"Got KeyError looking for an LDAP attr in the response; e: {e}")
                     raise e
             else:
-                logger.debug(f'did not get a user_ldap_connection_id: {tenant_response.user_ldap_connection_id} for '
-                             f'tenant: {tenant_id}.')
+                logger.debug(f'did not get a user_ldap_connection_id for tenant: {tenant_id}.')
 
         if not conf.use_sk:
             if tenant.tenant_id == 'dev':
@@ -81,7 +82,8 @@ class AuthenticatorTenants(Tenants):
             elif tenant.tenant_id == 'tacc':
                 tenant.ldap_bind_credential = conf.dev_tacc_ldap_bind_credential
         else:
-            if tenant_response.user_ldap_connection_id:
+            if hasattr(tenant_response, 'user_ldap_connection_id') and \
+                    tenant_response.user_ldap_connection_id:
                 if not getattr(ldap_response, 'bind_credential'):
                     msg = f"Error -- ldap object missing bind credential; description: {ldap_response}."
                     logger.error(msg)
