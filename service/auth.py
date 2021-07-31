@@ -108,10 +108,11 @@ def authentication():
             raise common_errors.PermissionsError("Permission denied -- Tenant admin role required for accessing the "
                                                  "authenticator admin endpoints.")
 
-    # no credentials required on the authorize and login pages
-    if '/v3/oauth2/authorize' in request.url_rule.rule or '/v3/oauth2/login' in request.url_rule.rule:
+    # no credentials required on the authorize, login and oa2 extenion pages
+    if '/v3/oauth2/authorize' in request.url_rule.rule or '/v3/oauth2/login' in request.url_rule.rule \
+            or '/oauth2/extensions' in request.url_rule.rule:
         # always resolve the request tenant id based on the URL:
-        logger.debug("authorize or login page. Resolving tenant_id")
+        logger.debug("authorize, login or oa2 extension page. Resolving tenant_id")
         auth.resolve_tenant_id_for_request()
         try:
             logger.debug(f"request_tenant_id: {g.request_tenant_id}")
