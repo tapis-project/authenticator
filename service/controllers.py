@@ -23,6 +23,10 @@ from common.logs import get_logger
 logger = get_logger(__name__)
 
 
+# ------------------------------
+# REST API Endpoint controllers
+# ------------------------------
+
 class ClientsResource(Resource):
     """
     Work with OAuth client objects
@@ -113,8 +117,114 @@ class ProfileResource(Resource):
         return utils.ok(result=user.serialize, msg="User profile retrieved successfully.")
 
 
+class TenantConfigResource(Resource):
+    """
+    Implements the /v3/oauth2/admin/config endpoints.
+    """
+
+    def get(self):
+        logger.debug('top of GET /v3/oauth2/admin/config')
+        # we always use the request tenant id because this should either be the same as g.tenant_id (in the case of a
+        # user account) or the token was the authenticator's OWN service token, in whcih case we use the x-tapis-tenant
+        # header set in the reqest (authenticator itself can update all tenants).
+        tenant_id = g.request_tenant_id
+        config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
+        return utils.ok(result=config.serialize, msg="Tenant config object retrieved successfully.")
+
+    def put(self):
+        logger.debug('top of PUT /v3/oauth2/admin/config')
+        tenant_id = g.request_tenant_id
+        config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
+        if not config:
+            raise errors.ResourceError(f"Config for tenant {tenant_id} does not exist. Contact system administrators.")
+        logger.debug(f"update request for tenant {tenant_id}; config: {config.serialize}")
+        validator = RequestValidator(utils.spec)
+        result = validator.validate(FlaskOpenAPIRequest(request))
+        if result.errors:
+            logger.debug(f"openapi_core validation failed. errors: {result.errors}")
+            raise errors.ResourceError(msg=f'Invalid PUT data: {result.errors}.')
+        validated_body = result.body
+        logger.debug("got past validator checks")
+        # check for unsupported fields --
+        if hasattr(validated_body, 'mfa_config'):
+            raise errors.ResourceError("Setting mfa_config not currently supported.")
+        logger.debug("got past additional checks for unsupported fields.")
+        new_allowable_grant_types = getattr(validated_body, 'allowable_grant_types', None)
+        logger.debug(f"got new_allowable_grant_types: {new_allowable_grant_types}")
+        # deal with the JSON columns first --
+        if new_allowable_grant_types:
+            try:
+                new_allowable_grant_types_str = json.dumps(new_allowable_grant_types)
+            except Exception as e:
+                logger.debug(f"got exception trying to parse allowable_grant_types; e: {e} ")
+                raise errors.ResourceError(f"Invalid allowable_grant_type ({new_allowable_grant_types}) -- must be "
+                                           f"JSON serializable")
+            if not type(new_allowable_grant_types) == list:
+                raise errors.ResourceError(f"Invalid allowable_grant_type ({new_allowable_grant_types}) -- must be "
+                                           f"list.")
+        # since custom_idp_configuration is of type object, the validate() method returns an
+        # openapi_core.extensions.models.factories.Model object, which cannot be serialized, so we go directly to the
+        # flask request json object
+        new_custom_idp_configuration = request.json.get('custom_idp_configuration')
+        if new_custom_idp_configuration:
+            try:
+                new_custom_idp_configuration_str = json.dumps(new_custom_idp_configuration)
+            except Exception as e:
+                logger.debug(f"got exception trying to parse new_custom_idp_configuration; e: {e}")
+                raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_custom_idp_configuration}) -- "
+                                           f"must be JSON serializable")
+            if not type(new_custom_idp_configuration) == dict:
+                raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_custom_idp_configuration}) -- "
+                                           f"must be an object mapping (i.e., dictionary).")
+            # todo -- update once additional custom configuration types are supported; should use the jsonschema to
+            # validate.
+            if 'ldap' not in new_custom_idp_configuration.keys():
+                raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_custom_idp_configuration}) -- "
+                                           f"'ldap' key required.")
+        # non-JSON columns ---
+        new_use_ldap = getattr(validated_body, 'use_ldap', config.use_ldap)
+        new_use_token_webapp = getattr(validated_body, 'use_token_webapp', config.use_token_webapp)
+        new_default_access_token_ttl = getattr(validated_body, 'default_access_token_ttl',
+                                               config.default_access_token_ttl)
+        new_default_refresh_token_ttl = getattr(validated_body, 'default_refresh_token_ttl',
+                                                config.default_refresh_token_ttl)
+        new_max_access_token_ttl = getattr(validated_body, 'max_access_token_ttl', config.max_access_token_ttl)
+        new_max_refresh_token_ttl = getattr(validated_body, 'max_refresh_token_ttl', config.max_refresh_token_ttl)
+
+        logger.debug("updating config object with new attributes...")
+        # update the model and commit --
+        if new_allowable_grant_types:
+            logger.debug(f"new_allowable_grant_types_str: {new_allowable_grant_types_str}")
+            config.allowable_grant_types = new_allowable_grant_types_str
+        if new_custom_idp_configuration:
+            config.custom_idp_configuration = new_custom_idp_configuration_str
+        config.use_ldap = new_use_ldap
+        config.use_token_webapp = new_use_token_webapp
+        config.default_access_token_ttl = new_default_access_token_ttl
+        config.default_refresh_token_ttl = new_default_refresh_token_ttl
+        config.max_access_token_ttl = new_max_access_token_ttl
+        config.max_refresh_token_ttl = new_max_refresh_token_ttl
+        try:
+            db.session.commit()
+            logger.info(f"update to tenant config committed to db. config object: {config}")
+        except (sqlalchemy.exc.SQLAlchemyError, sqlalchemy.exc.DBAPIError) as e:
+            logger.debug(f"got exception trying to commit updated tenant config object to db. Exception: {e}")
+            msg = utils.get_message_from_sql_exc(e)
+            logger.debug(f"returning msg: {msg}")
+            raise errors.ResourceError(f"Invalid PUT data; {msg}")
+        logger.debug("returning serialized tenant object.")
+        # reload the config cache updn update --
+        tenant_configs_cache.load_tenant_config_cache()
+        return utils.ok(result=config.serialize, msg="Tenant config object retrieved successfully.")
+
+
+# ---------------------------------
+# Authorization Server controllers
+# ---------------------------------
+
 def check_client(use_session=False):
     """
+    Utility function used by several controller classes.
     Checks the request for associated client query parameters, validates them against the client registered in the DB
     and returns the associated objects.
 
@@ -158,10 +268,6 @@ def check_client(use_session=False):
             "redirect_uri query parameter does not match the registered callback_url for the client.")
     return client_id, client_redirect_uri, client_state, client
 
-
-# --------------------------
-# Authorization Server Views
-# --------------------------
 
 class SetTenantResource(Resource):
     """
@@ -385,17 +491,21 @@ class OAuth2ProviderExtCallback(Resource):
     """
     def get(self):
         logger.debug("top of GET /oauth2/extensions/oa2/callback")
-        # use tenant id to look up the tenant config
+        # use tenant id to create the tenant oa2 extension config
         tenant_id = g.request_tenant_id
-        tenant_config = tenant_configs_cache.get_config(tenant_id=tenant_id)
         session['tenant_id'] = tenant_id
         logger.debug(f"request for tenant {tenant_id}")
         is_local_development = 'localhost' in request.base_url
         oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development)
-        # get the authorization code and validate the state variable.
-        oa2ext.get_auth_code_from_callback(request)
-        # exchange the authorization code for a token
-        oa2ext.get_token_using_auth_code()
+        # the CII OAuth2 provider does not send an authorization code, it sends the token directly, so
+        #
+        if oa2ext.ext_type == 'cii':
+            oa2ext.get_token_from_callback(request)
+        else:
+            # get the authorization code and validate the state variable.
+            oa2ext.get_auth_code_from_callback(request)
+            # exchange the authorization code for a token
+            oa2ext.get_token_using_auth_code()
         # derive the user's identity from the token
         session['username'] = oa2ext.get_user_from_token()
         #  Get the origin client out of the session and then redirect to authorization page
@@ -603,110 +713,9 @@ class TokensResource(Resource):
         return utils.ok(result=result, msg="Token created successfully.")
 
 
-class TenantConfigResource(Resource):
-    """
-    Implements the /v3/oauth2/admin/config endpoints.
-    """
-
-    def get(self):
-        logger.debug('top of GET /v3/oauth2/admin/config')
-        # we always use the request tenant id because this should either be the same as g.tenant_id (in the case of a
-        # user account) or the token was the authenticator's OWN service token, in whcih case we use the x-tapis-tenant
-        # header set in the reqest (authenticator itself can update all tenants).
-        tenant_id = g.request_tenant_id
-        config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
-        return utils.ok(result=config.serialize, msg="Tenant config object retrieved successfully.")
-
-    def put(self):
-        logger.debug('top of PUT /v3/oauth2/admin/config')
-        tenant_id = g.request_tenant_id
-        config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
-        if not config:
-            raise errors.ResourceError(f"Config for tenant {tenant_id} does not exist. Contact system administrators.")
-        logger.debug(f"update request for tenant {tenant_id}; config: {config.serialize}")
-        validator = RequestValidator(utils.spec)
-        result = validator.validate(FlaskOpenAPIRequest(request))
-        if result.errors:
-            logger.debug(f"openapi_core validation failed. errors: {result.errors}")
-            raise errors.ResourceError(msg=f'Invalid PUT data: {result.errors}.')
-        validated_body = result.body
-        logger.debug("got past validator checks")
-        # check for unsupported fields --
-        if hasattr(validated_body, 'mfa_config'):
-            raise errors.ResourceError("Setting mfa_config not currently supported.")
-        logger.debug("got past additional checks for unsupported fields.")
-        new_allowable_grant_types = getattr(validated_body, 'allowable_grant_types', None)
-        logger.debug(f"got new_allowable_grant_types: {new_allowable_grant_types}")
-        # deal with the JSON columns first --
-        if new_allowable_grant_types:
-            try:
-                new_allowable_grant_types_str = json.dumps(new_allowable_grant_types)
-            except Exception as e:
-                logger.debug(f"got exception trying to parse allowable_grant_types; e: {e} ")
-                raise errors.ResourceError(f"Invalid allowable_grant_type ({new_allowable_grant_types}) -- must be "
-                                           f"JSON serializable")
-            if not type(new_allowable_grant_types) == list:
-                raise errors.ResourceError(f"Invalid allowable_grant_type ({new_allowable_grant_types}) -- must be "
-                                           f"list.")
-        # since custom_idp_configuration is of type object, the validate() method returns an
-        # openapi_core.extensions.models.factories.Model object, which cannot be serialized, so we go directly to the
-        # flask request json object
-        new_custom_idp_configuration = request.json.get('custom_idp_configuration')
-        if new_custom_idp_configuration:
-            try:
-                new_custom_idp_configuration_str = json.dumps(new_custom_idp_configuration)
-            except Exception as e:
-                logger.debug(f"got exception trying to parse new_custom_idp_configuration; e: {e}")
-                raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_custom_idp_configuration}) -- "
-                                           f"must be JSON serializable")
-            if not type(new_custom_idp_configuration) == dict:
-                raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_custom_idp_configuration}) -- "
-                                           f"must be an object mapping (i.e., dictionary).")
-            # todo -- update once additional custom configuration types are supported; should use the jsonschema to
-            # validate.
-            if 'ldap' not in new_custom_idp_configuration.keys():
-                raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_custom_idp_configuration}) -- "
-                                           f"'ldap' key required.")
-        # non-JSON columns ---
-        new_use_ldap = getattr(validated_body, 'use_ldap', config.use_ldap)
-        new_use_token_webapp = getattr(validated_body, 'use_token_webapp', config.use_token_webapp)
-        new_default_access_token_ttl = getattr(validated_body, 'default_access_token_ttl',
-                                               config.default_access_token_ttl)
-        new_default_refresh_token_ttl = getattr(validated_body, 'default_refresh_token_ttl',
-                                                config.default_refresh_token_ttl)
-        new_max_access_token_ttl = getattr(validated_body, 'max_access_token_ttl', config.max_access_token_ttl)
-        new_max_refresh_token_ttl = getattr(validated_body, 'max_refresh_token_ttl', config.max_refresh_token_ttl)
-
-        logger.debug("updating config object with new attributes...")
-        # update the model and commit --
-        if new_allowable_grant_types:
-            logger.debug(f"new_allowable_grant_types_str: {new_allowable_grant_types_str}")
-            config.allowable_grant_types = new_allowable_grant_types_str
-        if new_custom_idp_configuration:
-            config.custom_idp_configuration = new_custom_idp_configuration_str
-        config.use_ldap = new_use_ldap
-        config.use_token_webapp = new_use_token_webapp
-        config.default_access_token_ttl = new_default_access_token_ttl
-        config.default_refresh_token_ttl = new_default_refresh_token_ttl
-        config.max_access_token_ttl = new_max_access_token_ttl
-        config.max_refresh_token_ttl = new_max_refresh_token_ttl
-        try:
-            db.session.commit()
-            logger.info(f"update to tenant config committed to db. config object: {config}")
-        except (sqlalchemy.exc.SQLAlchemyError, sqlalchemy.exc.DBAPIError) as e:
-            logger.debug(f"got exception trying to commit updated tenant config object to db. Exception: {e}")
-            msg = utils.get_message_from_sql_exc(e)
-            logger.debug(f"returning msg: {msg}")
-            raise errors.ResourceError(f"Invalid PUT data; {msg}")
-        logger.debug("returning serialized tenant object.")
-        # reload the config cache updn update --
-        tenant_configs_cache.load_tenant_config_cache()
-        return utils.ok(result=config.serialize, msg="Tenant config object retrieved successfully.")
-
-
-# ------------------
-# Token Webapp Views
-# ------------------
+# ---------------------------------
+# Example Token Webapp controllers
+# ---------------------------------
 
 def get_tokenapp_client(tenant_id=None):
     """

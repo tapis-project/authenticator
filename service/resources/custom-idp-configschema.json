@@ -14,7 +14,13 @@
         "type": "object",
           "description": "Properties associated with github OAuth",
           "$ref": "#/definitions/githubObject"
+    },
+      "cii": {
+        "type": "object",
+          "description": "Properties associated with the custom CII BlueModus OAuth",
+          "$ref": "#/definitions/ciiObject"
     }
+
    },
   "definitions": {
     "ldapObject": {
@@ -52,7 +58,19 @@
              "description": "The github client secret Tapis uses for this tenant."
            }
          }
-
+    },
+     "ciiObject": {
+       "type": "object",
+         "properties": {
+           "login_url": {
+             "type": "string",
+             "description": "The URL to redirect the user agent to for logging into the CII system."
+           },
+           "jwt_decode_key": {
+             "type": "string",
+             "description": "The key to use to decode the CII JWT."
+           }
+         }
     }
   }
 }

@@ -11,7 +11,7 @@ is expecting and that the response type (e.g., json) is handled correctly.
 
 """
 import json
-
+import jwt
 from flask import session
 import requests
 
@@ -61,6 +61,19 @@ class OAuth2ProviderExtension(object):
             self.identity_redirect_url = 'https://github.com/login/oauth/authorize'
             # URL to use to exchange the code for an qccess token
             self.oauth2_token_url = 'https://github.com/login/oauth/access_token'
+        elif self.ext_type == 'cii':
+            # we configure the CII redirect URL directly in the config because there are different CII environments.
+            self.identity_redirect_url = self.custom_idp_config_dict.get('login_url')
+            if not self.identity_redirect_url:
+                raise errors.ServiceConfigError(f"Missing required cii config, identity_redirect_url. "
+                                                f"Config: {self.custom_idp_config_dict}")
+            self.jwt_decode_key = self.custom_idp_config_dict.get('jwt_decode_key')
+            if not self.jwt_decode_key:
+                raise errors.ServiceConfigError(f"Missing required cii config, jwt_decode_key. "
+                                                f"Config: {self.custom_idp_config_dict}")
+            # note that CII does not implement standard OAuth2; they do not require a client id and key and they do not
+            # create an authorization code to be exchanged for a token.
+        #
         # NOTE: each provider type must implement this check
         # elif self.ext_type == 'google'
         #     ...
@@ -99,6 +112,7 @@ class OAuth2ProviderExtension(object):
         """
         logger.debug("top of get_token_using_auth_code")
         # todo -- it is possible these body parameters will need to change for different oauth2 servers
+        # note -- this function is not called by CII because it does non-standard OAuth.
         body = {
             "client_id": self.client_id,
             "client_secret": self.client_key,
@@ -127,6 +141,28 @@ class OAuth2ProviderExtension(object):
                          f"exception: {e}")
             raise errors.ServiceConfigError("Error parsing access token. Contact server administrator.")
         logger.debug(f"successfully got access_token: {self.access_token}")
+        return self.access_token
+
+    def get_token_from_callback(self, request):
+        """
+        For the cii tenant, get the token directly from the callback URL. This function is only called by
+        the CII tenant; other tenants do standard OAuth and pass an authorization code which is exchanged
+        for the token.
+        :param request: The request made to the Tapis callback URL.
+        :return:
+        """
+        if not self.ext_type == 'cii':
+            msg = f'get_token_from_callback() called for a non-cii ext type; ext type: {self.ext_type}; ' \
+                  f'This function should only be called by cii tenants. ' \
+                  f'request: {request}.'
+            logger.error(msg)
+            raise errors.ResourceError(f"Program error; contact system administrators. "
+                                       f"(Debug message: {msg})")
+        # the CII OAuth server returns the access token in a URL query parameter, "token"
+        self.access_token = request.args.get('token')
+        if not self.access_token:
+            msg = f"Did not get access token from CII callback. request args: {request.args}"
+            raise errors.ResourceError()
         return self.access_token
 
     def get_user_from_token(self):
@@ -160,6 +196,25 @@ class OAuth2ProviderExtension(object):
             self.username = f'{username}@github.com'
             logger.debug(f"Successfully determined user's identity: {self.username}")
             return self.username
+        elif self.ext_type == 'cii':
+            # the CII token is a JWT; we only need to decode it and get the username out of the payload.
+            # todo -- we should verify the signature if that is working...
+            try:
+                claims = jwt.decode(self.access_token, self.jwt_decode_key, verify=False)
+            except Exception as e:
+                msg = f"got exception trying to decode the CII jwt; exception: {e}"
+                logger.error(msg)
+                raise errors.ResourceError(f"Unable to decode third-party JWT. Contact system administrator."
+                                           f"(Debug message:{msg})")
+            self.username = claims.get('username')
+            if not self.username:
+                msg = f"Did not get a username from the CII jwt; full claims: {claims}"
+                logger.error(msg)
+                raise errors.ResourceError(f"Unable to determine username from third-party JWT. Contact system "
+                                           f"administrator."
+                                           f"(Debug message:{msg})")
+
+
         # elif self.ext_type == 'google':
         #     ...
         else:
