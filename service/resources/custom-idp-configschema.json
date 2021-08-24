@@ -69,6 +69,10 @@
            "jwt_decode_key": {
              "type": "string",
              "description": "The key to use to decode the CII JWT."
+           },
+           "check_jwt_signature": {
+             "type": "boolean",
+             "description": "whether to validate the signature on the JWT using the jwt_decode_key"
            }
          }
     }
