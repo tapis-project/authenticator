@@ -63,16 +63,19 @@ class OAuth2ProviderExtension(object):
             self.oauth2_token_url = 'https://github.com/login/oauth/access_token'
         elif self.ext_type == 'cii':
             # we configure the CII redirect URL directly in the config because there are different CII environments.
-            self.identity_redirect_url = self.custom_idp_config_dict.get('login_url')
+            self.identity_redirect_url = self.custom_idp_config_dict.get('cii').get('login_url')
             if not self.identity_redirect_url:
                 raise errors.ServiceConfigError(f"Missing required cii config, identity_redirect_url. "
                                                 f"Config: {self.custom_idp_config_dict}")
-            self.jwt_decode_key = self.custom_idp_config_dict.get('jwt_decode_key')
+            self.jwt_decode_key = self.custom_idp_config_dict.get('cii').get('jwt_decode_key')
             if not self.jwt_decode_key:
                 raise errors.ServiceConfigError(f"Missing required cii config, jwt_decode_key. "
                                                 f"Config: {self.custom_idp_config_dict}")
+            self.check_jwt_signature = self.custom_idp_config_dict.get('check_jwt_signature')
             # note that CII does not implement standard OAuth2; they do not require a client id and key and they do not
             # create an authorization code to be exchanged for a token.
+            self.client_id = 'not_used'
+            self.client_key = 'not_used'
         #
         # NOTE: each provider type must implement this check
         # elif self.ext_type == 'google'
@@ -200,7 +203,7 @@ class OAuth2ProviderExtension(object):
             # the CII token is a JWT; we only need to decode it and get the username out of the payload.
             # todo -- we should verify the signature if that is working...
             try:
-                claims = jwt.decode(self.access_token, self.jwt_decode_key, verify=False)
+                claims = jwt.decode(self.access_token, self.jwt_decode_key, verify=self.check_jwt_signature)
             except Exception as e:
                 msg = f"got exception trying to decode the CII jwt; exception: {e}"
                 logger.error(msg)
@@ -213,8 +216,8 @@ class OAuth2ProviderExtension(object):
                 raise errors.ResourceError(f"Unable to determine username from third-party JWT. Contact system "
                                            f"administrator."
                                            f"(Debug message:{msg})")
-
-
+            logger.debug(f"Successfully determined user's identity: {self.username}")
+            return self.username
         # elif self.ext_type == 'google':
         #     ...
         else:
