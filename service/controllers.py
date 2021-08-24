@@ -403,7 +403,11 @@ class AuthorizeResource(Resource):
                 session['orig_client_redirect_uri'] = client_redirect_uri
                 session['orig_client_response_type'] = 'code'
                 session['orig_client_state'] = client_state
-                url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}'
+                # cii has its own format of callback url; there is no client id that is passed.
+                if oa2ext.ext_type == 'cii':
+                    url = f'{oa2ext.identity_redirect_url}?redirect={oa2ext.callback_url}'
+                else:
+                    url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}'
                 logger.debug(f"final redirect URL: {url}")
                 return redirect(url)
 
