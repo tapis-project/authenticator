@@ -282,7 +282,7 @@ class Client(db.Model):
         try:
             result['display_name'] = getattr(data, 'display_name')
         except AttributeError:
-            result['display_name'] = result['callback_url']
+            result['display_name'] = result['client_id'][:50]
 
         try:
             result['description'] = getattr(data, 'description')
