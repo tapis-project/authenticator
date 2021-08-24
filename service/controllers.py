@@ -44,8 +44,21 @@ class ClientsResource(Resource):
         validated_body = result.body
         data = Client.get_derived_values(validated_body)
         client = Client(**data)
-        db.session.add(client)
-        db.session.commit()
+        logger.debug(f"creating new client; data: {data}; "
+                     f"client: {client}")
+        try:
+            db.session.add(client)
+            db.session.commit()
+        except (sqlalchemy.exc.SQLAlchemyError, sqlalchemy.exc.DBAPIError) as e:
+            logger.debug(f"got exception trying to commit client object to db. Exception: {e}")
+            msg = utils.get_message_from_sql_exc(e)
+            logger.debug(f"returning msg: {msg}")
+            raise errors.ResourceError(f"Invalid POST data; {msg}")
+        except Exception as e:
+            msg = f"Got unexpected exception trying to add client to database. " \
+                  f"Contact system administrator. (Debug data: {e})"
+            logger.error(msg)
+            raise errors.ResourceError(f"{msg}")
         return utils.ok(result=client.serialize, msg="Client created successfully.")
 
 
