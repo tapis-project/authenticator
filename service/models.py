@@ -190,6 +190,8 @@ class TenantConfigsCache(object):
         # this check will expand over time as we add support for additional types of OAuth2 extension modules.
         if 'github' in custom_idp_config.keys():
             return 'github'
+        if 'cii' in custom_idp_config.keys():
+            return 'cii'
         return None
 
 
