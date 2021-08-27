@@ -5,6 +5,7 @@ from flask_restful import Resource
 from openapi_core.shortcuts import RequestValidator
 from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 import sqlalchemy
+import secrets
 
 from common import utils, errors
 from common.config import conf
@@ -468,7 +469,7 @@ class AuthorizeResource(Resource):
                                 f'must approve the request.'}
             return make_response(render_template('authorize.html', **context), 200, headers)
 
-        state = request.form.get("state")
+        state = request.form.get("client_state")
         # retrieve client data from form and db -
         client_id = request.form.get('client_id')
         if not client_id:
@@ -800,8 +801,9 @@ class WebappTokenAndRedirect(Resource):
         else:
             # otherwise, redirect based on the tenant in the request
             base_redirect_url = g.request_tenant_base_url
-        response_type = 'code'
-        url = f'{base_redirect_url}/v3/oauth2/authorize?client_id={client_id}&redirect_uri={client_redirect_uri}&response_type={response_type}'
+        state = secrets.token_hex(24)
+        session['state'] = state
+        url = f'{base_redirect_url}/v3/oauth2/authorize?client_id={client_id}&redirect_uri={client_redirect_uri}&response_type=code&state={state}'
         return redirect(url)
 
 
@@ -828,6 +830,10 @@ class WebappTokenGen(Resource):
         logger.debug(f"client_id: {client_id}; tenant_id: {tenant_id}")
         # get additional query parameters from request ---
         state = request.args.get('state')
+        session_state = session.get('state')
+        if not state == session_state:
+            logger.error(f"state received ({state}) did not match session state ({session_state})")
+            raise errors.ResourceError(msg=f'Unauthorized access attempt: state mismatch.')
         code = request.args.get('code')
 
         #  POST to oauth2/tokens (passing code, client id, client secret, and redirect uri)
