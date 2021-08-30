@@ -100,6 +100,12 @@ class ProfilesResource(Resource):
             logger.debug("didn't find x_tapis_tenant; using tenant id in token.")
             tenant_id = g.tenant_id
         logger.debug(f"using tenant_id {tenant_id}")
+        # note that the profiles API is not supported for custom oauth idp extensions in general because the
+        # custom OAuth server may not provider a profiles listing endpoint
+        if tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id):
+            raise errors.ResourceError(f"This endpoint is not available in the {tenant_id} tenant. The profiles "
+                                       f"endpoints are generally not available for tenants with custom OAuth IdP"
+                                       f"extensions.")
         try:
             limit = int(request.args.get('limit'))
         except:
@@ -119,6 +125,12 @@ class UserInfoResource(Resource):
     def get(self):
         logger.debug(f'top of GET /userinfo')
         tenant_id = g.request_tenant_id
+        # note that the user info endpoint is more limited for custom oauth idp extensions in general because the
+        # custom OAuth server may not provider a profile endpoint.
+        if tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id):
+            result = {"username": g.username}
+            return utils.ok(result=result, msg="User profile retrieved successfully.")
+
         user = get_tenant_user(tenant_id=tenant_id, username=g.username)
         return utils.ok(result=user.serialize, msg="User profile retrieved successfully.")
 
@@ -127,6 +139,11 @@ class ProfileResource(Resource):
     def get(self, username):
         logger.debug(f'top of GET /profiles/{username}')
         tenant_id = g.request_tenant_id
+        # note that the user info endpoint is more limited for custom oauth idp extensions in general because the
+        # custom OAuth server may not provider a profile endpoint.
+        if tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id):
+            result = {"username": g.username}
+            return utils.ok(result=result, msg="User profile retrieved successfully.")
         user = get_tenant_user(tenant_id=tenant_id, username=username)
         return utils.ok(result=user.serialize, msg="User profile retrieved successfully.")
 
