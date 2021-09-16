@@ -29,7 +29,7 @@ except Exception as e:
     logger.error(f"Got exception trying to build full_db_ulr; e: {e}")
     raise e
 app.config['SQLALCHEMY_DATABASE_URI'] = full_db_url
-db = SQLAlchemy(app)
+db = SQLAlchemy(app, session_options={"expire_on_commit": False})
 migrate = Migrate(app, db)
 
 # get the logger instance -
@@ -160,6 +160,7 @@ class TenantConfigsCache(object):
         :param tenant_id:
         :return:
         """
+        logger.debug(f"top of get_config for tenant: {tenant_id}")
         tries = 0
         # first, check if the cache is older than the configured max cache lifetime.
         if datetime.datetime.now() > self.last_update + self.cache_lifetime:
@@ -184,6 +185,7 @@ class TenantConfigsCache(object):
         :param tenant_id: the tenant_id to check
         :return: string or None
         """
+        logger.debug(f"top of get_custom_oa2_extension_type for tenant: {tenant_id}")
         config = self.get_config(tenant_id)
         custom_idp_config = json.loads(config.custom_idp_configuration)
         # check whether the tenant config has one of the OAuth2 extension configuration properties.
