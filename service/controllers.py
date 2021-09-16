@@ -793,10 +793,40 @@ class WebappTokenAndRedirect(Resource):
 
     def get(self):
         token = session.get('access_token')
+        # if the authenticator is running locally, redirect to the local instance of the Authorization server:
+        if 'localhost' in request.base_url:
+            base_redirect_url = 'http://localhost:5000'
+        else:
+            # otherwise, redirect based on the tenant in the request
+            base_redirect_url = g.request_tenant_base_url
         if token:
             context = {'error': None,
                        'token': token}
             headers = {'Content-Type': 'text/html'}
+            # call the userinfo endpoint
+            url = f'{base_redirect_url}/v3/oauth2/userinfo'
+            headers = {'X-Tapis-Token': token}
+            try:
+                rsp = requests.get(url, headers=headers)
+                rsp.raise_for_status()
+            except Exception as e:
+                msg = f'Got exception trying to call userinfo endpoint; e: {e}'
+                logger.error(msg)
+                raise errors.ResourceError(f"Unable to determine user information. Contact system administrators."
+                                           f"(Debug data: {msg})")
+            try:
+                user_info = rsp.json().get('result')
+            except Exception as e:
+                msg = f'Could not get JSON result from userinfo endpoint; e: {e}; rsp: {rsp}'
+                logger.error(msg)
+                raise errors.ResourceError(f"Unable to determine user information. Contact system administrators."
+                                           f"(Debug data: {msg})")
+            try:
+                username = user_info['username']
+            except Exception as e:
+                logger.info(f"Got exception trying to get usernmae out of user_info object; e: {e}; user_info: {user_info}")
+                username = 'Not available'
+            context['username'] = username
             return make_response(render_template('token-display.html', **context), 200, headers)
         # otherwise, if there is no token in the session, check the type of OAuth configured for this tenant;
         tenant_id = session.get('tenant_id')
@@ -812,12 +842,6 @@ class WebappTokenAndRedirect(Resource):
         tokenapp_client = get_tokenapp_client()
         client_id = tokenapp_client['client_id']
         client_redirect_uri = tokenapp_client['callback_url']
-        # if the authenticator is running locally, redirect to the local instance of the Authorization server:
-        if 'localhost' in request.base_url:
-            base_redirect_url = 'http://localhost:5000'
-        else:
-            # otherwise, redirect based on the tenant in the request
-            base_redirect_url = g.request_tenant_base_url
         state = secrets.token_hex(24)
         session['state'] = state
         url = f'{base_redirect_url}/v3/oauth2/authorize?client_id={client_id}&redirect_uri={client_redirect_uri}&response_type=code&state={state}'
