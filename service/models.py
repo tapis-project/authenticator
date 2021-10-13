@@ -110,7 +110,7 @@ def initialize_tenant_configs(tenant_id):
     # create the config object because it doesn't exist yet:
     config = TenantConfig(
         tenant_id=tenant_id,
-        allowable_grant_types=json.dumps(["password", "authorization_code", "refresh_token"]),
+        allowable_grant_types=json.dumps(["password", "implicit", "authorization_code", "refresh_token"]),
         use_ldap=True,
         use_token_webapp=True,
         mfa_config=json.dumps({}),
@@ -572,6 +572,25 @@ class LdapOU(object):
 
     def __unicode__(self):
         return self.ou
+
+
+class TokenRequestBody(object):
+    """
+    Represents a request body sent to the POST /v3/oauth2/tokens endpoint. This class is used to
+    create a request body when www-form content types are passed instead of using the openapicore.validated_body
+    object.
+    """
+    def __init__(self, form):
+        """
+        Send request.form to generate an object with the same attributes.
+        :param form: A flask request.form object
+        """
+        self.grant_type = form.get('grant_type')
+        self.username = form.get('username')
+        self.password = form.get('password')
+        self.redirect_uri = form.get('redirect_uri')
+        self.code = form.get('code')
+        self.refresh_token = form.get('refresh_token')
 
 
 class Token(object):

@@ -181,6 +181,9 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/NewToken'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/NewToken'
       responses:
         '201':
           description: Created
