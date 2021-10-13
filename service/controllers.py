@@ -13,7 +13,7 @@ from common.auth import validate_token
 
 from service import t
 from service.errors import InvalidPasswordError
-from service.models import db, TenantConfig, Client, Token, AuthorizationCode, token_webapp_clients, tenant_configs_cache
+from service.models import db, TenantConfig, Client, TokenRequestBody, Token, AuthorizationCode, token_webapp_clients, tenant_configs_cache
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 from service.oauth2ext import OAuth2ProviderExtension
 
@@ -287,7 +287,7 @@ def check_client(use_session=False):
         raise errors.ResourceError("Required query parameter client_id missing.")
     if not client_redirect_uri:
         raise errors.ResourceError("Required query parameter redirect_uri missing.")
-    if not response_type == 'code':
+    if not response_type == 'code' and not response_type == 'token':
         raise errors.ResourceError("Required query parameter response_type missing or not supported.")
     # make sure the client exists and the redirect_uri matches
     logger.debug(f"checking for client with id: {client_id} in tenant {tenant_id}")
@@ -297,7 +297,7 @@ def check_client(use_session=False):
     if not client.callback_url == client_redirect_uri:
         raise errors.ResourceError(
             "redirect_uri query parameter does not match the registered callback_url for the client.")
-    return client_id, client_redirect_uri, client_state, client
+    return client_id, client_redirect_uri, client_state, client, response_type
 
 
 class SetTenantResource(Resource):
@@ -338,7 +338,7 @@ class LoginResource(Resource):
     """
 
     def get(self):
-        client_id, client_redirect_uri, client_state, client = check_client()
+        client_id, client_redirect_uri, client_state, client, response_type = check_client()
         # selecting a tenant id is required before logging in -
         tenant_id = g.request_tenant_id
         if not tenant_id:
@@ -366,7 +366,7 @@ class LoginResource(Resource):
         if not tenant_id:
             tenant_id = session.get('tenant_id')
         if not tenant_id:
-            client_id, client_redirect_uri, client_state, client = check_client()
+            client_id, client_redirect_uri, client_state, client, response_type = check_client()
             logger.debug(
                 f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
             raise errors.ResourceError(
@@ -414,11 +414,22 @@ class AuthorizeResource(Resource):
 
     def get(self):
         logger.debug("top of GET /oauth2/authorize")
-        client_id, client_redirect_uri, client_state, client = check_client()
+        client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = session.get('tenant_id')
         if not tenant_id:
             tenant_id = g.request_tenant_id
             session['tenant_id'] = tenant_id
+        # check if the grant type is supported by this tenant
+        config = tenant_configs_cache.get_config(tenant_id)
+        allowable_grant_types = json.loads(config.allowable_grant_types)
+        if response_type == 'token':
+            if 'implicit' not in allowable_grant_types:
+                raise errors.ResourceError(f"The implicit grant type is not allowed for this "
+                                           f"tenant. Allowable grant types: {allowable_grant_types}")
+        if response_type == 'code':
+            if 'authorization_code' not in allowable_grant_types:
+                raise errors.ResourceError(f"The authorization_code grant type is not allowed for this "
+                                           f"tenant. Allowable grant types: {allowable_grant_types}")
         # if the user has not already authenticated, we need to issue a redirect to the login screen;
         # the login screen will depend on the tenant's IdP configuration
         if 'username' not in session:
@@ -432,7 +443,7 @@ class AuthorizeResource(Resource):
                 # way to pass it through the third party OAuth server
                 session['orig_client_id'] = client_id
                 session['orig_client_redirect_uri'] = client_redirect_uri
-                session['orig_client_response_type'] = 'code'
+                session['orig_client_response_type'] = response_type
                 session['orig_client_state'] = client_state
                 # cii has its own format of callback url; there is no client id that is passed.
                 if oa2ext.ext_type == 'cii':
@@ -447,8 +458,8 @@ class AuthorizeResource(Resource):
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
                                     state=client_state,
-                                    response_type='code'))
-        client_id, client_redirect_uri, client_state, client = check_client()
+                                    response_type=response_type))
+        client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get('tenant_id')
@@ -459,6 +470,7 @@ class AuthorizeResource(Resource):
                    'client_display_name': client.display_name,
                    'client_id': client_id,
                    'client_redirect_uri': client_redirect_uri,
+                   'client_response_type': response_type,
                    'client_state': client_state}
 
         return make_response(render_template('authorize.html', **context), 200, headers)
@@ -496,25 +508,74 @@ class AuthorizeResource(Resource):
         if not client:
             logger.debug(f"client not found in db. client_id: {client_id}")
             raise errors.ResourceError(f'Invalid client: {client_id}')
-        # create the authorization code for the client -
-        authz_code = AuthorizationCode(tenant_id=tenant_id,
-                                       username=username,
-                                       client_id=client_id,
-                                       client_key=client.client_key,
-                                       redirect_url=client.callback_url,
-                                       code=AuthorizationCode.generate_code(),
-                                       expiry_time=AuthorizationCode.compute_expiry())
-        logger.debug("authorization code created.")
-        try:
-            db.session.add(authz_code)
-            db.session.commit()
-        except Exception as e:
-            logger.error(f"Got exception trying to add and commit the auth code. e: {e}; type(e): {type(e)}")
-            raise errors.ResourceError("Internal error saving authorization code. Please try again later.")
-        # issue redirect to client callback_url with authorization code:
-        url = f'{client.callback_url}?code={authz_code}&state={state}'
-        logger.debug(f"issuing redirect to {client.callback_url}")
-        return redirect(url)
+        # check original response_type passed in by the client and make sure grant type supported by the tenant --
+        client_response_type = request.form.get('client_response_type')
+        config = tenant_configs_cache.get_config(tenant_id)
+        allowable_grant_types = json.loads(config.allowable_grant_types)
+        # implicit grant type -------------------------------------------------------
+        if client_response_type == 'token':
+            if 'implicit' not in allowable_grant_types:
+                raise errors.ResourceError(f"The implicit grant type is not allowed for this "
+                                           f"tenant. Allowable grant types: {allowable_grant_types}")
+            # create the access token for the client -------
+            # call /v3/tokens to generate access token
+            url = f'{g.request_tenant_base_url}/v3/tokens'
+            access_token_ttl = config.default_access_token_ttl
+            content = {
+                "token_tenant_id": f"{tenant_id}",
+                "account_type": "user",
+                "token_username": f"{username}",
+                "claims": {
+                    "tapis/client_id": client_id,
+                    "tapis/grant_type": 'implicit',
+                },
+                "access_token_ttl": access_token_ttl,
+                "generate_refresh_token": False,
+                "tapis/redirect_uri": client.callback_url
+            }
+            try:
+                logger.debug(f"calling tokens API to create a token for implicit grant type; content: {content}")
+                tokens = t.tokens.create_token(**content, use_basic_auth=False)
+                logger.debug(f"got tokens response: {tokens}")
+            except Exception as e:
+                logger.error(f"Got exception trying to POST to /v3/tokens endpoint. Exception: {e};"
+                             f"content: {content}")
+                raise errors.ResourceError("Failure to generate an access token; please try again later.")
+            try:
+                access_token = tokens.access_token.access_token
+                expires_in = tokens.access_token.expires_in
+            except Exception as e:
+                logger.error(f"Got exception trying to parse token from response from tokens API; e: {e}")
+                raise errors.ResourceError("Failure to generate an access token; please try again later.")
+            url = f'{client.callback_url}?access_token={access_token}&state={state}&expires_in={expires_in}&token_type=Bearer'
+            logger.debug(f"issuing redirect to {client.callback_url}")
+            return redirect(url)
+
+        # authorization_code grant type ---------------------------------------------
+        elif client_response_type == 'code':
+            if 'authorization_code' not in allowable_grant_types:
+                raise errors.ResourceError(f"The authorization_code grant type is not allowed for this "
+                                           f"tenant. Allowable grant types: {allowable_grant_types}")
+
+            # create the authorization code for the client -
+            authz_code = AuthorizationCode(tenant_id=tenant_id,
+                                           username=username,
+                                           client_id=client_id,
+                                           client_key=client.client_key,
+                                           redirect_url=client.callback_url,
+                                           code=AuthorizationCode.generate_code(),
+                                           expiry_time=AuthorizationCode.compute_expiry())
+            logger.debug("authorization code created.")
+            try:
+                db.session.add(authz_code)
+                db.session.commit()
+            except Exception as e:
+                logger.error(f"Got exception trying to add and commit the auth code. e: {e}; type(e): {type(e)}")
+                raise errors.ResourceError("Internal error saving authorization code. Please try again later.")
+            # issue redirect to client callback_url with authorization code:
+            url = f'{client.callback_url}?code={authz_code}&state={state}'
+            logger.debug(f"issuing redirect to {client.callback_url}")
+            return redirect(url)
 
 
 class OAuth2ProviderExtCallback(Resource):
@@ -544,7 +605,7 @@ class OAuth2ProviderExtCallback(Resource):
         # derive the user's identity from the token
         session['username'] = oa2ext.get_user_from_token()
         #  Get the origin client out of the session and then redirect to authorization page
-        client_id, client_redirect_uri, client_state, client = check_client(use_session=True)
+        client_id, client_redirect_uri, client_state, client, response_type = check_client(use_session=True)
         return redirect(url_for('authorizeresource',
                                 client_id=client_id,
                                 redirect_uri=client_redirect_uri,
@@ -564,11 +625,15 @@ class TokensResource(Resource):
     def post(self):
         logger.debug("top of POST /oauth2/tokens")
         validator = RequestValidator(utils.spec)
-        result = validator.validate(FlaskOpenAPIRequest(request))
-        if result.errors:
-            raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
-        validated_body = result.body
-        logger.debug(f"POST body validated; body: {validated_body}")
+        # support content-type www-form by setting the body on the request eaul to the JSON
+        if request.content_type.startswith('application/x-www-form-urlencoded'):
+            logger.debug(f"handling x-www-form data")
+            validated_body = TokenRequestBody(form=request.form)
+        else:
+            result = validator.validate(FlaskOpenAPIRequest(request))
+            if result.errors:
+                raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
+            validated_body = result.body
         data = Token.get_derived_values(validated_body)
 
         grant_type = data.get('grant_type')
@@ -582,7 +647,7 @@ class TokensResource(Resource):
             logger.debug("localhost was in the request.base_url so we are looking for X-Tapis-Local-Tenant header..")
             if request.headers.get('X-Tapis-Local-Tenant'):
                 tenant_id = request.headers.get('X-Tapis-Local-Tenant')
-                logger.debug(f"ffound X-Tapis-Local-Tenant; override tenant to: {tenant_id}")
+                logger.debug(f"found X-Tapis-Local-Tenant; override tenant to: {tenant_id}")
             else:
                 logger.debug("did not find X-Tapis-Local-Tenant header.")
         else:
