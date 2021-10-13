@@ -247,6 +247,7 @@ def test_authorization_code(client, init_db):
                                      'approve': True,
                                      'client_id': TEST_CLIENT_ID,
                                      'client_redirect_uri': TEST_CLIENT_REDIRECT_URI,
+                                     'client_response_type': 'code'
                                      })
         assert response.status_code == 302
         # note: response.data is a raw bytes object containing the full HTML returned from the page.
@@ -264,6 +265,7 @@ def test_authorization_code(client, init_db):
         assert auth_code.client_id == TEST_CLIENT_ID
         assert auth_code.client_key == TEST_CLIENT_KEY
         assert f'code={auth_code.code}' in response_str
+
 
 def test_authorization_code_grant(client, init_db):
     with client:
@@ -354,3 +356,41 @@ def test_refresh_token(client, init_db):
         assert claims['tapis/client_id'] == TEST_CLIENT_ID
         assert claims['tapis/grant_type'] == 'refresh_token'
         assert claims['tapis/refresh_count'] == 2
+
+
+def test_implicit_grant(client, init_db):
+    # simulate the authorization approval -
+    with client:
+        # use the session_transaction to enable modification of the session object:
+        # cf., https://flask.palletsprojects.com/en/1.1.x/testing/#accessing-and-modifying-sessions
+        with client.session_transaction() as sess:
+            sess['username'] = TEST_USERNAME
+        # once we leave the context, session updates applied via sess object are available -
+        response = client.post('http://localhost:5000/v3/oauth2/authorize',
+                               data={'tenant_id': TEST_TENANT_ID,
+                                     'approve': True,
+                                     'client_id': TEST_CLIENT_ID,
+                                     'client_redirect_uri': TEST_CLIENT_REDIRECT_URI,
+                                     'client_response_type': 'token'
+                                     })
+        print(response.data)
+        assert response.status_code == 302
+        # note: response.data is a raw bytes object containing the full HTML returned from the page.
+        # try this if you want to debug ===>  print(response.data)
+        response_str = response.data.decode('utf-8')
+        assert 'token=' in response_str
+        assert 'state=' in response_str
+        print(response_str)
+        # pull the JWT out of the full response_str. to do this, we split the respnse string (which is the entire
+        # html document) first by the "access_token=" substring and take the second part (index 1) to get the part
+        # after, then we split again up to the first encoded ampersand (&) character and take the first part (index 0)
+        # which gives us everything in the access_token query parameter.
+        jwt = response_str.split('access_token=')[1].split('&amp')[0]
+        # decode jwt and check claims
+        claims = validate_token(jwt)
+        assert claims['tapis/tenant_id'] == TEST_TENANT_ID
+        assert claims['tapis/username'] == TEST_USERNAME
+        assert claims['sub'] == f'{TEST_USERNAME}@{TEST_TENANT_ID}'
+        # TODO -- validate that the token returned has the correct claims.. to do this, will need to parse the token
+        # from out of the raw string.
+
