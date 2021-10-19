@@ -397,21 +397,24 @@ def add_user(tenant_id, user):
     user.save(conn)
 
 
-def add_test_user(tenant_id, username):
+def add_test_user(tenant_id, username, password=None):
     """
     Add a testuser to the Tapis LDAP for tenant id, tenant_id. The username is required and from it, all inetorgperson
-    attributes are derived.
+    attributes are derived. If password is not passed, username is used for the password.
     :param tenant_id: (str) the tenant id.
     :param username: (str) the username of the test account.
+    :param password: (str) the password of the test account. if not passed, the username will be used.
     :return:
     """
     # first, create an LdapUser object with the appropriate attributes.
     base_dn = tapis_ldap['base_dn']
+    if not password:
+        password = username
     user = LdapUser(dn=f'cn={username},ou=tenants.{tenant_id},{base_dn}',
                     givenName=username,
                     sn=username,
                     mail=f'{username}@test.tapis.io',
-                    userPassword=username)
+                    userPassword=password)
     # now call the generic add user for the tenant id:
     add_user(tenant_id, user)
 
@@ -449,3 +452,27 @@ def populate_test_ldap(tenant_id='dev'):
         add_test_user(tenant_id, username)
     else:
         logger.debug(f"user {username} already present.")
+
+
+def populate_ldap_with_training_accounts(tenant_id, accounts):
+    """
+    populate the dev ldap with a list of training accounts.
+    :param tenant_id: the id of the tenant to use.
+    :param accounts: a python list of dictionaries, each with a "username" and a "password" key.
+    :return:
+    """
+    # first check if the OU already exists
+    ous = list_tapis_ous()
+    found = False
+    for ou in ous:
+        if ou['ou'][0] == f'tenants.{tenant_id}':
+            found = True
+            logger.debug(f"OU tenants.{tenant_id} already present.")
+    if not found:
+        logger.debug(f'adding OU tenants.{tenant_id}')
+        create_tapis_ldap_tenant_ou(tenant_id)
+    users, _ = list_tenant_users(tenant_id, limit=len(accounts) + 1)
+    usernames = [u.serialize['username'] for u in users]
+    for a in accounts:
+        if a['username'] not in usernames:
+            add_test_user(tenant_id, a['username'], a['password'])
