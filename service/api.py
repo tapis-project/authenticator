@@ -6,7 +6,8 @@ from service import MIGRATIONS_RUNNING
 from service.auth import authn_and_authz
 from service.controllers import AuthorizeResource, ClientsResource, ClientResource, TokensResource, \
     ProfilesResource, ProfileResource, StaticFilesResource, LoginResource, SetTenantResource, LogoutResource, \
-    WebappTokenGen, WebappTokenAndRedirect, TenantConfigResource, UserInfoResource, OAuth2ProviderExtCallback
+    WebappTokenGen, WebappTokenAndRedirect, TenantConfigResource, UserInfoResource, OAuth2ProviderExtCallback, \
+    OAuthMetadataResource
 from service.ldap import populate_test_ldap
 from service.models import db, app, initialize_tenant_configs
 
@@ -45,6 +46,7 @@ api.handle_exception = handle_error
 api.handle_user_exception = handle_error
 
 # API resources
+api.add_resource(OAuthMetadataResource, '/v3/oauth2/.well-known/oauth-authorization-server')
 api.add_resource(TenantConfigResource, '/v3/oauth2/admin/config')
 api.add_resource(ClientsResource, '/v3/oauth2/clients')
 api.add_resource(ClientResource, '/v3/oauth2/clients/<client_id>')

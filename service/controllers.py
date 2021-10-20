@@ -28,6 +28,28 @@ logger = get_logger(__name__)
 # REST API Endpoint controllers
 # ------------------------------
 
+class OAuthMetadataResource(Resource):
+    """
+    Provides the .well-known endpoint.
+    See https://datatracker.ietf.org/doc/html/rfc8414
+    """
+    def get(self):
+        tenant_id = g.request_tenant_id
+        config = tenant_configs_cache.get_config(tenant_id)
+        allowable_grant_types = json.loads(config.allowable_grant_types)
+        tenant = t.tenant_cache.get_tenant_config(tenant_id=tenant_id)
+        base_url = tenant.base_url
+        metadata = {
+            'issuer': f'{base_url}/v3/oauth2',
+            'authorization_endpoint': f'{base_url}/v3/oauth2/authorize',
+            'token_endpoint': f'{base_url}/v3/oauth2/token',
+            'jwks_uri': f'{base_url}/v3/tenants/{tenant_id}',
+            'registration_endpoint': f'{base_url}/v3/oauth2/clients',
+            'grant_types_supported': allowable_grant_types,
+        }
+        return utils.ok(result=metadata, msg='OAuth server metadata retrieved successfully.')
+
+
 class ClientsResource(Resource):
     """
     Work with OAuth client objects

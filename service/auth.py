@@ -49,6 +49,11 @@ def authentication():
         raise common_errors.ResourceError("The endpoint and HTTP method combination "
                                           "are not available from this service.")
 
+    # the metadata endpoint is publicly available
+    if '/v3/oauth2/.well-known/' in request.url_rule.rule:
+        logger.debug(".well-known endpoint; request is allowed to be made unauthenticated.")
+        auth.resolve_tenant_id_for_request()
+        return True
     # only the authenticator's own service token and tenant admins for the tenant can retrieve or modify the tenant
     # config
     if '/v3/oauth2/admin' in request.url_rule.rule:
