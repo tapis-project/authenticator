@@ -159,6 +159,36 @@ paths:
                 properties:
                   result:
                     $ref: '#/components/schemas/Client'
+    put:
+      tags:
+      - Clients
+      summary: Update client details
+      description: Update details of a specific client by its id.
+      operationId: update_client
+      parameters:
+      - name: client_id
+        in: path
+        description: Unique ID of the client
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateClient'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/BasicResponse'
+                properties:
+                  result:
+                    $ref: '#/components/schemas/Client'
     delete:
       tags:
       - Clients
@@ -457,6 +487,16 @@ components:
         description:
           type: string
           description: A description of this client.
+
+    UpdateClient:
+      type: object
+      properties:
+        callback_url:
+          type: string
+          description: URL for application to receive OAuth callbacks for executing flows such as authorization_code.
+        display_name:
+          type: string
+          description: The display name that will represent this client.
 
     TokenResponse:
       type: object

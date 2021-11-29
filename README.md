@@ -51,8 +51,7 @@ Starting the API the first time requires some initial setup. Do the following st
 1. `make init_dbs` - creates a new docker volume, `authenticator_pgdata`, creates a new Postrgres
 Docker container with the volume created, and creates the initial (empty) database and database user.
 2. `make migrate.upgrade` - runs the migrations contained within the `migrations/versions` directory.
-3. `docker-compose up -d ldap` - starts the development LDAP db (required for running locally).
-4. `docker-compose up -d authenticator` - starts the Authenticator.
+3. `docker-compose up -d authenticator` - starts the Authenticator.
 
 #### Updating the API After the First Setup
 Once the First Time Setup has been done a machine, updates can be fetched applied as follows:
@@ -64,6 +63,9 @@ directory).migrations
 4. `docker-compose up -d authenticator` - start a new version of the Authenticator.
 
 #### New DB Schema
+
+*** DEPRECATED -- should use Updates to the Existing Schema from now on.***
+
 During initial development, the database schema can be in flux. Changes to the models require new migrations. Instead of
 adding additional migration versions, the database and associated `migrations` directory can be "wiped" and recreated
 from the new models code using the following steps:

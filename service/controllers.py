@@ -61,7 +61,9 @@ class ClientsResource(Resource):
 
     def post(self):
         validator = RequestValidator(utils.spec)
+        print(request.json)
         result = validator.validate(FlaskOpenAPIRequest(request))
+        print(result.body)
         if result.errors:
             raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
         validated_body = result.body
@@ -97,6 +99,33 @@ class ClientResource(Resource):
         if not client.username == g.username:
             raise errors.PermissionsError("Not authorized for this client.")
         return utils.ok(result=client.serialize, msg='Client object retrieved successfully.')
+
+    def put(self, client_id):
+        logger.debug("top of PUT /clients/{client_id}")
+        client = Client.query.filter_by(tenant_id=g.tenant_id, client_id=client_id).first()
+        if not client:
+            raise errors.ResourceError(msg=f'No client found with id {client_id}.')
+        if not client.username == g.username:
+            raise errors.PermissionsError("Not authorized for this client.")
+        validator = RequestValidator(utils.spec)
+        result = validator.validate(FlaskOpenAPIRequest(request))
+        if result.errors:
+            print(f"openapi_core validation failed. errors: {result.errors}")
+            raise errors.ResourceError(msg=f'Invalid PUT data: {result.errors}')
+        validated_body = result.body
+        if hasattr(validated_body, 'client_id'):
+            raise errors.ResourceError("Changing client_id not currently supported.")
+        if hasattr(validated_body, 'client_key'):
+            raise errors.ResourceError("Changing client_key not currently supported.")
+        if hasattr(validated_body, 'description'):
+            raise errors.ResourceError("Changing description not currently supported.")
+        logger.debug("got past checks for unsupported fields.")
+        new_callback_url = getattr(validated_body, 'callback_url', client.callback_url)
+        new_display_name = getattr(validated_body, 'display_name', client.display_name)        
+        client.callback_url = new_callback_url
+        client.display_name = new_display_name
+        db.session.commit()
+        return utils.ok(result=client.serialize, msg="Client updated successfully")
 
     def delete(self, client_id):
         client = Client.query.filter_by(tenant_id=g.tenant_id, client_id=client_id).first()
