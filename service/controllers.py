@@ -100,7 +100,6 @@ class ClientResource(Resource):
 
     def put(self, client_id):
         logger.debug("top of PUT /clients/{client_id}")
-        client = Client.query.filter_by(tenant_id=g.tenant_id, client_id=client_id).first()
         if 'client_id' in request.json:
             raise errors.ResourceError("Changing client_id not currently supported.")
         if 'client_key' in request.json:
@@ -108,6 +107,7 @@ class ClientResource(Resource):
         if 'description' in request.json:
             raise errors.ResourceError("Changing description not currently supported.")
         logger.debug("got past checks for unsupported fields.")
+        client = Client.query.filter_by(tenant_id=g.tenant_id, client_id=client_id).first()
         if not client:
             raise errors.ResourceError(msg=f'No client found with id {client_id}.')
         if not client.username == g.username:
