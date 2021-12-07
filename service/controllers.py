@@ -56,7 +56,11 @@ class ClientsResource(Resource):
     """
 
     def get(self):
-        clients = Client.query.filter_by(tenant_id=g.tenant_id, username=g.username)
+        show_inactive = request.args.get('show_inactive', False)
+        if show_inactive:
+            clients = Client.query.filter_by(tenant_id=g.tenant_id, username=g.username)
+        else: 
+            clients = Client.query.filter_by(tenant_id=g.tenant_id, username=g.username, active=True)
         return utils.ok(result=[cl.serialize for cl in clients], msg="Clients retrieved successfully.")
 
     def post(self):
