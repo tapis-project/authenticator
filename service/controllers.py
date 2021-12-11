@@ -468,7 +468,7 @@ class LoginResource(Resource):
 
 class MFAResource(Resource):
     def get(self):
-        # selecting a tenant id is required before logging in
+        # a tenant id is required
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = session.get('tenant_id')
         headers = {'Content-Type': 'text/html'}
