@@ -16,6 +16,7 @@ from service.errors import InvalidPasswordError
 from service.models import db, TenantConfig, Client, TokenRequestBody, Token, AuthorizationCode, token_webapp_clients, tenant_configs_cache
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 from service.oauth2ext import OAuth2ProviderExtension
+from service.mfa import needs_mfa, call_mfa
 
 
 # get the logger instance -
@@ -274,6 +275,7 @@ class TenantConfigResource(Resource):
                                                 config.default_refresh_token_ttl)
         new_max_access_token_ttl = getattr(validated_body, 'max_access_token_ttl', config.max_access_token_ttl)
         new_max_refresh_token_ttl = getattr(validated_body, 'max_refresh_token_ttl', config.max_refresh_token_ttl)
+        new_mfa_config = getattr(validated_body, 'mfa_config', config.mfa_config)
 
         logger.debug("updating config object with new attributes...")
         # update the model and commit --
@@ -288,6 +290,8 @@ class TenantConfigResource(Resource):
         config.default_refresh_token_ttl = new_default_refresh_token_ttl
         config.max_access_token_ttl = new_max_access_token_ttl
         config.max_refresh_token_ttl = new_max_refresh_token_ttl
+        config.mfa_config = new_mfa_config
+
         try:
             db.session.commit()
             logger.info(f"update to tenant config committed to db. config object: {config}")
@@ -450,12 +454,65 @@ class LoginResource(Resource):
             return make_response(render_template('login.html', **context), 200, headers)
         # the username and password were accepted; set the session and redirect to the authorization page.
         session['username'] = username
-        return redirect(url_for('authorizeresource',
+        mfa_required = needs_mfa()
+        # mfa_required = check_tenant_config_for_mfa()
+        redirect_url = 'mfaresource' if mfa_required else 'authorizeresource'
+        print(redirect_url)
+        # check tenant config
+        return redirect(url_for(redirect_url,
                                 client_id=client_id,
                                 redirect_uri=client_redirect_uri,
                                 state=client_state,
                                 client_display_name=client_display_name,
                                 response_type='code'))
+
+class MFAResource(Resource):
+    def get(self):
+        # selecting a tenant id is required before logging in
+        client_id, client_redirect_uri, client_state, client, response_type = check_client()
+        tenant_id = session.get('tenant_id')
+        headers = {'Content-Type': 'text/html'}
+        if not tenant_id:
+            tenant_id = session.get('tenant_id')
+        if not tenant_id:
+            logger.debug(
+                f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}")
+            return redirect(url_for('loginresource'), 200, headers)
+        context = {'error': '',
+                   'client_display_name': client.display_name,
+                   'client_id': client_id,
+                   'client_redirect_uri': client_redirect_uri,
+                   'client_state': client_state,
+                   'tenant_id': tenant_id,
+                   'username': session.get('username')}
+        return make_response(render_template('mfa.html', **context), 200, headers)
+
+    def post(self):
+        client_id, client_redirect_uri, client_state, client, response_type = check_client()
+        tenant_id = session.get('tenant_id')
+        headers = {'Content-Type': 'text/html'}
+        if not tenant_id:
+            tenant_id = session.get('tenant_id')
+        if not tenant_id:
+            logger.debug(
+                f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}")
+            return redirect(url_for('loginresource'), 200, headers)
+        mfa_token = request.form.get('mfa_token')
+        response = "Incorrect MFA token"
+        # add privacy idea api call header
+        print("MFA CODE: %s" % mfa_token)
+        validated = call_mfa(mfa_token)
+        if validated:
+            return redirect(url_for('authorizeresource',
+                                    client_id=client_id,
+                                    redirect_uri=client_redirect_uri,
+                                    state=client_state,
+                                    client_display_name=client.display_name,
+                                    response_type='code'))
+        else:
+            context = {'error': response,
+                   'username': session.get('username')}
+            return make_response(render_template('mfa.html', **context), 200, headers)
 
 
 class AuthorizeResource(Resource):

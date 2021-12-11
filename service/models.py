@@ -196,6 +196,13 @@ class TenantConfigsCache(object):
             return 'cii'
         return None
 
+    def get_mfa_type(self, tenant_id):
+        logger.debug()
+        config = self.get_config(tenant_id)
+        mfa_config = json.loads(config.mfa_config)
+        # parse mfa_config for mfa_type
+        return "tacc"
+
 
 # singleton cache object -- when migrations are running the TenantConfig relations in Postgres could not
 # exist

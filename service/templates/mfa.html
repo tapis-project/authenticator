@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+<body>
+
+ <div class="container">
+    <h2> MFA Token </h2>
+ </div>
+
+ <form action="" method="post">
+
+
+     {% if error %}
+   <div class="container">
+      <p>Error: {{ error }}</p>
+   </div>
+     {% endif %}
+
+     <div class="container">
+         <div class="input-group">
+            Username: {{ username }}
+         </div>
+         <div class="input-group">
+            Token: <input id="mfa_token" type="text" class="form-control" name="mfa_token" placeholder="Enter MFA Token" required>
+            <input type="hidden" name="client_id" value="{{ client_id }}">
+            <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
+            <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
+            <input type="hidden" name="client_state" value="{{ client_state }}">
+            <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
+         </div>
+        <button type="submit">Submit</button>
+    </div>
+  <div class="container" style="background-color:#f1f1f1">
+    <button type="button" class="cancelbtn">Cancel</button>
+  </div>
+</form>
+{% endblock %}
