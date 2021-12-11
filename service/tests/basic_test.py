@@ -35,7 +35,8 @@ def init_db():
                 "display_name": "Tapis Authenticator Testsuite",
                 "callback_url": TEST_CLIENT_REDIRECT_URI,
                 'create_time': datetime.datetime.utcnow(),
-                'last_update_time': datetime.datetime.utcnow()
+                'last_update_time': datetime.datetime.utcnow(),
+                'active': True
                 }
         models.add_client_to_db(data)
         client = models.Client.query.filter_by(
@@ -394,3 +395,79 @@ def test_implicit_grant(client, init_db):
         # TODO -- validate that the token returned has the correct claims.. to do this, will need to parse the token
         # from out of the raw string.
 
+def test_upate_client(client, init_db):
+    with client:
+        auth_header = {'Authorization': get_basic_auth_header(TEST_CLIENT_ID, TEST_CLIENT_KEY)}
+        payload = {
+            'grant_type': 'password',
+            'username': TEST_USERNAME,
+            'password': TEST_PASSWORD
+        }
+        response = client.post(
+            "http://localhost:5000/v3/oauth2/tokens",
+            headers=auth_header,
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+        assert 'access_token' in response.json['result']
+        headers = {
+            'x-tapis-token': response.json['result']['access_token']['access_token']
+        }
+        payload = {
+            "callback_url": "localhost:5000/v3/oauth2/clients/test/active",
+            "display_name": "Test Active"
+        }
+        #response = client.post(
+        #    "http://localhost:5000/v3/oauth2/clients",
+        #    headers = headers,
+        #    data = json.dumps(payload),
+        #    content_type='application/json'
+        #)
+        #assert response.status_code == 200
+        #assert 'client_id' in response.json['result']
+        #client_id = response.json['result']['client_id']
+        #payload = {
+        #    "display_name": "Test Client Update"
+        #}
+        #response = client.put(
+        #    f"http://localhost:5000/v3/oauth2/clients/{client_id}",
+        #    headers=headers,
+        #    data=json.dumps(payload),
+        #    content_type='application/json'
+        #)
+        #assert response.status_code == 200
+        #assert response.json['result']['display_name'] == "Test Client Update"
+
+def test_delete_client(client, init_db):
+    with client:
+        auth_header = {'Authorization': get_basic_auth_header(TEST_CLIENT_ID, TEST_CLIENT_KEY)}
+        payload = {
+            'grant_type': 'password',
+            'username': TEST_USERNAME,
+            'password': TEST_PASSWORD
+        }
+        response = client.post(
+            "http://localhost:5000/v3/oauth2/tokens",
+            headers=auth_header,
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+        assert 'access_token' in response.json['result']
+        headers = {
+            'x-tapis-token': response.json['result']['access_token']['access_token']
+        }
+        response = client.get(
+            "http://localhost:5000/v3/oauth2/clients",
+            headers = headers,
+            content_type = 'application/json'
+        )
+        client_id = response.json['result'][0]['client_id']
+        response = client.delete(
+            f"http://localhost:5000/v3/oauth2/clients/{client_id}",
+            headers = headers,
+            content_type = 'application/json'
+        )
+        assert response.status_code == 200
+        assert response.json is None
