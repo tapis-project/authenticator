@@ -131,7 +131,7 @@ class ClientResource(Resource):
             raise errors.ResourceError(msg=f'No client found with id {client_id}.')
         if not client.username == g.username:
             raise errors.PermissionsError("Not authorized for this client.")
-        db.session.delete(client)
+        client.active = False
         db.session.commit()
 
 

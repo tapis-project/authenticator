@@ -226,6 +226,7 @@ class Client(db.Model):
     last_update_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     display_name = db.Column(db.String(50), unique=False, nullable=True)
     description = db.Column(db.String(70), unique=False, nullable=True)
+    active = db.Column(db.Boolean, default=True, nullable=False)
 
     HASH_SALT = 'hQb9xTr7j8vSu'
 
@@ -244,6 +245,7 @@ class Client(db.Model):
             "display_name": self.display_name,
             "description": self.description,
             "tenant_id": self.tenant_id,
+            "active": self.active,
         }
 
     @classmethod
@@ -290,6 +292,11 @@ class Client(db.Model):
             result['description'] = getattr(data, 'description')
         except AttributeError:
             result['description'] = ''
+
+        try:
+            result['active'] = getattr(data, 'active')
+        except AttributeError:
+            result['active'] = True
 
         # try:
         #     if result['callback_url'] != '':
