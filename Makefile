@@ -53,8 +53,8 @@ init_dbs: run_dbs
 	docker-compose exec -T postgres psql -Upostgres -f /db.sql
 
 # ----- wipe database and associated data
-wipe: clean
-	rm -rf migrations
+#wipe: clean
+#	rm -rf migrations
 
 # ----- run migrations
 migrate.upgrade: build.migrations
