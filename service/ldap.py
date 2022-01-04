@@ -6,11 +6,11 @@ from service import tenants, MIGRATIONS_RUNNING
 from service.errors import InvalidPasswordError, InvalidTenantUserError
 from service.models import LdapOU, LdapUser, tenant_configs_cache
 
-from common.config import conf
-from common.errors import DAOError
+from tapisservice.config import conf
+from tapisservice.errors import DAOError
 
 # get the logger instance -
-from common.logs import get_logger
+from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 

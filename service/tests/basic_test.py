@@ -3,7 +3,7 @@ import datetime
 import pytest
 import json
 
-from common.auth import validate_token
+from tapisservice.auth import validate_token
 from service.api import app
 from service import models
 

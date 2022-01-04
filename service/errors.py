@@ -1,4 +1,4 @@
-from common.errors import BaseTapisError
+from tapisservice.errors import BaseTapisError
 
 
 class InvalidPasswordError(BaseTapisError):

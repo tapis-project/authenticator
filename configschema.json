@@ -17,6 +17,10 @@
       "description": "password to the SQL db.",
       "default": "d3fd6pAssw0rd"
     },
+    "python_framework_type": {
+      "type": "string",
+      "default": "flask"
+    },
     "default_page_limit": {
       "type": "integer",
       "description": "The default maximum number of results to return for each listing endpoint.",

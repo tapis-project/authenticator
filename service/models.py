@@ -9,10 +9,10 @@ import string
 import random
 import uuid
 
-from common.config import conf
-from common.errors import DAOError
-from common.logs import get_logger
-from common import errors
+from tapisservice.config import conf
+from tapisservice.errors import DAOError
+from tapisservice.logs import get_logger
+from tapisservice import errors
 
 from service import MIGRATIONS_RUNNING
 
@@ -33,7 +33,7 @@ db = SQLAlchemy(app, session_options={"expire_on_commit": False})
 migrate = Migrate(app, db)
 
 # get the logger instance -
-from common.logs import get_logger
+from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 

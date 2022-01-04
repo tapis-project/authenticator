@@ -15,8 +15,8 @@ import jwt
 from flask import session
 import requests
 
-from common import errors
-from common.logs import get_logger
+from tapisservice import errors
+from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 from service import t

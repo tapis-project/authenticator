@@ -7,9 +7,10 @@ from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 import sqlalchemy
 import secrets
 
-from common import utils, errors
-from common.config import conf
-from common.auth import validate_token
+from tapisservice import errors
+from tapisservice.tapisflask import utils
+from tapisservice.config import conf
+from tapisservice.auth import validate_token
 
 from service import t
 from service.errors import InvalidPasswordError
@@ -19,7 +20,7 @@ from service.oauth2ext import OAuth2ProviderExtension
 
 
 # get the logger instance -
-from common.logs import get_logger
+from tapisservice.logs import get_logger
 
 logger = get_logger(__name__)
 
@@ -815,6 +816,10 @@ class TokensResource(Resource):
         except Exception as e:
             logger.error(f"Got exception trying to POST to /v3/tokens endpoint. Exception: {e};"
                          f"content: {content}")
+            try:
+                logger.error(f"Headers from the request: {e.request.headers}")
+            except Exception as e:
+                logger.error(f"Couldn't get the headers from the request; exception: {e}")
             raise errors.ResourceError("Failure to generate an access token; please try again later.")
         try:
             result = {'access_token': {'access_token': tokens.access_token.access_token,
