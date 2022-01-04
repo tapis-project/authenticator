@@ -188,7 +188,7 @@ In general, the Token Web Application is "multi-tenant", and the tenant is deriv
 from the base URL. When running locally during development, the base URL is always
 "localhost", so the application defaults to using the "dev" tenant in that case.
 
-In order to use a different tentant when running the Authenticator locally, use the
+In order to use a different tenant when running the Authenticator locally, use the
 tenant selector page, 
 ```
 Navigate to http://localhost:5000/v3/oauth2/tenant to select a different tenant.
