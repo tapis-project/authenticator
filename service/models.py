@@ -796,7 +796,8 @@ def create_clients_for_tenant(tenant_id):
         "tenant_id": tenant_id,
         "username": "tapis",
         'create_time':  datetime.datetime.utcnow(),
-        'last_update_time': datetime.datetime.utcnow()
+        'last_update_time': datetime.datetime.utcnow(),
+        'active': True
     }
     add_client_to_db(local_client)
     # now register the client with the tenant's base url:
