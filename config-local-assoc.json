@@ -1,0 +1,12 @@
+{
+    "service_name": "authenticator",
+    "service_password": "<TODO_get_from_SK>",
+    "primary_site_admin_tenant_base_url": "https://admin.test.tapis.io",
+    "service_site_id": "assoc",
+    "service_tenant_id": "assocadm",
+    "tenants": ["assocdev"],
+    "use_sk": true,
+    "log_level": "DEBUG",
+    "populate_dev_ldap": true,
+    "dev_ldap_tenant_id": "assocdev"
+  }
