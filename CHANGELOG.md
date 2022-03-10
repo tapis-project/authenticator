@@ -1,6 +1,26 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+
+## 1.1.0 - 2022-03-01
+This release converts the Authenticator to using the new `tapipy-tapisservice` plugin-based 
+Tapis Python SDK and makes updates necessary for supporting deployment automation provided
+by the Tapis Deployer project.
+
+### Breaking Changes:
+- None.
+
+### New features:
+- Convert Authenticator to using the new `tapis/flaskbase-plugins` image.
+- Support the initial version of the Tapis Deployer deployment automation. 
+- Add support for utilizing the `dev` ldap (with test accounts) on an arbitrary tenant, not
+  just the `dev` tenant, so that it can be utilized by different sites.
+
+### Bug fixes:
+- None.
+
+
+
 ## 1.0.2 - 2021-07-16
 ### Breaking Changes:
 - None.
