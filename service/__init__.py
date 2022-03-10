@@ -46,7 +46,11 @@ class AuthenticatorTenants(TenantCache):
             #  the tenants. this property is unique to the dev LDAP where the authenticator has write access and can
             #  create OUs for each tenant. thus, it is not stored in /returned by the tenants service, so we hard code
             #  it based on a service config for now,
-            if tenant_id == 'dev':
+            if not conf.dev_ldap_tenant_id and conf.populate_dev_ldap:
+                msg = "The dev_ldap_tenant_id config was NOT set but populate_dev_ldap was set. Giving up..."
+                logger.error(msg)
+                raise errors.BaseTapisError(msg)
+            if tenant_id == conf.dev_ldap_tenant_id:
                 tenant.dev_ldap_tenants_base_dn = conf.dev_ldap_tenants_base_dn
             # look up ldap info from tenants service
             try:
@@ -65,11 +69,16 @@ class AuthenticatorTenants(TenantCache):
                     logger.error(f"Got exception trying to look up ldap info for "
                                  f"ldap_id: {tenant_response.user_ldap_connection_id}; e: {e}")
                     raise e
+                # The user_dn for the "dev" ldap is always "ou=tenants.dev,dc=tapis" on the tenant's ldap table, but
+                # we need to replace ".dev" with the actual
+                ldap_user_dn = ldap_response.user_dn
+                if tenant_id == conf.dev_ldap_tenant_id:
+                    ldap_user_dn = ldap_user_dn.replace(".dev", f".{tenant_id}")
                 try:
                     tenant.ldap_url = ldap_response.url
                     tenant.ldap_port = ldap_response.port
                     tenant.ldap_use_ssl = ldap_response.use_ssl
-                    tenant.ldap_user_dn = ldap_response.user_dn
+                    tenant.ldap_user_dn = ldap_user_dn
                     tenant.ldap_bind_dn = ldap_response.bind_dn
                 except AttributeError as e:
                     logger.error(f"Got KeyError looking for an LDAP attr in the response; e: {e}")

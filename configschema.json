@@ -36,6 +36,10 @@
       "description": "At start up, ensure the test LDAP db is populated with an OU and set of user accounts for the dev tenant.",
       "default": true
     },
+    "dev_ldap_tenant_id": {
+      "type": "string",
+      "description": "The tenant id that this authenticator will use for configuration of the dev ldap. For the primary site, this should be 'dev'; for the test associate site, this should be 'assocdev'; for other sites, they may or may not want a dev ldap at all, in which case populate_dev_ldap, etc., should be false."
+    },
     "dev_ldap_url": {
       "type": "string",
       "description": "full URL to the test LDAP db.",
@@ -121,5 +125,6 @@
       "description": "The display name used by the Tapis Token Webapp",
       "default": "Tapis Token Webapp"
     }
-  }
+  },
+  "required": ["dev_ldap_tenant_id"]
 }

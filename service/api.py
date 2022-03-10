@@ -12,6 +12,9 @@ from service.ldap import populate_test_ldap
 from service.models import db, app, initialize_tenant_configs
 
 from tapisservice.logs import get_logger
+from tapisservice.errors import BaseTapisError
+
+
 logger = get_logger(__name__)
 
 # authentication and authorization ---
@@ -34,7 +37,12 @@ if not MIGRATIONS_RUNNING:
 # initialize the test LDAP ---
 # TODO - this code is run by every thread but is not thread safe!
 if conf.populate_dev_ldap:
-    populate_test_ldap()
+    # check that a tenant id was configure:
+    if not conf.dev_ldap_tenant_id:
+        msg = "Set populate_dev_ldep but did not set the dev_ldap_tenant_id. Quiting now..."
+        logger.error(msg)
+        BaseTapisError(msg)
+    populate_test_ldap(tenant_id=conf.dev_ldap_tenant_id)
 
 
 # flask restful API object ----
