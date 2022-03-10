@@ -20,13 +20,13 @@ authenticator. For example:
 List all secrets:
 
 ```
->>> t.sk.listSecretMeta(secretType='user', tenant='admin', user='authenticator')
+>>> t.sk.listSecretMeta(secretType='user', tenant='admin', user='authenticator', _tapis_set_x_headers_from_service=True)
 ```
 
 Retrieve the dev LDAP secret from SK and get the password:
 
 ```
->>> s = t.sk.readSecret(secretType='user', secretName='ldap.tapis-dev', tenant='admin', user='authenticator')
+>>> s = t.sk.readSecret(secretType='user', secretName='ldap.tapis-dev', tenant='admin', user='authenticator', _tapis_set_x_headers_from_service=True)
 >>> s.secretMap.password
 ```
 
