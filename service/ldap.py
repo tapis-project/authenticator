@@ -7,7 +7,7 @@ from service.errors import InvalidPasswordError, InvalidTenantUserError
 from service.models import LdapOU, LdapUser, tenant_configs_cache
 
 from tapisservice.config import conf
-from tapisservice.errors import DAOError
+from tapisservice.errors import DAOError, BaseTapisError
 
 # get the logger instance -
 from tapisservice.logs import get_logger
@@ -35,7 +35,17 @@ def get_tapis_ldap_server_info():
     :return: (dict)
     """
     if conf.use_tenants:
-        dev_tenant = tenants.get_tenant_config(tenant_id='dev')
+        if not conf.dev_ldap_tenant_id:
+            msg = "No dev_ldap_tenant_id config provided. Don't know which config to use for the tapis ldap server. Giving up..."
+            logger.error(msg)
+            raise BaseTapisError(msg)
+        dev_tenant = tenants.get_tenant_config(tenant_id=conf.dev_ldap_tenant_id)
+        # check to see if we have basic LDAP attributes; it is possible we do not in which case we need to 
+        # exit out immediately.
+        if not dev_tenant.get('ldap_url'):
+            msg = f"Could not get the dev LDAP config for tenant dev.. It is probably because this authenticator doesn't serve the dev tenant..."
+            logger.error(msg)
+            raise BaseTapisError(msg)
         return {
             "server": dev_tenant.get('ldap_url'),
             "port": dev_tenant.get('ldap_port'),
@@ -419,7 +429,7 @@ def add_test_user(tenant_id, username, password=None):
     add_user(tenant_id, user)
 
 
-def populate_test_ldap(tenant_id='dev'):
+def populate_test_ldap(tenant_id):
     """
     Initialize the test LDAP with an OU and set of test accounts.
     :return:
