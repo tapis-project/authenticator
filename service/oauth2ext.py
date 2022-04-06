@@ -9,6 +9,10 @@ To implement a new OAuth2 provider, the following updates must be made:
 is expecting and that the response type (e.g., json) is handled correctly.
 3) Implement the get_user_from_token() method to determine the user's identity once an access token has been obtained.
 
+Other changes:
+1) Within models.py, update the get_custom_oa2_extension_type method to recognize the new extension type.
+
+
 """
 import json
 import jwt
@@ -76,7 +80,15 @@ class OAuth2ProviderExtension(object):
             # create an authorization code to be exchanged for a token.
             self.client_id = 'not_used'
             self.client_key = 'not_used'
-        #
+        elif self.ext_type == 'tacc_keycloak':
+            # keycloak utilizes a client id and secret like github
+            self.client_id = self.custom_idp_config_dict.get('tacc_keycloak').get('client_id')
+            self.client_key = self.custom_idp_config_dict.get('tacc_keycloak').get('client_secret')
+            # initial redirect URL; used to start the oauth flow and log in the user
+            self.identity_redirect_url = 'https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/auth'
+            # URL to use to exchange the code for an qccess token
+            self.oauth2_token_url = 'https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/token'
+        
         # NOTE: each provider type must implement this check
         # elif self.ext_type == 'google'
         #     ...
@@ -122,6 +134,9 @@ class OAuth2ProviderExtension(object):
             "code": self.authorization_code,
             "redirect_uri": self.callback_url
         }
+        # keycloak requires the "grant_type" parameter
+        if self.ext_type == 'tacc_keycloak':
+            body["grant_type"] = "authorization_code"
         logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}")
         try:
             rsp = requests.post(self.oauth2_token_url, data=body, headers={'Accept': 'application/json'})
@@ -175,30 +190,52 @@ class OAuth2ProviderExtension(object):
         """
         logger.debug("top of get_user_from_token")
         # todo -- each OAuth2 provider will have a different mechanism for determining the user's identity
-        if self.ext_type == 'github':
-            user_info_url = 'https://api.github.com/user'
-            headers = {'Authorization': f'token {self.access_token}',
-                       'Accept': 'application/vnd.github.v3+json'}
+        if self.ext_type == 'github' or self.ext_type == 'tacc_keycloak':
+            if self.ext_type == 'github':
+                user_info_url = 'https://api.github.com/user'
+            if self.ext_type == 'tacc_keycloak':
+                user_info_url = 'https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/userinfo'
+            if self.ext_type == 'github':
+                headers = {'Authorization': f'token {self.access_token}',
+                        'Accept': 'application/vnd.github.v3+json'}
+            if self.ext_type == 'tacc_keycloak':
+                headers = {'Authorization': f'Bearer {self.access_token}',}
             try:
                 rsp = requests.get(user_info_url, headers=headers)
             except Exception as e:
-                logger.error(f"Got exception from request to look up user's identity with github. Debug data:"
+                logger.error(f"Got exception from request to look up user's identity with {self.ext_type}. Debug data:"
                              f"exception: {e}")
                 raise errors.ServiceConfigError("Error determining user identity. Contact server administrator.")
             if not rsp.status_code == 200:
-                logger.error("Did not get 200 from request to look up user's identity with github. Debug data:"
+                logger.error("Did not get 200 from request to look up user's identity with {self.ext_type}. Debug data:"
                              f"status code: {rsp.status_code};"
                              f"rsp content: {rsp.content}")
                 raise errors.ServiceConfigError("Error determining user identity. Contact server administrator.")
-            username = rsp.json().get('login')
-            if not username:
-                logger.error(f"username was none after processing the github response. Debug data:"
-                             f"response: {rsp}")
-                raise errors.ServiceConfigError("Error determining user identity: username was empty. "
-                                                "Contact server administrator.")
-            self.username = f'{username}@github.com'
+            if self.ext_type == 'github':
+                username = rsp.json().get('login')
+                if not username:
+                    logger.error(f"username was none after processing the github response. Debug data:"
+                                f"response: {rsp}")
+                    raise errors.ServiceConfigError("Error determining user identity: username was empty. "
+                                                    "Contact server administrator.")
+                
+                    self.username = f'{username}@github.com'
+            elif self.ext_type == 'tacc_keycloak':
+                logger.info(f"Response content from keycloak: {rsp.content}")
+                try:
+                    username = rsp.json().get('email')
+                except Exception as e:
+                    logger.error(f"Got error trying to parse the username from the TACC Keycloak instance; error: {e}")
+                    raise errors.ServiceConfigError("Error determining user identity: could not parse identity response. "
+                                                    "Contact server administrator.")                    
+                if not username:
+                    logger.error(f"Could not parse the username from the TACC Keycloak instance; username was empty")
+                    raise errors.ServiceConfigError("Error determining user identity: username was empty. "
+                                                    "Contact server administrator.")
+                self.username = username
             logger.debug(f"Successfully determined user's identity: {self.username}")
             return self.username
+
         elif self.ext_type == 'cii':
             # the CII token is a JWT; we only need to decode it and get the username out of the payload.
             # todo -- we should verify the signature if that is working...

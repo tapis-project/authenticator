@@ -12,7 +12,7 @@ import uuid
 from tapisservice.config import conf
 from tapisservice.errors import DAOError
 from tapisservice.logs import get_logger
-from tapisservice import errors
+from service import errors
 
 from service import MIGRATIONS_RUNNING
 
@@ -190,10 +190,14 @@ class TenantConfigsCache(object):
         custom_idp_config = json.loads(config.custom_idp_configuration)
         # check whether the tenant config has one of the OAuth2 extension configuration properties.
         # this check will expand over time as we add support for additional types of OAuth2 extension modules.
+        # TODO -- this must be updated for every new custom oa2 extension type.
         if 'github' in custom_idp_config.keys():
             return 'github'
         if 'cii' in custom_idp_config.keys():
             return 'cii'
+        if 'tacc_keycloak' in custom_idp_config.keys():
+            return 'tacc_keycloak'
+
         return None
 
 
