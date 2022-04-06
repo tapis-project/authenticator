@@ -13,7 +13,7 @@ from common.auth import validate_token
 
 from service import t
 from service.errors import InvalidPasswordError
-from service.models import db, TenantConfig, Client, TokenRequestBody, Token, AuthorizationCode, token_webapp_clients, tenant_configs_cache
+from service.models import db, TenantConfig, Client, TokenRequestBody, Token, AuthorizationCode, DeviceCode, token_webapp_clients, tenant_configs_cache
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 from service.oauth2ext import OAuth2ProviderExtension
 from service.mfa import needs_mfa, call_mfa
@@ -310,7 +310,7 @@ class TenantConfigResource(Resource):
 # Authorization Server controllers
 # ---------------------------------
 
-def check_client(use_session=False):
+def check_client(use_session=False, verify_client=True):
     """
     Utility function used by several controller classes.
     Checks the request for associated client query parameters, validates them against the client registered in the DB
@@ -328,6 +328,8 @@ def check_client(use_session=False):
         raise errors.ResourceError("tenant_id missing.")
     if not tenant_id in conf.tenants:
         raise errors.ResourceError(f"This application is not configured to serve the requested tenant {tenant_id}.")
+    if not verify_client:
+        return None, None, None, None, None
     if use_session:
         client_id = session.get('orig_client_id')
         client_redirect_uri = session.get('orig_client_redirect_uri')
@@ -344,7 +346,7 @@ def check_client(use_session=False):
         raise errors.ResourceError("Required query parameter client_id missing.")
     if not client_redirect_uri:
         raise errors.ResourceError("Required query parameter redirect_uri missing.")
-    if not response_type == 'code' and not response_type == 'token':
+    if not response_type == 'code' and not response_type == 'token' and not response_type == 'device_code':
         raise errors.ResourceError("Required query parameter response_type missing or not supported.")
     # make sure the client exists and the redirect_uri matches
     logger.debug(f"checking for client with id: {client_id} in tenant {tenant_id}")
@@ -395,7 +397,12 @@ class LoginResource(Resource):
     """
 
     def get(self):
-        client_id, client_redirect_uri, client_state, client, response_type = check_client()
+        logger.debug("Logging in")
+        logger.debug(f"Session: {session}")
+        verify_client = True if 'device_login' not in session else False
+        if 'device_login' in session:
+            logger.debug("At login resource for Device Flow")
+        client_id, client_redirect_uri, client_state, client, response_type = check_client(verify_client=verify_client)
         # selecting a tenant id is required before logging in -
         tenant_id = g.request_tenant_id
         if not tenant_id:
@@ -409,8 +416,13 @@ class LoginResource(Resource):
                                     state=client_state,
                                     response_type='code'))
         headers = {'Content-Type': 'text/html'}
+        display_name = ''
+        try:
+            display_name = client.display_name
+        except Exception as e:
+            logger.debug(f"Error getting client display name. e: {e}")
         context = {'error': '',
-                   'client_display_name': client.display_name,
+                   'client_display_name': display_name,
                    'client_id': client_id,
                    'client_redirect_uri': client_redirect_uri,
                    'client_state': client_state,
@@ -423,7 +435,6 @@ class LoginResource(Resource):
         if not tenant_id:
             tenant_id = session.get('tenant_id')
         if not tenant_id:
-            client_id, client_redirect_uri, client_state, client, response_type = check_client()
             logger.debug(
                 f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
             raise errors.ResourceError(
@@ -454,11 +465,15 @@ class LoginResource(Resource):
             return make_response(render_template('login.html', **context), 200, headers)
         # the username and password were accepted; set the session and redirect to the authorization page.
         session['username'] = username
-        mfa_required = needs_mfa()
-        # mfa_required = check_tenant_config_for_mfa()
-        redirect_url = 'mfaresource' if mfa_required else 'authorizeresource'
+        mfa_required = needs_mfa(tenant_id)
+        redirect_url = 'authorizeresource'
+        if mfa_required:
+            redirect_url = 'mfaresource'
+            session['mfa_validated'] = False
+            session['mfa_required'] = True
+        if session.get('device_login'):
+            redirect_url = 'deviceflowresource'
         print(redirect_url)
-        # check tenant config
         return redirect(url_for(redirect_url,
                                 client_id=client_id,
                                 redirect_uri=client_redirect_uri,
@@ -470,7 +485,7 @@ class MFAResource(Resource):
     def get(self):
         # a tenant id is required
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
-        tenant_id = session.get('tenant_id')
+        tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
         if not tenant_id:
             tenant_id = session.get('tenant_id')
@@ -478,8 +493,13 @@ class MFAResource(Resource):
             logger.debug(
                 f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}")
             return redirect(url_for('loginresource'), 200, headers)
+        display_name = ''
+        try:
+            display_name = client.display_name
+        except Exception as e:
+            logger.debug(f"Error getting client display name. e: {e}")
         context = {'error': '',
-                   'client_display_name': client.display_name,
+                   'client_display_name': display_name,
                    'client_id': client_id,
                    'client_redirect_uri': client_redirect_uri,
                    'client_state': client_state,
@@ -489,7 +509,8 @@ class MFAResource(Resource):
 
     def post(self):
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
-        tenant_id = session.get('tenant_id')
+        tenant_id = g.request_tenant_id
+        username = session.get('username')
         headers = {'Content-Type': 'text/html'}
         if not tenant_id:
             tenant_id = session.get('tenant_id')
@@ -499,21 +520,162 @@ class MFAResource(Resource):
             return redirect(url_for('loginresource'), 200, headers)
         mfa_token = request.form.get('mfa_token')
         response = "Incorrect MFA token"
-        # add privacy idea api call header
-        print("MFA CODE: %s" % mfa_token)
-        validated = call_mfa(mfa_token)
+        logger.debug("MFA CODE: %s" % mfa_token)
+        validated = call_mfa(mfa_token, tenant_id, username)
+        display_name = ''
+        try:
+            display_name = client.display_name
+        except Exception as e:
+            logger.debug(f"Error getting client display name. e: {e}")
         if validated:
+            response_type = 'code'
+            if 'device_login' in session:
+                response_type = 'device_code'
+            session['mfa_validated'] = True
             return redirect(url_for('authorizeresource',
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
                                     state=client_state,
-                                    client_display_name=client.display_name,
-                                    response_type='code'))
+                                    client_display_name=display_name,
+                                    response_type=response_type))
         else:
             context = {'error': response,
                    'username': session.get('username')}
             return make_response(render_template('mfa.html', **context), 200, headers)
 
+
+class DeviceFlowResource(Resource):
+    """
+    Web page responsible for authentication using user code
+    """
+    def get(self):
+        """
+        Displays page with box to enter user code
+        """
+        logger.debug("GET - Device Flow")
+        tenant_id = g.request_tenant_id
+        headers = {'Content-Type': 'text/html'}
+        if not tenant_id:
+            tenant_id = session.get('tenant_id')
+        if not tenant_id:
+            session['device_login'] = True
+            logger.debug(
+                f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}")
+            return redirect(url_for('loginresource'))
+        if 'username' not in session:
+            logger.debug(f"username not found in session: {session}")
+            session['device_login'] = True
+            return redirect(url_for('loginresource'))
+        context = {'error': '',
+                   'tenant_id': tenant_id,
+                   'username': session.get('username')}
+        return make_response(render_template('device-code.html', **context), 200, headers)
+
+    def post(self):
+        logger.debug("POST - Device Flow")
+        #client_id, client_redirect_uri, client_state, client, response_type = check_client()
+        tenant_id = g.request_tenant_id
+        headers = {'Content-Type': 'text/html'}
+        if not tenant_id:
+            tenant_id = session.get('tenant_id')
+        if not tenant_id:
+            session['device_login'] = True
+            logger.debug(
+                f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}")
+            return redirect(url_for('loginresource'), 302, headers)
+        if 'username' not in session:
+            session['device_login'] = True
+            logger.debug(
+                f"did not find username in session; issuing redirect to LoginResource. session: {session}")
+            return redirect(url_for('loginresource'), 302, headers)
+
+        user_code = request.form.get('user_code')
+        device_code = DeviceCode.query.filter_by(tenant_id=tenant_id,
+                                                    user_code=user_code).first()
+        # ask about this
+        try:
+            client = Client.query.filter_by(client_id=device_code.client_id).first()
+        except Exception as e:
+            logger.debug(f"Unable to retrieve client: {device_code.client_id}; error: {e}")
+            raise errors.ResourceError("Unable to retrieve client, cannot continue device flow")
+        if device_code:  
+            status = device_code.status
+            if status == "Created":
+                status = "Entered"
+                try:
+                    device_code.status = status
+                    db.session.commit()
+                except Exception as e:
+                    logger.error("Error trying to update device code entry; error: {e}")
+                    raise errors.ResourceError("Unable to update device, cannot continue device flow")
+                return redirect(url_for('authorizeresource',
+                                        client_id=client.client_id,
+                                        redirect_uri=None,
+                                        state=None,
+                                        client_display_name=client.display_name,
+                                        response_type='device_code',
+                                        user_code=user_code,
+                                        device_code=device_code))
+            else:
+                response = "Code not eligible to be entered"
+                context = {'error': response,
+                        'username': session.get('username')}
+                return make_response(render_template('device-code.html', **context), 200, headers)
+        else:
+            response = "No device code found"
+            context = {'error': response,
+                   'username': session.get('username')}
+            return make_response(render_template('device-code.html', **context), 200, headers)
+        
+class DeviceCodeResource(Resource):
+    """
+    POST request for creating a device code
+    input:
+    * client_id: ceated by user
+    optional:
+    * ttl: time to live for token
+    """
+    def post(self):
+        logger.debug("In device code resource")
+        validator = RequestValidator(utils.spec)
+        # support content-type www-form by setting the body on the request eaul to the JSON
+        result = validator.validate(FlaskOpenAPIRequest(request))
+        if result.errors:
+            raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
+        validated_body = result.body
+        client_id = validated_body.client_id
+        logger.debug("Checked client_id: %s", client_id)
+        tenant_id = g.request_tenant_id
+        client = Client.query.filter_by(client_id=client_id).first()
+        if not client:
+            logger.debug(f"client not found in db. client_id: {client_id}")
+            raise errors.ResourceError(f'Invalid client: {client_id}')
+        username = session.get('username')
+        logger.debug(f"username: {username}")
+        device_code = DeviceCode(tenant_id=tenant_id,
+                                           username=username,
+                                           client_id=client_id,
+                                           client_key=client.client_key,
+                                           code=DeviceCode.generate_code(),
+                                           user_code=DeviceCode.generate_user_code(),
+                                           status="Created",
+                                           verification_uri=DeviceCode.generate_verification_uri(tenant_id, client_id),
+                                           expiry_time=DeviceCode.compute_expiry(),
+                                           access_token_ttl=DeviceCode.set_ttl())
+        try:
+            db.session.add(device_code)
+            db.session.commit()
+        except Exception as e:
+                logger.error(f"Got exception trying to add and commit the device code. e: {e}; type(e): {type(e)}")
+                raise errors.ResourceError("Internal error saving device code. Please try again later.")
+        result = {}
+        result['client_id'] = client_id
+        result['user_code'] = device_code.user_code
+        result['device_code'] = device_code.code
+        result['verification_uri'] = device_code.verification_uri
+        result['expires_in'] = device_code.expiry_time
+
+        return utils.ok(result=result, msg="Token created successfully.")
 
 class AuthorizeResource(Resource):
     """
@@ -524,7 +686,15 @@ class AuthorizeResource(Resource):
 
     def get(self):
         logger.debug("top of GET /oauth2/authorize")
-        client_id, client_redirect_uri, client_state, client, response_type = check_client()
+        verify_client = True if 'device_login' not in session else False
+        logger.debug("Authorize Resource: Checking Client")
+        client_id, client_redirect_uri, client_state, client, response_type = check_client(verify_client=verify_client)
+        if not verify_client:
+            response_type ='device_code'
+            #add error handling
+            device_code = DeviceCode.query.filter_by(code=request.args.get('device_code')).first()
+            #add error handling
+            client = Client.query.filter_by(client_id=device_code.client_id).first()
         tenant_id = session.get('tenant_id')
         if not tenant_id:
             tenant_id = g.request_tenant_id
@@ -540,9 +710,17 @@ class AuthorizeResource(Resource):
             if 'authorization_code' not in allowable_grant_types:
                 raise errors.ResourceError(f"The authorization_code grant type is not allowed for this "
                                            f"tenant. Allowable grant types: {allowable_grant_types}")
+        if response_type == 'device_code':
+            if 'device_code' not in allowable_grant_types:
+                raise errors.ResourceError(f"The device_code grant type is not allowed for this "
+                                           f"tenant. Allowable grant types: {allowable_grant_types}")
         # if the user has not already authenticated, we need to issue a redirect to the login screen;
         # the login screen will depend on the tenant's IdP configuration
         if 'username' not in session:
+            # Device login should already be in the session
+            # User would have to navigate directly to authorize and put device_code response type as parameter
+            if response_type == 'device_code':
+                session['device_login'] = True
             # if the tenant is configured with a custom oa2 extension, start the redirect for that --
             if tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id):
                 logger.debug(f"username not in session; issuing redirect to 3rd party oauth URL.")
@@ -562,26 +740,41 @@ class AuthorizeResource(Resource):
                     url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}'
                 logger.debug(f"final redirect URL: {url}")
                 return redirect(url)
-
             logger.debug("username not in session; issuing redirect to login.")
             return redirect(url_for('loginresource',
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
                                     state=client_state,
                                     response_type=response_type))
-        client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get('tenant_id')
+        logger.debug(f"session in authorize: {session}")
+        if session.get('mfa_required'):
+            if not session.get('mfa_validated'):
+                logger.debug("Authorize Resource: Redirecting to MFA")
+                return redirect(url_for('mfaresource',
+                                        client_id=client_id,
+                                        redirect_uri=client_redirect_uri,
+                                        state=client_state,
+                                        response_type=response_type))
         headers = {'Content-Type': 'text/html'}
+        logger.debug("Request args: %s" % request.args)
+        display_name = ''
+        try:
+            display_name = client.display_name
+        except Exception as e:
+            logger.debug(f"No client available; e: {e}")
         context = {'error': '',
                    'username': session['username'],
                    'tenant_id': tenant_id,
-                   'client_display_name': client.display_name,
+                   'client_display_name': display_name,
                    'client_id': client_id,
                    'client_redirect_uri': client_redirect_uri,
                    'client_response_type': response_type,
-                   'client_state': client_state}
+                   'client_state': client_state,
+                   'device_login': session.get('device_login', None),
+                   'device_code': request.args.get('device_code', None)}
 
         return make_response(render_template('authorize.html', **context), 200, headers)
 
@@ -601,6 +794,7 @@ class AuthorizeResource(Resource):
             logger.debug(f"did not find username in session; this is an error. raising error. session: {session};")
             raise errors.ResourceError('username missing from session. Please login to continue.')
         approve = request.form.get("approve")
+        ttl = request.form.get("ttl", None)
         if not approve:
             logger.debug("user did not approve.")
             headers = {'Content-Type': 'text/html'}
@@ -609,17 +803,18 @@ class AuthorizeResource(Resource):
             return make_response(render_template('authorize.html', **context), 200, headers)
 
         state = request.form.get("client_state")
-        # retrieve client data from form and db -
-        client_id = request.form.get('client_id')
-        if not client_id:
-            logger.debug("client_id missing from form.")
-            raise errors.ResourceError("client_id missing.")
-        client = Client.query.filter_by(client_id=client_id).first()
-        if not client:
-            logger.debug(f"client not found in db. client_id: {client_id}")
-            raise errors.ResourceError(f'Invalid client: {client_id}')
-        # check original response_type passed in by the client and make sure grant type supported by the tenant --
         client_response_type = request.form.get('client_response_type')
+        client_id = request.form.get('client_id', None)
+        if not client_id:
+                logger.debug("client_id missing from form.")
+                raise errors.ResourceError("client_id missing.")
+        if client_response_type != 'device_code':
+            # retrieve client data from form and db -
+            client = Client.query.filter_by(client_id=client_id).first()
+            if not client:
+                logger.debug(f"client not found in db. client_id: {client_id}")
+                raise errors.ResourceError(f'Invalid client: {client_id}')
+        # check original response_type passed in by the client and make sure grant type supported by the tenant --
         config = tenant_configs_cache.get_config(tenant_id)
         allowable_grant_types = json.loads(config.allowable_grant_types)
         # implicit grant type -------------------------------------------------------
@@ -686,7 +881,67 @@ class AuthorizeResource(Resource):
             url = f'{client.callback_url}?code={authz_code}&state={state}'
             logger.debug(f"issuing redirect to {client.callback_url}")
             return redirect(url)
-
+        elif client_response_type == 'device_code':
+            if 'device_code' not in allowable_grant_types:
+                raise errors.ResourceError(f"The authorization_code grant type is not allowed for this "
+                                           f"tenant. Allowable grant types: {allowable_grant_types}")
+            code = request.form.get('device_code')
+            logger.debug(f"Device code passed in: {code}")
+            try:
+                device_code = DeviceCode.query.filter_by(code=code,
+                                                        tenant_id=tenant_id,
+                                                        status="Entered").first()
+            except Exception as e:
+                logger.debug(f"Error grabbing code: {code}; error: {e}")
+                error = e
+                client_redirect_uri = request.form.get('client_redirect_uri')
+                client_state = request.form.get('client_state')
+                context = {'error': error,
+                   'username': session['username'],
+                   'tenant_id': tenant_id,
+                   'client_display_name': client.display_name,
+                   'client_id': client_id,
+                   'client_redirect_uri': client_redirect_uri,
+                   'client_response_type': 'device_code',
+                   'client_state': client_state,
+                   'device_login': session.get('device_login', '')}
+                return make_response(render_template("authorize.html", **context), 200, headers)
+            headers = {'Content-Type': 'text/html'}
+            try:
+                int(ttl)
+            except ValueError:
+                client_redirect_uri = request.form.get('client_redirect_uri')
+                client_state = request.form.get('client_state')
+                context = {'error': 'Please enter an integer',
+                   'username': session['username'],
+                   'tenant_id': tenant_id,
+                   'client_display_name': client.display_name,
+                   'client_id': client_id,
+                   'client_redirect_uri': client_redirect_uri,
+                   'client_response_type': 'device_code',
+                   'client_state': client_state,
+                   'device_login': session.get('device_login', '')}
+                print(f"User entered: {ttl} which is not an int")
+                return make_response(render_template("authorize.html", **context), 200, headers)
+            if int(ttl) > 0:
+                device_code.access_token_ttl = int(ttl) * 60 * 60 * 24
+            try:
+                logger.debug(f"Updating device code: {device_code}")
+                db.session.commit()
+            except Exception as e:
+                logger.error(f"Error updating {device_code}; e: {e}")
+                context = {'error': e,
+                   'username': session['username'],
+                   'tenant_id': tenant_id,
+                   'client_display_name': client.display_name,
+                   'client_id': client_id,
+                   'client_redirect_uri': client_redirect_uri,
+                   'client_response_type': 'device_code',
+                   'client_state': client_state,
+                   'device_login': session.get('device_login', '')}
+                return make_response(render_template("authorize.html", **context), 200, headers)
+            session.pop('device_login')
+            return make_response(render_template("success.html"), 200, headers)
 
 class OAuth2ProviderExtCallback(Resource):
     """
@@ -730,6 +985,7 @@ class TokensResource(Resource):
       * password
       * authorization_code
       * refresh_token
+      * device_code
     """
 
     def post(self):
@@ -827,6 +1083,17 @@ class TokensResource(Resource):
                                                                    code=code,
                                                                    client_id=client_id,
                                                                    client_key=client_key)
+        elif grant_type == 'device_code':
+            code = data.get('device_code')
+            if not code:
+                logger.debug("no device code found in the request")
+                raise errors.ResourceError("Required device_code parameter missing.")
+            logger.debug(f"consuming device code: {code}")
+            username, ttl = DeviceCode.validate_and_consume_code(tenant_id=tenant_id,
+                                                            code=code,
+                                                            client_id=client_id,
+                                                            client_key=client_key)
+            logger.debug(f"USERNAME: {username}; TTL: {ttl}")
         elif grant_type == 'refresh_token':
             logger.debug("performing refresh token checks.")
             refresh_token = data.get('refresh_token')
@@ -865,7 +1132,10 @@ class TokensResource(Resource):
 
         # call /v3/tokens to generate access token for the user
         url = f'{g.request_tenant_base_url}/v3/tokens'
-        acces_token_ttl = config.default_access_token_ttl
+        #override this
+        access_token_ttl = config.default_access_token_ttl
+        if grant_type == 'device_code':
+            access_token_ttl = ttl
         content = {
             "token_tenant_id": f"{tenant_id}",
             "account_type": "user",
@@ -874,7 +1144,7 @@ class TokensResource(Resource):
                 "tapis/client_id": client_id,
                 "tapis/grant_type": grant_type,
             },
-            "access_token_ttl": acces_token_ttl,
+            "access_token_ttl": access_token_ttl,
             "generate_refresh_token": False
         }
         # only generate a refresh token when OAuth client is passed
@@ -1128,6 +1398,9 @@ class LogoutResource(Resource):
             session.pop('username', None)
             session.pop('tenant_id', None)
             session.pop('access_token', None)
+            session.pop('device_login', None)
+            session.pop('mfa_required', None)
+            session.pop('mfa_validated', None)
             make_response(render_template('logout.html', logout_message='You have been logged out.'), 200, headers)
         # if they submitted the logout form but did not check the box then just return them to the logout form -
         return redirect(url_for('webapptokenandredirect'))
