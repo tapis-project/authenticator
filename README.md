@@ -62,6 +62,46 @@ Once the First Time Setup has been done a machine, updates can be fetched applie
 directory).migrations
 4. `docker-compose up -d authenticator` - start a new version of the Authenticator.
 
+
+#### Configuring Custom IdPs
+When testing the custom IdP configurations (for example, for the github-demo or icicle tenants), 
+one needs to store the configuration into the local postgres databse. Here are the steps to do that:
+
+##### GitHub
+Exec into the authenticator Python container and run the following:
+
+```
+<from within the container>
+python
+from service.models import TenantConfig, db
+import json
+c = TenantConfig.query.filter_by(tenant_id='github-demo')[0]
+d = {'github': { 'client_id': '<get_from_stache>', 'client_secret': '<get_from_stache>'}}
+s = json.dumps(d)
+c.custom_idp_configuration = s
+db.session.commit()
+
+```
+
+
+##### ICICLE
+
+Exec into the authenticator Python container and run the following:
+
+```
+<from within the container>
+python
+from service.models import TenantConfig, db
+import json
+c = TenantConfig.query.filter_by(tenant_id='icicle')[0]
+d = {'tacc_keycloak': { 'client_id': '<get_from_stache>', 'client_secret': '<get_from_stache>'}}
+s = json.dumps(d)
+c.custom_idp_configuration = s
+db.session.commit()
+
+```
+
+
 #### New DB Schema
 
 *** DEPRECATED -- should use Updates to the Existing Schema from now on.***

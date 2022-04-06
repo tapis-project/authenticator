@@ -737,8 +737,12 @@ class AuthorizeResource(Resource):
                 # cii has its own format of callback url; there is no client id that is passed.
                 if oa2ext.ext_type == 'cii':
                     url = f'{oa2ext.identity_redirect_url}?redirect={oa2ext.callback_url}'
+                # TODO -- check if with github we can specify response_type. before we were not specifying it
+                #         but it seems to be part of the spec...
+                # elif oa2ext.ext_type == 'github':
+                #     url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}'
                 else:
-                    url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}'
+                    url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}&response_type=code'
                 logger.debug(f"final redirect URL: {url}")
                 return redirect(url)
             logger.debug("username not in session; issuing redirect to login.")
