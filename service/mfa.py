@@ -80,8 +80,4 @@ def verify_mfa_token(url, jwt, token, username):
         logger.debug(f"error: {e}")
         return False
     valid = response.json()['result']['value']
-<<<<<<< HEAD
     return valid
-=======
-    return valid
->>>>>>> 291f277 (Merging device code resource with ldap extension additions)
