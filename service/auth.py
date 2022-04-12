@@ -1,15 +1,16 @@
 from flask import request, g, session
 
-from common import auth
-from common.config import conf
-from common import errors as common_errors
+# from common import auth
+from tapisservice.tapisflask import auth
+from tapisservice.config import conf
+from tapisservice import errors as common_errors
 
 from service import t
 from service.models import tenant_configs_cache
 from service.ldap import check_username_password
 
 # get the logger instance -
-from common.logs import get_logger
+from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 
@@ -168,7 +169,7 @@ def authentication():
 
         # first, check if an X-Tapis-Token header appears in the request. We do not honor JWT authentication for
         # generating new tokens, but we also don't want to fail for an expired token. So, we remove the token header
-        # if it
+        # if it is present
         if 'X-Tapis-Token' in request.headers:
             logger.debug("Got an X-Tapis-Token header.")
             try:

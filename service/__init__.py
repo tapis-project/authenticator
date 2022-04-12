@@ -1,11 +1,12 @@
 import os
 
-from common.auth import Tenants, get_service_tapis_client
-from common.auth import tenants as auth_tenants
-from common.config import conf
-from common import errors
+from tapisservice.auth import get_service_tapis_client
+from tapisservice.tenants import TenantCache
+from tapisservice.tenants import tenant_cache as auth_tenants
+from tapisservice.config import conf
+from tapisservice import errors
 
-from common.logs import get_logger
+from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 MIGRATIONS_RUNNING = os.environ.get('MIGRATIONS_RUNNING', False)
@@ -18,7 +19,7 @@ logger.debug("creating the authenticator tapis service client...")
 t = get_service_tapis_client(tenants=auth_tenants)
 
 
-class AuthenticatorTenants(Tenants):
+class AuthenticatorTenants(TenantCache):
 
     def extend_tenant(self, tenant):
         """
@@ -49,7 +50,7 @@ class AuthenticatorTenants(Tenants):
                 tenant.dev_ldap_tenants_base_dn = conf.dev_ldap_tenants_base_dn
             # look up ldap info from tenants service
             try:
-                tenant_response = t.tenants.get_tenant(tenant_id=tenant_id)
+                tenant_response = t.tenants.get_tenant(tenant_id=tenant_id, _tapis_set_x_headers_from_service=True)
             except Exception as e:
                 logger.error(f"Got exception trying to look up tenant info for tenant: {tenant_id}; e: {e}")
                 raise e
@@ -59,7 +60,7 @@ class AuthenticatorTenants(Tenants):
                 logger.debug(f'got a user_ldap_connection_id: {tenant_response.user_ldap_connection_id} for '
                              f'tenant: {tenant_id}. Now looking up LDAP data...')
                 try:
-                    ldap_response = t.tenants.get_ldap(ldap_id=tenant_response.user_ldap_connection_id)
+                    ldap_response = t.tenants.get_ldap(ldap_id=tenant_response.user_ldap_connection_id, _tapis_set_x_headers_from_service=True)
                 except Exception as e:
                     logger.error(f"Got exception trying to look up ldap info for "
                                  f"ldap_id: {tenant_response.user_ldap_connection_id}; e: {e}")
@@ -106,7 +107,8 @@ def get_ldap_bind_from_sk(bind_credential_name):
         ldap_bind_secret = t.sk.readSecret(secretType='user',
                                            secretName=bind_credential_name,
                                            tenant=conf.service_tenant_id,
-                                           user=conf.service_name)
+                                           user=conf.service_name,
+                                           _tapis_set_x_headers_from_service=True)
     except Exception as e:
         msg = f"Got exception trying to retrieve ldap bind secret from SK; exception: {e}."
         logger.error(msg)
@@ -141,7 +143,8 @@ def store_ldap_bind_secret_in_sk(ldap_connection_id, password, tenant='admin', u
                          secretName=f'ldap.{ldap_connection_id}',
                          tenant=tenant,
                          user=user,
-                         data={'password': password})
+                         data={'password': password},
+                         _tapis_set_x_headers_from_service=True)
     except Exception as e:
         msg = f"could not save secret with sk; exception: {e}"
         logger.error(msg)

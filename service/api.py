@@ -1,6 +1,6 @@
 from flask_migrate import Migrate
-from common.config import conf
-from common.utils import TapisApi, handle_error, flask_errors_dict
+from tapisservice.config import conf
+from tapisservice.tapisflask.utils import TapisApi, handle_error, flask_errors_dict
 
 from service import MIGRATIONS_RUNNING
 from service.auth import authn_and_authz
@@ -11,7 +11,7 @@ from service.controllers import AuthorizeResource, ClientsResource, ClientResour
 from service.ldap import populate_test_ldap
 from service.models import db, app, initialize_tenant_configs
 
-from common.logs import get_logger
+from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 # authentication and authorization ---
