@@ -38,13 +38,46 @@ def init_db():
                 'last_update_time': datetime.datetime.utcnow(),
                 'active': True
                 }
+        models.delete_tenant_from_db(TEST_TENANT_ID)
+        config = {
+            "tenant_id":TEST_TENANT_ID,
+            "allowable_grant_types":json.dumps(["password", "implicit", "authorization_code", "refresh_token", "device_code"]),
+            "use_ldap":True,
+            "use_token_webapp":True,
+            "mfa_config":json.dumps({
+                "tacc": {
+                    "privacy_idea_url": "https://pidea01.tacc.utexas.edu",
+                    "privacy_idea_client_id": "p_client",
+                    "privacy_idea_client_key": "p_key",
+                    "grant_types": [
+                        "authorization_code",
+                        "implicit"
+                    ]
+                }
+            }),
+            # 4 hours
+            "default_access_token_ttl":14400,
+            # 1 year
+            "default_refresh_token_ttl":31536000,
+            "max_access_token_ttl":31536000,
+            # 2 years
+            "max_refresh_token_ttl":63072000,
+            "custom_idp_configuration":json.dumps({})
+        }
+        models.add_tenant_to_db(config)
         models.add_client_to_db(data)
         client = models.Client.query.filter_by(
             tenant_id=data['tenant_id'],
             client_id=data['client_id'],
             client_key=data['client_key']
         ).first()
+        tenant = models.TenantConfig.query.filter_by(
+            tenant_id=config['tenant_id']
+        ).first()
+
         # if it is somehow not there, we are in real trouble; just bail out.
+        if not tenant:
+            assert False
         if not client:
             assert False
 
@@ -395,79 +428,14 @@ def test_implicit_grant(client, init_db):
         # TODO -- validate that the token returned has the correct claims.. to do this, will need to parse the token
         # from out of the raw string.
 
-def test_upate_client(client, init_db):
+def test_device_code(client, init_db):
     with client:
-        auth_header = {'Authorization': get_basic_auth_header(TEST_CLIENT_ID, TEST_CLIENT_KEY)}
-        payload = {
-            'grant_type': 'password',
-            'username': TEST_USERNAME,
-            'password': TEST_PASSWORD
-        }
-        response = client.post(
-            "http://localhost:5000/v3/oauth2/tokens",
-            headers=auth_header,
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
+        with client.session_transaction() as sess:
+            sess['username'] = TEST_USERNAME
+        data={'client_id': TEST_CLIENT_ID}
+        
+        response = client.post('http://localhost:5000/v3/oauth2/device/code',
+                                data=json.dumps(data),
+                                content_type='application/json')
+        print(response.data)
         assert response.status_code == 200
-        assert 'access_token' in response.json['result']
-        headers = {
-            'x-tapis-token': response.json['result']['access_token']['access_token']
-        }
-        payload = {
-            "callback_url": "localhost:5000/v3/oauth2/clients/test/active",
-            "display_name": "Test Active"
-        }
-        #response = client.post(
-        #    "http://localhost:5000/v3/oauth2/clients",
-        #    headers = headers,
-        #    data = json.dumps(payload),
-        #    content_type='application/json'
-        #)
-        #assert response.status_code == 200
-        #assert 'client_id' in response.json['result']
-        #client_id = response.json['result']['client_id']
-        #payload = {
-        #    "display_name": "Test Client Update"
-        #}
-        #response = client.put(
-        #    f"http://localhost:5000/v3/oauth2/clients/{client_id}",
-        #    headers=headers,
-        #    data=json.dumps(payload),
-        #    content_type='application/json'
-        #)
-        #assert response.status_code == 200
-        #assert response.json['result']['display_name'] == "Test Client Update"
-
-def test_delete_client(client, init_db):
-    with client:
-        auth_header = {'Authorization': get_basic_auth_header(TEST_CLIENT_ID, TEST_CLIENT_KEY)}
-        payload = {
-            'grant_type': 'password',
-            'username': TEST_USERNAME,
-            'password': TEST_PASSWORD
-        }
-        response = client.post(
-            "http://localhost:5000/v3/oauth2/tokens",
-            headers=auth_header,
-            data=json.dumps(payload),
-            content_type='application/json'
-        )
-        assert response.status_code == 200
-        assert 'access_token' in response.json['result']
-        headers = {
-            'x-tapis-token': response.json['result']['access_token']['access_token']
-        }
-        response = client.get(
-            "http://localhost:5000/v3/oauth2/clients",
-            headers = headers,
-            content_type = 'application/json'
-        )
-        client_id = response.json['result'][0]['client_id']
-        response = client.delete(
-            f"http://localhost:5000/v3/oauth2/clients/{client_id}",
-            headers = headers,
-            content_type = 'application/json'
-        )
-        assert response.status_code == 200
-        assert response.json is None

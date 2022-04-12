@@ -1,9 +1,10 @@
-from common import utils, errors
+from tapisservice import errors
+from tapisservice.tapisflask import utils
 import json
 import requests
 from service.models import TenantConfig, tenant_configs_cache
 
-from common.logs import get_logger
+from tapisservice.logs import get_logger
 
 logger = get_logger(__name__)
 
@@ -79,4 +80,8 @@ def verify_mfa_token(url, jwt, token, username):
         logger.debug(f"error: {e}")
         return False
     valid = response.json()['result']['value']
+<<<<<<< HEAD
     return valid
+=======
+    return valid
+>>>>>>> 291f277 (Merging device code resource with ldap extension additions)
