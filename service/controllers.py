@@ -556,16 +556,15 @@ class DeviceFlowResource(Resource):
         logger.debug("GET - Device Flow")
         tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
+        session['device_login'] = True
         if not tenant_id:
             tenant_id = session.get('tenant_id')
         if not tenant_id:
-            session['device_login'] = True
             logger.debug(
                 f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}")
             return redirect(url_for('loginresource'))
         if 'username' not in session:
             logger.debug(f"username not found in session: {session}")
-            session['device_login'] = True
             return redirect(url_for('loginresource'))
         context = {'error': '',
                    'tenant_id': tenant_id,
@@ -577,15 +576,14 @@ class DeviceFlowResource(Resource):
         #client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
+        session['device_login'] = True
         if not tenant_id:
             tenant_id = session.get('tenant_id')
         if not tenant_id:
-            session['device_login'] = True
             logger.debug(
                 f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}")
             return redirect(url_for('loginresource'), 302, headers)
         if 'username' not in session:
-            session['device_login'] = True
             logger.debug(
                 f"did not find username in session; issuing redirect to LoginResource. session: {session}")
             return redirect(url_for('loginresource'), 302, headers)
