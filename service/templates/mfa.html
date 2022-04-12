@@ -2,12 +2,12 @@
 {% block content %}
 <body>
 
-<div class="container">
-<h2> Tapis Authorization - Tenant {{ tenant_id }}</h2>
- <p> You are logged in as user {{ username }}. The client application {{ client_display_name }} is requesting a Tapis
-     access token on your behalf.</p>
+ <div class="container">
+    <h2> MFA Token </h2>
+ </div>
 
  <form action="" method="post">
+
 
      {% if error %}
    <div class="container">
@@ -16,24 +16,21 @@
      {% endif %}
 
      <div class="container">
-        <label>
-          {% if device_login %}
-          <label for="ttl">Time for token to live in days (default: 30)</label>
-          <input type="text" id="ttl" name="ttl">
-          {% endif %}
-          <input type="checkbox" checked="checked" name="approve"> Approve
+         <div class="input-group">
+            Username: {{ username }}
+         </div>
+         <div class="input-group">
+            Token: <input id="mfa_token" type="text" class="form-control" name="mfa_token" placeholder="Enter MFA Token" required>
             <input type="hidden" name="client_id" value="{{ client_id }}">
             <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
             <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
             <input type="hidden" name="client_state" value="{{ client_state }}">
             <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
-            {% if device_code %}
-            <input type="hidden" name="device_code" value="{{ device_code }}">
-            {% endif %}
-        </label>
+         </div>
         <button type="submit">Submit</button>
-     </div>
-
+    </div>
+  <div class="container" style="background-color:#f1f1f1">
+    <button type="button" class="cancelbtn">Cancel</button>
+  </div>
 </form>
-</div>
 {% endblock %}

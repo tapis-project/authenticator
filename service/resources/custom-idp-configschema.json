@@ -15,7 +15,12 @@
           "description": "Properties associated with github OAuth",
           "$ref": "#/definitions/githubObject"
     },
-      "cii": {
+      "tacc_keycloak": {
+        "type": "object",
+          "description": "Properties associated with TACC Keycloak at identity.tacc.cloud",
+          "$ref": "#/definitions/taccKeycloakObject"
+    },
+    "cii": {
         "type": "object",
           "description": "Properties associated with the custom CII BlueModus OAuth",
           "$ref": "#/definitions/ciiObject"
@@ -59,7 +64,20 @@
            }
          }
     },
-     "ciiObject": {
+      "taccKeycloakObject": {
+        "type": "object",
+          "properties": {
+            "client_key": {
+              "type": "string",
+              "description": "The TACC Keycloak client id Tapis uses for this tenant. Usually a human-readable string."
+            },
+            "client_secret": {
+              "type": "string",
+              "description": "The TACC Keycloak secret Tapis uses for this tenant."
+            }
+          }
+    },
+    "ciiObject": {
        "type": "object",
          "properties": {
            "login_url": {

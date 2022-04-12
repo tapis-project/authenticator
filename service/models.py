@@ -10,9 +10,9 @@ import random
 import uuid
 
 from tapisservice.config import conf
-from tapisservice.errors import DAOError
+from tapisservice.errors import DAOError, ServiceConfigError
 from tapisservice.logs import get_logger
-from tapisservice import errors
+from service import errors
 
 from service import MIGRATIONS_RUNNING
 
@@ -110,10 +110,20 @@ def initialize_tenant_configs(tenant_id):
     # create the config object because it doesn't exist yet:
     config = TenantConfig(
         tenant_id=tenant_id,
-        allowable_grant_types=json.dumps(["password", "implicit", "authorization_code", "refresh_token"]),
+        allowable_grant_types=json.dumps(["password", "implicit", "authorization_code", "refresh_token", "device_code"]),
         use_ldap=True,
         use_token_webapp=True,
-        mfa_config=json.dumps({}),
+        mfa_config=json.dumps({
+            "tacc": {
+                "privacy_idea_url": "https://pidea01.tacc.utexas.edu",
+                "privacy_idea_client_id": "tapis-service",
+                "privacy_idea_client_key": "Hjuff4D3VjRmCvqPn_Ep",
+                "grant_types": [
+                    "authorization_code",
+                    "implicit"
+                ]
+            }
+        }),
         # 4 hours
         default_access_token_ttl=14400,
         # 1 year
@@ -177,7 +187,7 @@ class TenantConfigsCache(object):
                 tries = 1
                 continue
             tries = 2
-        raise errors.ServiceConfigError(f"tenant id {tenant_id} not found in tenant configurations.")
+        raise ServiceConfigError(f"tenant id {tenant_id} not found in tenant configurations.")
 
     def get_custom_oa2_extension_type(self, tenant_id):
         """
@@ -190,11 +200,22 @@ class TenantConfigsCache(object):
         custom_idp_config = json.loads(config.custom_idp_configuration)
         # check whether the tenant config has one of the OAuth2 extension configuration properties.
         # this check will expand over time as we add support for additional types of OAuth2 extension modules.
+        # TODO -- this must be updated for every new custom oa2 extension type.
         if 'github' in custom_idp_config.keys():
             return 'github'
         if 'cii' in custom_idp_config.keys():
             return 'cii'
+        if 'tacc_keycloak' in custom_idp_config.keys():
+            return 'tacc_keycloak'
+
         return None
+
+    def get_mfa_type(self, tenant_id):
+        logger.debug()
+        config = self.get_config(tenant_id)
+        mfa_config = json.loads(config.mfa_config)
+        # parse mfa_config for mfa_type
+        return "tacc"
 
 
 # singleton cache object -- when migrations are running the TenantConfig relations in Postgres could not
@@ -391,6 +412,119 @@ class AuthorizationCode(db.Model):
             raise errors.InvalidAuthorizationCodeError(msg="authorization code could not be deleted.")
         return code.username
 
+class DeviceCode(db.Model):
+    __tablename__ = 'device_codes'
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), unique=True, nullable=False)
+    user_code = db.Column(db.String(10), unique=True, nullable=False)
+    tenant_id = db.Column(db.String(50), unique=False, nullable=False)
+    username = db.Column(db.String(50), unique=False, nullable=False)
+    client_id = db.Column(db.String(80), db.ForeignKey('clients.client_id'), unique=False, nullable=False)
+    client_key = db.Column(db.String(80), unique=False, nullable=False)
+    status = db.Column(db.String(50), unique=False, nullable=False)
+    verification_uri = db.Column(db.String(80), unique=False, nullable=False)
+    create_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
+    expiry_time = db.Column(db.DateTime, nullable=False)
+    access_token_ttl = db.Column(db.Integer, nullable=False)
+
+    def __repr__(self):
+        return f'{self.code}'
+
+    CODE_TTL = 600
+
+    @property
+    def serialize(self):
+        return {
+            "code": self.code,
+            "status": self.status,
+            "expiry_time": self.expiry_time
+        }
+
+    UNICODE_ASCII_CHARACTER_SET = string.ascii_letters + string.digits
+    UNICODE_ASCII_LETTER_SET = string.ascii_letters
+    BASE_URL = "https://{}.tapis.io"
+
+    @classmethod
+    def generate_code(cls, length=40, chars=UNICODE_ASCII_CHARACTER_SET):
+        """Generate a device code string."""
+        rand = random.SystemRandom()
+        return ''.join(rand.choice(chars) for _ in range(length))
+
+    #generate user_code
+    @classmethod
+    def generate_user_code(cls, length=8, chars=UNICODE_ASCII_LETTER_SET):
+        rand = random.SystemRandom()
+        return ''.join(rand.choice(chars) for _ in range(length))
+    
+    @classmethod
+    def generate_verification_uri(cls, tenant, client_id, BASE_URL=BASE_URL):
+        return BASE_URL.format(tenant) + "/v3/oauth2/device?client_id={}".format(client_id)
+    #generate verification url
+        #base url will change based on tenant and instance
+
+    @classmethod
+    def set_ttl(cls):
+        ttl = 30 * 60 * 60 * 24
+        return ttl
+
+    @classmethod
+    def compute_expiry(cls):
+        """Computes the expiry of a device code created now."""
+        return datetime.datetime.utcnow() + datetime.timedelta(seconds=DeviceCode.CODE_TTL)
+
+    @classmethod
+    def validate_code(cls, tenant_id, code, client_id, client_key):
+        """
+        Validate the use of a device code. This method checks the code expiry and client credentials against the
+        DeviceCode table.
+        :param tenant_id (str) The tenant_id for which the device code belongs.
+        :param code: (str) The device code.
+        :param client_id: (str) The client_id owning the code.
+        :param client_key: (str) Associated client_secret.
+        :return:
+        """
+        code_result = cls.query.filter_by(tenant_id=tenant_id,
+                                          code=code,
+                                          client_id=client_id,
+                                          client_key=client_key).first()
+        logger.debug(code_result)
+        logger.error("device code expired")
+        if not code_result:
+            logger.debug(f"Device Code: {code_result} not found")
+            raise errors.InvalidDeviceCodeError(msg="device code not valid.")
+        if not code_result.status == "Entered":
+            logger.debug(f"Device Code: {code_result} not ready to be used")
+            raise errors.InvalidDeviceCodeError(msg="device code not ready.")
+        # check for an expired code, plus a fudge factor for clock skew:
+        if not datetime.datetime.utcnow() <= code_result.expiry_time + datetime.timedelta(seconds=6):
+            logger.error(f"Device Code: {code_result} expired")
+            db.session.delete(code_result)
+            db.session.commit()
+            logger.error(f"Device Code: {code_result} deleted")
+            raise errors.InvalidDeviceCodeError(msg="device code has expired and is now deleted.")
+        return code_result
+        
+    @classmethod
+    def validate_and_consume_code(cls, tenant_id, code, client_id, client_key):
+        """
+        Validate the use of a device code and then consume it. This method checks the code expiry and
+        client credentials against the DeviceCode table; if valid the code is then deleted.
+        :param tenant_id (str) The tenant_id for which the device code belongs.
+        :param code: (str) The device code.
+        :param client_id: (str) The client_id owning the code.
+        :param client_key: (str) Associated client_secret.
+        :return:
+        """
+        code = DeviceCode.validate_code(tenant_id, code, client_id, client_key)
+        try:
+            db.session.delete(code)
+            db.session.commit()
+            logger.debug(f"Validated and consumed device code: {code}")
+        except Exception as e:
+            logger.error(f"Got exception trying to delete device code; code: {code}; e: {e}; type(e): {type(e)}")
+            raise errors.InvalidDeviceCodeError(msg="device code could not be deleted.")
+        return code.username, code.access_token_ttl
 
 class LdapUser(object):
     """
@@ -639,6 +773,8 @@ class Token(object):
         # authorization code grant:
         result['redirect_uri'] = getattr(data, 'redirect_uri', None)
         result['code'] = getattr(data, 'code', None)
+        # device code grant:
+        result['device_code'] = getattr(data, 'device_code', None)
         # refresh token:
         result['refresh_token'] = getattr(data, 'refresh_token', None)
         return result
@@ -679,6 +815,38 @@ def create_clients_for_tenant(tenant_id):
     add_client_to_db(client)
     return local_client, client
 
+
+def delete_tenant_from_db(tenant_id):
+    try:
+        tenant = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
+        if not tenant:
+            logger.debug("tenant doesn't exist")
+        else:
+            logger.debug(f"deleting tenant {tenant_id}")
+            tenant.tenant_id = "deleted"
+            db.session.commit()
+    except Exception as e:
+        logger.info(f"Got exception trying to delete the tenant: {e}")
+
+def add_tenant_to_db(config):
+    """
+    Add a tenant directly to the tenants db.
+    :param data: A Python dictionary containing a complete desecription of the tenant to add.
+    :return:
+    """
+    try:
+        tenant = TenantConfig.query.filter_by(
+            tenant_id = config['tenant_id']
+        ).first()
+        if not tenant:
+            logger.debug(f"registering localhost {config['tenant_id']} tenant")
+            tenant = TenantConfig(**config)
+            db.session.add(tenant)
+            db.session.commit()
+        else:
+            logger.debug(f"tenant with id {config['tenant_id']} already exists")
+    except Exception as e:
+        logger.info(f"Got exception trying to create the tenant: {e}")
 
 def add_client_to_db(data):
     """

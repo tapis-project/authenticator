@@ -116,7 +116,8 @@ def authentication():
 
     # no credentials required on the authorize, login and oa2 extenion pages
     if '/v3/oauth2/authorize' in request.url_rule.rule or '/v3/oauth2/login' in request.url_rule.rule \
-            or '/oauth2/extensions' in request.url_rule.rule:
+            or '/oauth2/extensions' in request.url_rule.rule or 'v3/oauth2/mfa' in request.url_rule.rule \
+            or '/v3/oauth2/device' in request.url_rule.rule:
         # always resolve the request tenant id based on the URL:
         logger.debug("authorize, login or oa2 extension page. Resolving tenant_id")
         auth.resolve_tenant_id_for_request()

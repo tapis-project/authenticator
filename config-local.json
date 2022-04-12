@@ -1,8 +1,9 @@
 {
   "service_name": "authenticator",
   "service_password": "TODO_get_from_SK>",
-  "primary_site_admin_tenant_base_url": "https://admin.develop.tapi.io",
+  "primary_site_admin_tenant_base_url": "https://admin.develop.tapis.io",
   "service_tenant_id": "admin",
+  "service_site_id": "tacc",
   "tenants": ["dev", "tacc"],
   "use_sk": true,
   "log_level": "DEBUG",
