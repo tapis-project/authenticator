@@ -1,6 +1,7 @@
 from flask_migrate import Migrate
 from tapisservice.config import conf
 from tapisservice.tapisflask.utils import TapisApi, handle_error, flask_errors_dict
+from tapisservice.tapisflask.resources import HelloResource, ReadyResource
 
 from service import MIGRATIONS_RUNNING
 from service.auth import authn_and_authz
@@ -52,6 +53,10 @@ api = TapisApi(app, errors=flask_errors_dict)
 api.handle_error = handle_error
 api.handle_exception = handle_error
 api.handle_user_exception = handle_error
+
+# Health-checks
+api.add_resource(ReadyResource, '/v3/oauth2/ready')
+api.add_resource(HelloResource, '/v3/oauth2/hello')
 
 # API resources
 api.add_resource(OAuthMetadataResource, '/v3/oauth2/.well-known/oauth-authorization-server')
