@@ -2,6 +2,25 @@
 All notable changes to this project will be documented in this file.
 
 
+## 1.2.0 - 2022-05-30
+This release adds support for the device code grant type and OAuth2 authentication
+via TACC's Keycloak instance to support third-party identity providers, including
+Globus Auth.
+
+### Breaking Changes:
+- None.
+
+### New features:
+- Add support for the device code grant type (https://datatracker.ietf.org/doc/html/rfc8628) and with it, the ability to generate long-lived tokens. See issue #6 for
+more details.
+- Adds support for authenticating via TACC's Keycloak instance. This authentication
+mechanism is used when a tenant configures a custom idp configuration of type `tacc_keycloak`. See issue #18 for more details.
+- Adds health check and ready endpoints.
+
+### Bug fixes:
+- None.
+
+
 ## 1.1.0 - 2022-03-01
 This release converts the Authenticator to using the new `tapipy-tapisservice` plugin-based 
 Tapis Python SDK and makes updates necessary for supporting deployment automation provided
