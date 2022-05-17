@@ -125,6 +125,10 @@ def authentication():
             logger.debug(f"request_tenant_id: {g.request_tenant_id}")
         except AttributeError:
             raise common_errors.BaseTapisError("Unable to resolve tenant_id for request.")
+        # make sure this request is for a tenant served by this authenticator
+        if g.request_tenant_id not in conf.tenants:
+            raise common_errors.PermissionsError(f"The request is for a tenant ({g.request_tenant_id}) that is not "
+                                                 f"served by this authenticator.")
         return True
 
     # the profiles endpoints always use standard Tapis Token auth -
@@ -133,6 +137,10 @@ def authentication():
         auth.authentication()
         # always resolve the request tenant id based on the URL:
         auth.resolve_tenant_id_for_request()
+        # make sure this request is for a tenant served by this authenticator
+        if g.request_tenant_id not in conf.tenants:
+            raise common_errors.PermissionsError(f"The request is for a tenant ({g.request_tenant_id}) that is not "
+                                                 f"served by this authenticator.")
         return True
 
     # the clients endpoints need to accept both standard Tapis Token auth and basic auth,
@@ -144,6 +152,10 @@ def authentication():
             # do basic auth against the ldap
             # always resolve the request tenant id based on the URL:
             auth.resolve_tenant_id_for_request()
+            # make sure this request is for a tenant served by this authenticator
+            if g.request_tenant_id not in conf.tenants:
+                raise common_errors.PermissionsError(f"The request is for a tenant ({g.request_tenant_id}) that is not "
+                                                    f"served by this authenticator.")
             try:
                 logger.debug(f"request_tenant_id: {g.request_tenant_id}")
             except AttributeError:
@@ -190,6 +202,10 @@ def authentication():
             logger.debug(f"request_tenant_id: {g.request_tenant_id}")
         except AttributeError:
             raise common_errors.BaseTapisError("Unable to resolve tenant_id for request.")
+        # make sure this request is for a tenant served by this authenticator
+        if g.request_tenant_id not in conf.tenants:
+            raise common_errors.PermissionsError(f"The request is for a tenant ({g.request_tenant_id}) that is not "
+                                                 f"served by this authenticator.")
         return True
 
     if '/v3/oauth2/logout' in request.url_rule.rule \
