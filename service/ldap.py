@@ -307,7 +307,7 @@ def get_tenant_user(tenant_id, username):
         if not len(parts) == 2:
             raise DAOError("Unable to calculate search DN.")
         tenant_base_dn = parts[1]
-        default_user_filter_prefix = f'({parts[0]}=*)'
+        default_user_filter_prefix = f'({parts[0]}*)'
     logger.debug(f"default_user_filter_prefix: {default_user_filter_prefix}")
 
     # this gets the custom authenticator config for the ldap --
