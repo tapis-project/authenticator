@@ -73,6 +73,7 @@ def get_tapis_ldap_connection():
     Convenience wrapper function to get an ldap connection to the Tapis dev ldap server.
     :return:
     """
+    logger.debug(f"get_tapis_ldap_connection for: {tapis_ldap['server']}:{tapis_ldap['port']}")
     try:
         return get_ldap_connection(ldap_server = tapis_ldap['server'],
                                    ldap_port = tapis_ldap['port'],
