@@ -18,7 +18,7 @@ mechanism is used when a tenant configures a custom idp configuration of type `t
 - Adds health check and ready endpoints.
 
 ### Bug fixes:
-- None.
+- Fix a bug in the way authenticator computed the `default_user_filter_prefix` that was causing two equals signs (`=`) to get inserted into the filter. 
 
 
 ## 1.1.0 - 2022-03-01
