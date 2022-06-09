@@ -7,7 +7,6 @@ from openapi_core.shortcuts import RequestValidator
 from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 import sqlalchemy
 import secrets
-import jwt
 
 from tapisservice import errors
 from tapisservice.tapisflask import utils
