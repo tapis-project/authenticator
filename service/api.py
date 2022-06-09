@@ -8,7 +8,7 @@ from service.auth import authn_and_authz
 from service.controllers import AuthorizeResource, ClientsResource, ClientResource, TokensResource, \
     ProfilesResource, ProfileResource, StaticFilesResource, LoginResource, SetTenantResource, LogoutResource, \
     WebappTokenGen, WebappTokenAndRedirect, TenantConfigResource, UserInfoResource, OAuth2ProviderExtCallback, \
-    OAuthMetadataResource, MFAResource, DeviceFlowResource, DeviceCodeResource
+    OAuthMetadataResource, MFAResource, DeviceFlowResource, DeviceCodeResource, V2TokenResource
 from service.ldap import populate_test_ldap
 from service.models import db, app, initialize_tenant_configs
 
@@ -84,3 +84,6 @@ api.add_resource(WebappTokenAndRedirect, '/v3/oauth2/webapp')
 
 # Staticfiles
 api.add_resource(StaticFilesResource, '/v3/oauth2/authorize/<path>')
+
+# v2 resources
+api.add_resource(V2TokenResource, '/v3/oauth2/v2/token')
