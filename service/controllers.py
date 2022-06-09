@@ -1,4 +1,5 @@
 import requests
+from requests.auth import HTTPBasicAuth
 import json
 from flask import g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
 from flask_restful import Resource
@@ -6,6 +7,7 @@ from openapi_core.shortcuts import RequestValidator
 from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 import sqlalchemy
 import secrets
+import jwt
 
 from tapisservice import errors
 from tapisservice.tapisflask import utils
@@ -1198,6 +1200,43 @@ class TokensResource(Resource):
             logger.error(f"Got an unexpected AttributeError trying to parse tokens response; e: {e}")
             raise errors.ResourceError("Failure to parse access token response; please try again later.")
         return utils.ok(result=result, msg="Token created successfully.")
+
+
+class V2TokenResource(Resource):
+    def post(self):
+        logger.debug("Top of v2 Token Resource")
+
+        token = request.headers['X-Tapis-Token']
+
+        claims = validate_token(token)
+        username = claims.get('tapis/username')
+
+        tenant_id=g.request_tenant_id
+        config = tenant_configs_cache.get_config(tenant_id)
+
+        #set url and oauth client/password in tenant config
+        token_url = config.token_url
+        impers_oauth_client_id = config.impers_oauth_client_id
+        impers_oauth_client_secret = config.impers_oauth_client_secret
+        impersadmin_uesrname = config.impersadmin_username
+        impersadmin_password = config.impersadmin_password
+
+        data =  {
+            "grant_type": "admin_password",
+            "username": impersadmin_uesrname,
+            "password": impersadmin_password,
+            "token_username": username,
+            "scope": "PRODUCTION"
+        }
+
+        try:
+            logger.debug(f"Sending post request to v2 token endpoint for user: {username}")
+            response = requests.post(token_url, data=data, auth=HTTPBasicAuth(impers_oauth_client_id, impers_oauth_client_secret))
+            response.raise_for_status()
+        except Exception as e:
+            logger.error(f"Error getting v2 token; error: {e}")
+            raise errors.ResourceError("Failure calling v2 token endpoint; please try again later.")
+        return response.json()
 
 
 # ---------------------------------

@@ -72,6 +72,13 @@ class TenantConfig(db.Model):
     # like github OAuth of Custos; stored as a JSON-serialized string.
     custom_idp_configuration = db.Column(db.String(2500), unique=False, nullable=False)
 
+    # Impersonation information for converting v3 token to v2
+    token_url = db.Column(db.String(255), unique=False, nullable=False)
+    impers_oauth_client_id = db.Column(db.String(50), unique=False, nullable=False)
+    impers_oauth_client_secret = db.Column(db.String(50), unique=False, nullable=False)
+    impersadmin_username = db.Column(db.String(50), unique=False, nullable=False)
+    impersadmin_password = db.Column(db.String(50), unique=False, nullable=False)
+
     @property
     def serialize(self):
         return {
@@ -91,7 +98,7 @@ def initialize_tenant_configs(tenant_id):
     """
     Checks to see if a TenantConfig record exists for the tenant_id passed, and if it does not, it creates one
     with the default configs. This function is called at authenticator start up (from api.py) with each tenant id
-    in the authenticator's conf.tenants configuration.
+    in the authenticator's conf.tenants configuration and adds a minimal default configuration for every tenant.
 
     :param tenant_id: The tenant id to check.
     :return: config -- the config object assoicated with the tenant.
@@ -113,17 +120,8 @@ def initialize_tenant_configs(tenant_id):
         allowable_grant_types=json.dumps(["password", "implicit", "authorization_code", "refresh_token", "device_code"]),
         use_ldap=True,
         use_token_webapp=True,
-        mfa_config=json.dumps({
-            "tacc": {
-                "privacy_idea_url": "https://pidea01.tacc.utexas.edu",
-                "privacy_idea_client_id": "tapis-service",
-                "privacy_idea_client_key": "Hjuff4D3VjRmCvqPn_Ep",
-                "grant_types": [
-                    "authorization_code",
-                    "implicit"
-                ]
-            }
-        }),
+
+        mfa_config=json.dumps({}),
         # 4 hours
         default_access_token_ttl=14400,
         # 1 year
@@ -131,8 +129,15 @@ def initialize_tenant_configs(tenant_id):
         max_access_token_ttl=31536000,
         # 2 years
         max_refresh_token_ttl=63072000,
-        custom_idp_configuration=json.dumps({})
+        custom_idp_configuration=json.dumps({}),
+        
+        token_url=conf.token_url,
+        impers_oauth_client_id=conf.impers_oauth_client_id,
+        impers_oauth_client_secret=conf.impers_oauth_client_secret,
+        impersadmin_username=conf.impersadmin_username,
+        impersadmin_password=conf.impersadmin_password,
     )
+
     try:
         db.session.add(config)
         db.session.commit()
@@ -214,7 +219,7 @@ class TenantConfigsCache(object):
         logger.debug()
         config = self.get_config(tenant_id)
         mfa_config = json.loads(config.mfa_config)
-        # parse mfa_config for mfa_type
+        # TODO parse mfa_config for mfa_type, for now only available for tacc OTP
         return "tacc"
 
 

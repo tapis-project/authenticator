@@ -12,6 +12,7 @@ def needs_mfa(tenant_id):
     logger.debug("checking if tenant needs mfa")
     tenant_config = tenant_configs_cache.get_config(tenant_id)
     logger.debug(tenant_config.mfa_config)
+
     return False
     return not not tenant_config.mfa_config
     
