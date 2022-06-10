@@ -208,6 +208,24 @@ def authentication():
                                                  f"served by this authenticator.")
         return True
 
+    if 'v3/oauth2/v2/token' in request.url_rule.rule:
+        logger.debug("v2 token URL")
+        # the v2/token endpoint takes a v3 token generated for a user and returns a v2 token for that user
+
+        if 'X-Tapis-Token' in request.headers:
+            logger.debug(f"Got an X-Tapis-Token header; {request.headers['X-Tapis-Token']}")
+            try:
+                auth.authentication()
+                auth.resolve_tenant_id_for_request()
+            except Exception as e:
+                g.token_claims = {}
+                raise common_errors.BaseTapisError(f"Unable to process access token; error: {e}")
+        else:
+            logger.debug("did not receive an X-Tapis-Token header.")
+            raise common_errors.BaseTapisError("Endpoint requires X-Tapis-Token.")
+
+        return True
+
     if '/v3/oauth2/logout' in request.url_rule.rule \
         or '/v3/oauth2/login' in request.url_rule.rule \
         or '/v3/oauth2/tenant' in request.url_rule.rule \
