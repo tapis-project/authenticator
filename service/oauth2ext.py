@@ -240,7 +240,10 @@ class OAuth2ProviderExtension(object):
             # the CII token is a JWT; we only need to decode it and get the username out of the payload.
             # todo -- we should verify the signature if that is working...
             try:
-                claims = jwt.decode(self.access_token, self.jwt_decode_key, verify=self.check_jwt_signature)
+                claims = jwt.decode(self.access_token, 
+                                    self.jwt_decode_key, 
+                                    verify=self.check_jwt_signature, 
+                                    algorithms=["RS256"])
             except Exception as e:
                 msg = f"got exception trying to decode the CII jwt; exception: {e}"
                 logger.error(msg)
