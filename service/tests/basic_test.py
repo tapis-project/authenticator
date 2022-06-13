@@ -63,11 +63,11 @@ def init_db():
             # 2 years
             "max_refresh_token_ttl":63072000,
             "custom_idp_configuration":json.dumps({}),
-            "token_url": "https://agave.designsafe-ci.org/token",
-            "impers_oauth_client_id": "GCpZS5RipkPnTYagzo7n5qfud4ga",
-            "impers_oauth_client_secret": "KJzBS3Dyw6to5QmSgDz82WtAbmMa",
-            "impersadmin_username": "impersadmin",
-            "impersadmin_password": "HdoorfSqUU3ZrRz2eKiOijXgOtQ"
+            "token_url": "",
+            "impers_oauth_client_id": "",
+            "impers_oauth_client_secret": "",
+            "impersadmin_username": "",
+            "impersadmin_password": ""
         }
         models.add_tenant_to_db(config)
         models.add_client_to_db(data)
