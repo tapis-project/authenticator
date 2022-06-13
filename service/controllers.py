@@ -1220,11 +1220,20 @@ class V2TokenResource(Resource):
         impersadmin_uesrname = config.impersadmin_username
         impersadmin_password = config.impersadmin_password
 
+        # mapping of v3 tenant id to v2 wso2 user store id. for background on this see
+        # this writeup https://confluence.tacc.utexas.edu/display/CIC/Impersonation
+        WSO2_USER_STORE_ID = {
+            "tacc": "TACC",
+            "designsafe": "TACC",
+            "vdj": "VDJ",
+            "iplantc": "IPLANTC"
+        }
+        wso2_user_store_id = WSO2_USER_STORE_ID.get(tenant_id)
         data =  {
             "grant_type": "admin_password",
             "username": impersadmin_uesrname,
             "password": impersadmin_password,
-            "token_username": username,
+            "token_username": f"{wso2_user_store_id}/{username}",
             "scope": "PRODUCTION"
         }
 
