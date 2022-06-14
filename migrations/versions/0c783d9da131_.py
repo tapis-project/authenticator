@@ -21,11 +21,11 @@ def upgrade():
     op.alter_column('clients', 'active',
                existing_type=sa.BOOLEAN(),
                nullable=False)
-    op.add_column('tenantconfig', sa.Column('impers_oauth_client_id', sa.String(length=50), nullable=False))
-    op.add_column('tenantconfig', sa.Column('impers_oauth_client_secret', sa.String(length=50), nullable=False))
-    op.add_column('tenantconfig', sa.Column('impersadmin_username', sa.String(length=50), nullable=False))
-    op.add_column('tenantconfig', sa.Column('impersadmin_password', sa.String(length=50), nullable=False))
-    op.add_column('tenantconfig', sa.Column('token_url', sa.String(length=255), nullable=False))
+    op.add_column('tenantconfig', sa.Column('impers_oauth_client_id', sa.String(length=50), nullable=False, server_default=""))
+    op.add_column('tenantconfig', sa.Column('impers_oauth_client_secret', sa.String(length=50), nullable=False, server_default=""))
+    op.add_column('tenantconfig', sa.Column('impersadmin_username', sa.String(length=50), nullable=False, server_default=""))
+    op.add_column('tenantconfig', sa.Column('impersadmin_password', sa.String(length=50), nullable=False, server_default=""))
+    op.add_column('tenantconfig', sa.Column('token_url', sa.String(length=255), nullable=False, server_default=""))
     # ### end Alembic commands ###
 
 
