@@ -252,7 +252,9 @@ class Client(db.Model):
     last_update_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     display_name = db.Column(db.String(50), unique=False, nullable=True)
     description = db.Column(db.String(70), unique=False, nullable=True)
-    active = db.Column(db.Boolean, default=True, nullable=False)
+    # Ideally, this would be nullable=False, but due to a bug, we were unable to set nullable to False
+    # Attempts to set nullable to False caused it to hang
+    active = db.Column(db.Boolean, default=True, nullable=True)
 
     HASH_SALT = 'hQb9xTr7j8vSu'
 
