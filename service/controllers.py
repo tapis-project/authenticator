@@ -1214,11 +1214,15 @@ class V2TokenResource(Resource):
         config = tenant_configs_cache.get_config(tenant_id)
 
         #set url and oauth client/password in tenant config
-        token_url = config.token_url
-        impers_oauth_client_id = config.impers_oauth_client_id
-        impers_oauth_client_secret = config.impers_oauth_client_secret
-        impersadmin_uesrname = config.impersadmin_username
-        impersadmin_password = config.impersadmin_password
+        try:
+            token_url = config.token_url
+            impers_oauth_client_id = config.impers_oauth_client_id
+            impers_oauth_client_secret = config.impers_oauth_client_secret
+            impersadmin_uesrname = config.impersadmin_username
+            impersadmin_password = config.impersadmin_password
+        except Exception as e:
+            logger.debug(f"Error getting configs from tenant; error: {e}")
+            raise errors.ResourceError("Failure to load impersonation configs.")
 
         # mapping of v3 tenant id to v2 wso2 user store id. for background on this see
         # this writeup https://confluence.tacc.utexas.edu/display/CIC/Impersonation

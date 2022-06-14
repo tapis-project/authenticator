@@ -26,18 +26,6 @@ def upgrade():
     op.add_column('tenantconfig', sa.Column('impersadmin_username', sa.String(length=50), nullable=True))
     op.add_column('tenantconfig', sa.Column('impersadmin_password', sa.String(length=50), nullable=True))
     op.add_column('tenantconfig', sa.Column('token_url', sa.String(length=255), nullable=True))
-
-    op.execute('UPDATE tenantconfig SET impers_oauth_client_id=""')
-    op.execute('UPDATE tenantconfig SET impers_oauth_client_secret=""')
-    op.execute('UPDATE tenantconfig SET impersadmin_username=""')
-    op.execute('UPDATE tenantconfig SET impersadmin_password=""')
-    op.execute('UPDATE tenantconfig SET token_url=""')
-
-    op.alter_column('tenantconfig', sa.Column('impers_oauth_client_id', sa.String(length=50), nullable=False))
-    op.alter_column('tenantconfig', sa.Column('impers_oauth_client_secret', sa.String(length=50), nullable=False))
-    op.alter_column('tenantconfig', sa.Column('impersadmin_username', sa.String(length=50), nullable=False))
-    op.alter_column('tenantconfig', sa.Column('impersadmin_password', sa.String(length=50), nullable=False))
-    op.alter_column('tenantconfig', sa.Column('token_url', sa.String(length=255), nullable=False))
     # ### end Alembic commands ###
 
 

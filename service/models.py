@@ -73,11 +73,11 @@ class TenantConfig(db.Model):
     custom_idp_configuration = db.Column(db.String(2500), unique=False, nullable=False)
 
     # Impersonation information for converting v3 token to v2
-    token_url = db.Column(db.String(255), unique=False, nullable=False)
-    impers_oauth_client_id = db.Column(db.String(50), unique=False, nullable=False)
-    impers_oauth_client_secret = db.Column(db.String(50), unique=False, nullable=False)
-    impersadmin_username = db.Column(db.String(50), unique=False, nullable=False)
-    impersadmin_password = db.Column(db.String(50), unique=False, nullable=False)
+    token_url = db.Column(db.String(255), unique=False, nullable=True)
+    impers_oauth_client_id = db.Column(db.String(50), unique=False, nullable=True)
+    impers_oauth_client_secret = db.Column(db.String(50), unique=False, nullable=True)
+    impersadmin_username = db.Column(db.String(50), unique=False, nullable=True)
+    impersadmin_password = db.Column(db.String(50), unique=False, nullable=True)
 
     @property
     def serialize(self):
