@@ -1213,7 +1213,7 @@ class V2TokenResource(Resource):
         tenant_id=g.request_tenant_id
         config = tenant_configs_cache.get_config(tenant_id)
 
-        logger.debug(config)
+        logger.debug(config.serialize)
 
         #set url and oauth client/password in tenant config
         try:
