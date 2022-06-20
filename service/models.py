@@ -81,6 +81,25 @@ class TenantConfig(db.Model):
 
     @property
     def serialize(self):
+        tenant_config = {
+            "allowable_grant_types": json.loads(self.allowable_grant_types),
+            "use_ldap": self.use_ldap,
+            "mfa_config": json.loads(self.mfa_config),
+            "use_token_webapp": self.use_token_webapp,
+            "default_access_token_ttl": self.default_access_token_ttl,
+            "default_refresh_token_ttl": self.default_refresh_token_ttl,
+            "max_access_token_ttl": self.max_access_token_ttl,
+            "max_refresh_token_ttl": self.max_refresh_token_ttl,
+            "custom_idp_configuration": json.loads(self.custom_idp_configuration)
+        }
+
+        tenant_config["token_url"] = self.token_url if self.token_url is not None else ""
+        tenant_config["impers_oauth_client_id"] = self.impers_oauth_client_id if self.impers_oauth_client_id is not None else ""
+        tenant_config["impers_oauth_client_secret"] = self.impers_oauth_client_secret if self.impers_oauth_client_secret is not None else ""
+        tenant_config["impersadmin_username"] = self.impersadmin_username if self.impersadmin_username is not None else ""
+        tenant_config["impersadmin_password"] = self.impersadmin_password if self.impersadmin_password is not None else ""
+
+        return tenant_config
         return {
             "allowable_grant_types": json.loads(self.allowable_grant_types),
             "use_ldap": self.use_ldap,
@@ -91,6 +110,11 @@ class TenantConfig(db.Model):
             "max_access_token_ttl": self.max_access_token_ttl,
             "max_refresh_token_ttl": self.max_refresh_token_ttl,
             "custom_idp_configuration": json.loads(self.custom_idp_configuration),
+            "token_url": self.token_url,
+            "impers_oauth_client_id": self.impers_oauth_client_id,
+            "impers_oauth_client_secret": self.impers_oauth_client_secret,
+            "impersadmin_username": self.impersadmin_username,
+            "impersadmin_password": self.impersadmin_password
         }
 
 
