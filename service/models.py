@@ -90,7 +90,12 @@ class TenantConfig(db.Model):
             "default_refresh_token_ttl": self.default_refresh_token_ttl,
             "max_access_token_ttl": self.max_access_token_ttl,
             "max_refresh_token_ttl": self.max_refresh_token_ttl,
-            "custom_idp_configuration": json.loads(self.custom_idp_configuration)
+            "custom_idp_configuration": json.loads(self.custom_idp_configuration),
+            "token_url": self.token_url,
+            "impers_oauth_client_id": self.impers_oauth_client_id,
+            "impers_oauth_client_secret": self.impers_oauth_client_secret,
+            "impersadmin_username": self.impersadmin_username,
+            "impersadmin_password": self.impersadmin_password
         }
 
 
@@ -130,13 +135,14 @@ def initialize_tenant_configs(tenant_id):
         # 2 years
         max_refresh_token_ttl=63072000,
         custom_idp_configuration=json.dumps({}),
-        
-        token_url=conf.token_url,
-        impers_oauth_client_id=conf.impers_oauth_client_id,
-        impers_oauth_client_secret=conf.impers_oauth_client_secret,
-        impersadmin_username=conf.impersadmin_username,
-        impersadmin_password=conf.impersadmin_password,
     )
+
+    if tenant_id == 'tacc':
+        config.token_url=conf.token_url
+        config.impers_oauth_client_id=conf.impers_oauth_client_id
+        config.impers_oauth_client_secret=conf.impers_oauth_client_secret
+        config.impersadmin_username=conf.impersadmin_username
+        config.impersadmin_password=conf.impersadmin_password
 
     try:
         db.session.add(config)

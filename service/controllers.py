@@ -278,6 +278,11 @@ class TenantConfigResource(Resource):
         new_max_access_token_ttl = getattr(validated_body, 'max_access_token_ttl', config.max_access_token_ttl)
         new_max_refresh_token_ttl = getattr(validated_body, 'max_refresh_token_ttl', config.max_refresh_token_ttl)
         new_mfa_config = getattr(validated_body, 'mfa_config', config.mfa_config)
+        new_token_url = getattr(validated_body, 'token_url', config.token_url)
+        new_impers_oauth_client_id = getattr(validated_body, 'impers_oauth_client_id', config.impers_oauth_client_id)
+        new_impers_oauth_client_secret = getattr(validated_body, 'impers_oauth_client_secret', config.impers_oauth_client_secret)
+        new_impersadmin_username = getattr(validated_body, 'impersadmin_username', config.impersadmin_username)
+        new_impersadmin_password = getattr(validated_body, 'impersadmin_password', config.impersadmin_password)
 
         logger.debug("updating config object with new attributes...")
         # update the model and commit --
@@ -293,6 +298,11 @@ class TenantConfigResource(Resource):
         config.max_access_token_ttl = new_max_access_token_ttl
         config.max_refresh_token_ttl = new_max_refresh_token_ttl
         config.mfa_config = new_mfa_config
+        config.token_url = new_token_url
+        config.impers_oauth_client_id = new_impers_oauth_client_id
+        config.impers_oauth_client_secret = new_impers_oauth_client_secret
+        config.impersadmin_username = new_impersadmin_username
+        config.impersadmin_password = new_impersadmin_password
 
         try:
             db.session.commit()
