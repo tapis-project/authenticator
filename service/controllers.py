@@ -1242,7 +1242,8 @@ class V2TokenResource(Resource):
             "tacc": "TACC",
             "designsafe": "TACC",
             "vdj": "VDJ",
-            "iplantc": "IPLANTC"
+            "iplantc": "IPLANTC",
+            "jupyter-tacc-dev": "TACC"
         }
         wso2_user_store_id = WSO2_USER_STORE_ID.get(tenant_id)
         data =  {
