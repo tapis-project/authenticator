@@ -278,6 +278,11 @@ class TenantConfigResource(Resource):
         new_max_access_token_ttl = getattr(validated_body, 'max_access_token_ttl', config.max_access_token_ttl)
         new_max_refresh_token_ttl = getattr(validated_body, 'max_refresh_token_ttl', config.max_refresh_token_ttl)
         new_mfa_config = getattr(validated_body, 'mfa_config', config.mfa_config)
+        new_token_url = getattr(validated_body, 'token_url', config.token_url)
+        new_impers_oauth_client_id = getattr(validated_body, 'impers_oauth_client_id', config.impers_oauth_client_id)
+        new_impers_oauth_client_secret = getattr(validated_body, 'impers_oauth_client_secret', config.impers_oauth_client_secret)
+        new_impersadmin_username = getattr(validated_body, 'impersadmin_username', config.impersadmin_username)
+        new_impersadmin_password = getattr(validated_body, 'impersadmin_password', config.impersadmin_password)
 
         logger.debug("updating config object with new attributes...")
         # update the model and commit --
@@ -293,6 +298,11 @@ class TenantConfigResource(Resource):
         config.max_access_token_ttl = new_max_access_token_ttl
         config.max_refresh_token_ttl = new_max_refresh_token_ttl
         config.mfa_config = new_mfa_config
+        config.token_url = new_token_url
+        config.impers_oauth_client_id = new_impers_oauth_client_id
+        config.impers_oauth_client_secret = new_impers_oauth_client_secret
+        config.impersadmin_username = new_impersadmin_username
+        config.impersadmin_password = new_impersadmin_password
 
         try:
             db.session.commit()
@@ -1213,18 +1223,34 @@ class V2TokenResource(Resource):
         tenant_id=g.request_tenant_id
         config = tenant_configs_cache.get_config(tenant_id)
 
-        #set url and oauth client/password in tenant config
-        token_url = config.token_url
-        impers_oauth_client_id = config.impers_oauth_client_id
-        impers_oauth_client_secret = config.impers_oauth_client_secret
-        impersadmin_uesrname = config.impersadmin_username
-        impersadmin_password = config.impersadmin_password
+        logger.debug(config.serialize)
 
+        #set url and oauth client/password in tenant config
+        try:
+            token_url = config.token_url
+            impers_oauth_client_id = config.impers_oauth_client_id
+            impers_oauth_client_secret = config.impers_oauth_client_secret
+            impersadmin_uesrname = config.impersadmin_username
+            impersadmin_password = config.impersadmin_password
+        except Exception as e:
+            logger.debug(f"Error getting configs from tenant; error: {e}")
+            raise errors.ResourceError("Failure to load impersonation configs.")
+
+        # mapping of v3 tenant id to v2 wso2 user store id. for background on this see
+        # this writeup https://confluence.tacc.utexas.edu/display/CIC/Impersonation
+        WSO2_USER_STORE_ID = {
+            "tacc": "TACC",
+            "designsafe": "TACC",
+            "vdj": "VDJ",
+            "iplantc": "IPLANTC",
+            "jupyter-tacc-dev": "TACC"
+        }
+        wso2_user_store_id = WSO2_USER_STORE_ID.get(tenant_id)
         data =  {
             "grant_type": "admin_password",
             "username": impersadmin_uesrname,
             "password": impersadmin_password,
-            "token_username": username,
+            "token_username": f"{wso2_user_store_id}/{username}",
             "scope": "PRODUCTION"
         }
 

@@ -73,11 +73,11 @@ class TenantConfig(db.Model):
     custom_idp_configuration = db.Column(db.String(2500), unique=False, nullable=False)
 
     # Impersonation information for converting v3 token to v2
-    token_url = db.Column(db.String(255), unique=False, nullable=False)
-    impers_oauth_client_id = db.Column(db.String(50), unique=False, nullable=False)
-    impers_oauth_client_secret = db.Column(db.String(50), unique=False, nullable=False)
-    impersadmin_username = db.Column(db.String(50), unique=False, nullable=False)
-    impersadmin_password = db.Column(db.String(50), unique=False, nullable=False)
+    token_url = db.Column(db.String(255), unique=False, nullable=True)
+    impers_oauth_client_id = db.Column(db.String(50), unique=False, nullable=True)
+    impers_oauth_client_secret = db.Column(db.String(50), unique=False, nullable=True)
+    impersadmin_username = db.Column(db.String(50), unique=False, nullable=True)
+    impersadmin_password = db.Column(db.String(50), unique=False, nullable=True)
 
     @property
     def serialize(self):
@@ -91,6 +91,11 @@ class TenantConfig(db.Model):
             "max_access_token_ttl": self.max_access_token_ttl,
             "max_refresh_token_ttl": self.max_refresh_token_ttl,
             "custom_idp_configuration": json.loads(self.custom_idp_configuration),
+            "token_url": self.token_url,
+            "impers_oauth_client_id": self.impers_oauth_client_id,
+            "impers_oauth_client_secret": self.impers_oauth_client_secret,
+            "impersadmin_username": self.impersadmin_username,
+            "impersadmin_password": self.impersadmin_password
         }
 
 
@@ -130,13 +135,14 @@ def initialize_tenant_configs(tenant_id):
         # 2 years
         max_refresh_token_ttl=63072000,
         custom_idp_configuration=json.dumps({}),
-        
-        token_url=conf.token_url,
-        impers_oauth_client_id=conf.impers_oauth_client_id,
-        impers_oauth_client_secret=conf.impers_oauth_client_secret,
-        impersadmin_username=conf.impersadmin_username,
-        impersadmin_password=conf.impersadmin_password,
     )
+
+    if tenant_id == 'tacc':
+        config.token_url=conf.token_url
+        config.impers_oauth_client_id=conf.impers_oauth_client_id
+        config.impers_oauth_client_secret=conf.impers_oauth_client_secret
+        config.impersadmin_username=conf.impersadmin_username
+        config.impersadmin_password=conf.impersadmin_password
 
     try:
         db.session.add(config)
@@ -252,7 +258,9 @@ class Client(db.Model):
     last_update_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     display_name = db.Column(db.String(50), unique=False, nullable=True)
     description = db.Column(db.String(70), unique=False, nullable=True)
-    active = db.Column(db.Boolean, default=True, nullable=False)
+    # Ideally, this would be nullable=False, but due to a bug, we were unable to set nullable to False
+    # Attempts to set nullable to False caused it to hang
+    active = db.Column(db.Boolean, default=True, nullable=True)
 
     HASH_SALT = 'hQb9xTr7j8vSu'
 

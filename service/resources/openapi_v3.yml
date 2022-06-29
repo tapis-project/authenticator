@@ -466,6 +466,21 @@ components:
         custom_idp_configuration:
           type: object
           description: JSON-serializable object which includes various configuration details for tenants using an IdP that is not LDAP/AD.
+        token_url:
+          type: string
+          description: Token URL endpoint for generating v2 token
+        impers_oauth_client_id:
+          type: string
+          description: Client ID for impersonation
+        impers_oauth_client_secret:
+          type: string
+          description: Client secret for impersonation
+        impersadmin_username:
+          type: string
+          description: Impersonation username for impersonation
+        impersadmin_password:
+          type: string
+          description: Impersonation password for impersonation
 
     NewTenantConfig:
       type: object
@@ -496,6 +511,21 @@ components:
         custom_idp_configuration:
           type: object
           description: Configuration for customizing the IdP integration, including custom ldap search filters and alternative IdPs like github OAuth of Custos; must be a JSON-serializable object.
+        token_url:
+          type: string
+          description: Token URL endpoint for generating v2 token
+        impers_oauth_client_id:
+          type: string
+          description: Client ID for impersonation
+        impers_oauth_client_secret:
+          type: string
+          description: Client secret for impersonation
+        impersadmin_username:
+          type: string
+          description: Impersonation username for impersonation
+        impersadmin_password:
+          type: string
+          description: Impersonation password for impersonation
 
     NewClient:
       type: object

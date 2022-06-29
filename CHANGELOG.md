@@ -2,6 +2,20 @@
 All notable changes to this project will be documented in this file.
 
 
+## 1.2.1 - 2022-06-09
+This patch release fixes an issue with the CII authenticator plugin that was introduced by an upgrade to the
+Python JWT library.
+
+### Breaking Changes:
+- None.
+
+### New features:
+- None.
+
+### Bug fixes:
+- Fix a bug in the way authenticator called `jwt.decode` when decoding a CII token. Due to a recent upgrade to the Python JWT lobrary in flaskbase, we must specify the algorithm used to decode -- in this case, `HS256`.
+
+
 ## 1.2.0 - 2022-05-30
 This release adds support for the device code grant type and OAuth2 authentication
 via TACC's Keycloak instance to support third-party identity providers, including
