@@ -233,8 +233,6 @@ class TenantConfigResource(Resource):
         validated_body = result.body
         logger.debug("got past validator checks")
         # check for unsupported fields --
-        if hasattr(validated_body, 'mfa_config'):
-            raise errors.ResourceError("Setting mfa_config not currently supported.")
         logger.debug("got past additional checks for unsupported fields.")
         new_allowable_grant_types = getattr(validated_body, 'allowable_grant_types', None)
         logger.debug(f"got new_allowable_grant_types: {new_allowable_grant_types}")
