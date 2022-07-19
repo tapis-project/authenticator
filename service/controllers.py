@@ -271,11 +271,11 @@ class TenantConfigResource(Resource):
             try:
                 new_mfa_config_str = json.dumps(new_mfa_config)
             except Exception as e:
-                logger.debug(f"got exception trying to parse new_custom_idp_configuration; e: {e}")
-                raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_mfa_config}) -- "
+                logger.debug(f"got exception trying to parse new_mfa_configuration; e: {e}")
+                raise errors.ResourceError(f"Invalid new_mfa_configuration ({new_mfa_config}) -- "
                                            f"must be JSON serializable")
             if not type(new_mfa_config) == dict:
-                raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_mfa_config}) -- "
+                raise errors.ResourceError(f"Invalid new_mfa_configuration ({new_mfa_config}) -- "
                                            f"must be an object mapping (i.e., dictionary).")
         # non-JSON columns ---
         new_use_ldap = getattr(validated_body, 'use_ldap', config.use_ldap)

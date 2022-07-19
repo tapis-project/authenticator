@@ -13,6 +13,7 @@ def needs_mfa(tenant_id):
     tenant_config = tenant_configs_cache.get_config(tenant_id)
     logger.debug(tenant_config.mfa_config)
 
+    return False
     return not not tenant_config.mfa_config
     
 def call_mfa(token, tenant_id, username):
@@ -40,6 +41,9 @@ def privacy_idea_tacc(config, token, username):
         grant_types = config['tacc']['grant_types']
 
         jwt = get_privacy_idea_jwt(privacy_idea_url, privacy_idea_client_id, privacy_idea_client_key)
+
+        if not jwt:
+            return False
          
         return verify_mfa_token(privacy_idea_url, jwt, token, username)
 
@@ -50,6 +54,7 @@ def get_privacy_idea_jwt(url, username, password):
         "password": password
     }
     url = f"{url}/auth"
+    logger.debug(url)
     try:
         response = requests.post(url, json=data)
         logger.debug(f"Response: {response}")
@@ -64,6 +69,7 @@ def get_privacy_idea_jwt(url, username, password):
 def verify_mfa_token(url, jwt, token, username):
     logger.debug(f"Verifying MFA token: {token} for: {username}")
     url = f"{url}/validate/check"
+    logger.debug(url)
     data = {
         "user": username,
         "realm": "tacc",
