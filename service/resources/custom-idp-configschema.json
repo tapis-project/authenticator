@@ -10,12 +10,12 @@
       "description": "Properties associated with an LDAP IdP.",
       "$ref": "#/definitions/ldapObject"
     },
-      "github": {
+    "github": {
         "type": "object",
           "description": "Properties associated with github OAuth",
           "$ref": "#/definitions/githubObject"
     },
-      "tacc_keycloak": {
+    "tacc_keycloak": {
         "type": "object",
           "description": "Properties associated with TACC Keycloak at identity.tacc.cloud",
           "$ref": "#/definitions/taccKeycloakObject"
