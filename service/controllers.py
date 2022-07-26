@@ -233,8 +233,6 @@ class TenantConfigResource(Resource):
         validated_body = result.body
         logger.debug("got past validator checks")
         # check for unsupported fields --
-        if hasattr(validated_body, 'mfa_config'):
-            raise errors.ResourceError("Setting mfa_config not currently supported.")
         logger.debug("got past additional checks for unsupported fields.")
         new_allowable_grant_types = getattr(validated_body, 'allowable_grant_types', None)
         logger.debug(f"got new_allowable_grant_types: {new_allowable_grant_types}")
@@ -268,6 +266,17 @@ class TenantConfigResource(Resource):
             if 'ldap' not in new_custom_idp_configuration.keys():
                 raise errors.ResourceError(f"Invalid new_custom_idp_configuration ({new_custom_idp_configuration}) -- "
                                            f"'ldap' key required.")
+        new_mfa_config = request.json.get('mfa_config')
+        if new_mfa_config:
+            try:
+                new_mfa_config_str = json.dumps(new_mfa_config)
+            except Exception as e:
+                logger.debug(f"got exception trying to parse new_mfa_configuration; e: {e}")
+                raise errors.ResourceError(f"Invalid new_mfa_configuration ({new_mfa_config}) -- "
+                                           f"must be JSON serializable")
+            if not type(new_mfa_config) == dict:
+                raise errors.ResourceError(f"Invalid new_mfa_configuration ({new_mfa_config}) -- "
+                                           f"must be an object mapping (i.e., dictionary).")
         # non-JSON columns ---
         new_use_ldap = getattr(validated_body, 'use_ldap', config.use_ldap)
         new_use_token_webapp = getattr(validated_body, 'use_token_webapp', config.use_token_webapp)
@@ -277,7 +286,6 @@ class TenantConfigResource(Resource):
                                                 config.default_refresh_token_ttl)
         new_max_access_token_ttl = getattr(validated_body, 'max_access_token_ttl', config.max_access_token_ttl)
         new_max_refresh_token_ttl = getattr(validated_body, 'max_refresh_token_ttl', config.max_refresh_token_ttl)
-        new_mfa_config = getattr(validated_body, 'mfa_config', config.mfa_config)
         new_token_url = getattr(validated_body, 'token_url', config.token_url)
         new_impers_oauth_client_id = getattr(validated_body, 'impers_oauth_client_id', config.impers_oauth_client_id)
         new_impers_oauth_client_secret = getattr(validated_body, 'impers_oauth_client_secret', config.impers_oauth_client_secret)
@@ -291,13 +299,14 @@ class TenantConfigResource(Resource):
             config.allowable_grant_types = new_allowable_grant_types_str
         if new_custom_idp_configuration:
             config.custom_idp_configuration = new_custom_idp_configuration_str
+        if new_mfa_config:
+            config.mfa_config = new_mfa_config_str
         config.use_ldap = new_use_ldap
         config.use_token_webapp = new_use_token_webapp
         config.default_access_token_ttl = new_default_access_token_ttl
         config.default_refresh_token_ttl = new_default_refresh_token_ttl
         config.max_access_token_ttl = new_max_access_token_ttl
         config.max_refresh_token_ttl = new_max_refresh_token_ttl
-        config.mfa_config = new_mfa_config
         config.token_url = new_token_url
         config.impers_oauth_client_id = new_impers_oauth_client_id
         config.impers_oauth_client_secret = new_impers_oauth_client_secret
