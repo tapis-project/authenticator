@@ -105,3 +105,23 @@ d = {'cii': {'login_url': 'https://dev.construction-institute.org/authentication
 
 
 ### MFA Config
+The `mfa_config` is a JSON column on the `models.TenantConfig` table. It allows a tenant to be configured to require its users to use MFA when logging into different services. As of now, only the TACC Token MFA is supported.
+
+There are certain fields that are required for configuring a tenant to use TACC MFA:
+```
+privacy_idea_client_id
+privacy_idea_client_key
+privacy_idea_url
+```
+
+Since `mfa_config` is also a JSON object, the configuration process is very similar to how we update the `custom_idp_configuration`:
+
+```
+c = TenantConfig.query.filter_by(tenant_id='github-demo')[0]
+d = {'github': { 'privacy_idea_client_id': 'pidea_client', 'privacy_idea_client_key': 'pidea_key', 'privacy_idea_url': 'pidea_url'}}
+s = json.dumps(d)
+c.mfa_config = s
+db.session.commit()
+```
+
+After configuring a tenant to use MFA, you should notice an MFA Token screen appear after logging into a portal that belongs to the tenant.
