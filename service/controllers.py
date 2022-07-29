@@ -324,7 +324,7 @@ class TenantConfigResource(Resource):
         logger.debug("returning serialized tenant object.")
         # reload the config cache updn update --
         tenant_configs_cache.load_tenant_config_cache()
-        return utils.ok(result=config.serialize, msg="Tenant config object retrieved successfully.")
+        return utils.ok(result=config.serialize, msg="Tenant config object updated successfully.")
 
 
 # ---------------------------------

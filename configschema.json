@@ -124,7 +124,12 @@
       "type": "string",
       "description": "The display name used by the Tapis Token Webapp",
       "default": "Tapis Token Webapp"
-    }
-  },
+    },
+    "turn_off_mfa": {
+        "type": "boolean",
+        "description": "A single configuration that will cause Authenticator to disable all MFA checks.",
+        "default": false
+      }
+    },
   "required": ["dev_ldap_tenant_id"]
 }

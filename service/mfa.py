@@ -1,4 +1,5 @@
 from tapisservice import errors
+from tapisservice.config import conf
 from tapisservice.tapisflask import utils
 import json
 import requests
@@ -9,11 +10,12 @@ from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 def needs_mfa(tenant_id):
+    if conf.turn_off_mfa:
+        return False
     logger.debug("checking if tenant needs mfa")
     tenant_config = tenant_configs_cache.get_config(tenant_id)
     logger.debug(tenant_config.mfa_config)
 
-    return False
     return not not tenant_config.mfa_config
     
 def call_mfa(token, tenant_id, username):
