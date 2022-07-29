@@ -2,6 +2,21 @@
 All notable changes to this project will be documented in this file.
 
 
+## 1.2.2 - 2022-07-29
+This preview release adds support for the TACC MFA solution, which can be configured for tenants using the 
+TACC identity provider (TACC LDAP) on a tenant by tenant basis. It also adds a new endpoint for exchanging 
+a v3 access token for a Tapis v2 token. This feature is also only available for certain tenants. 
+
+### Breaking Changes:
+- None.
+
+### New features:
+- Support for TACC MFA via PrivacyIdea API (requires configuration for each tenant)
+- Supoport for exchaning Tapis v3 tokens for Tapis v2 tokens (requires configuration for each tenant).
+
+### Bug fixes:
+
+
 ## 1.2.1 - 2022-06-09
 This patch release fixes an issue with the CII authenticator plugin that was introduced by an upgrade to the
 Python JWT library.
