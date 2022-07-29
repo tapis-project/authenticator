@@ -22,7 +22,12 @@ def needs_mfa(tenant_id):
 def call_mfa(token, tenant_id, username):
     logger.debug(f"calling mfa for: {username}")
     tenant_config = tenant_configs_cache.get_config(tenant_id)
-    mfa_config = json.loads(tenant_config.mfa_config)
+    try:
+        mfa_config = json.loads(tenant_config.mfa_config)
+    except Exception as e:
+        logger.debug(f"error loading mfa: {e}")
+        return e
+    
     logger.debug(f"Tenant mfa config: {mfa_config}")
 
     if not mfa_config:
