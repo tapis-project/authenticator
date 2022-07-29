@@ -15,17 +15,23 @@ def needs_mfa(tenant_id):
     logger.debug("checking if tenant needs mfa")
     tenant_config = tenant_configs_cache.get_config(tenant_id)
     logger.debug(tenant_config.mfa_config)
-    mfa_config = json.loads(tenant_config.mfa_config)
+
+    try:
+        mfa_config = json.loads(tenant_config.mfa_config)
+    except Exception as e:
+        logger.debug(f"Error parsing mfa config: {e}")
+        return False
 
     return not not mfa_config
     
 def call_mfa(token, tenant_id, username):
     logger.debug(f"calling mfa for: {username}")
     tenant_config = tenant_configs_cache.get_config(tenant_id)
+
     try:
         mfa_config = json.loads(tenant_config.mfa_config)
     except Exception as e:
-        logger.debug(f"error loading mfa: {e}")
+        logger.debug(f"Error parsing mfa config: {e}")
         return e
     
     logger.debug(f"Tenant mfa config: {mfa_config}")
@@ -80,7 +86,7 @@ def verify_mfa_token(url, jwt, token, username):
     logger.debug(url)
     data = {
         "user": username,
-        "realm": "tacc",
+        "realm": "pi-api",
         "pass": token
     }
     headers = {
