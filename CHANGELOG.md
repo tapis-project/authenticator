@@ -2,6 +2,19 @@
 All notable changes to this project will be documented in this file.
 
 
+## 1.2.3 - 2022-08-2
+This is a bug fix release that corrects a small issue with the MFA feature.
+
+### Breaking Changes:
+- None.
+
+### New features:
+- None.
+
+### Bug fixes:
+- Fixes an issue with the MFA feature where tenants could be prompted for MFA even if they were not configured for it.
+
+
 ## 1.2.2 - 2022-07-29
 This preview release adds support for the TACC MFA solution, which can be configured for tenants using the 
 TACC identity provider (TACC LDAP) on a tenant by tenant basis. It also adds a new endpoint for exchanging 
@@ -15,6 +28,7 @@ a v3 access token for a Tapis v2 token. This feature is also only available for 
 - Supoport for exchaning Tapis v3 tokens for Tapis v2 tokens (requires configuration for each tenant).
 
 ### Bug fixes:
+- None.
 
 
 ## 1.2.1 - 2022-06-09
