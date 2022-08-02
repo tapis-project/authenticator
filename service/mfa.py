@@ -16,12 +16,24 @@ def needs_mfa(tenant_id):
     tenant_config = tenant_configs_cache.get_config(tenant_id)
     logger.debug(tenant_config.mfa_config)
 
-    return not not tenant_config.mfa_config
+    try:
+        mfa_config = json.loads(tenant_config.mfa_config)
+    except Exception as e:
+        logger.debug(f"Error parsing mfa config: {e}")
+        return False
+
+    return not not mfa_config
     
 def call_mfa(token, tenant_id, username):
     logger.debug(f"calling mfa for: {username}")
     tenant_config = tenant_configs_cache.get_config(tenant_id)
-    mfa_config = json.loads(tenant_config.mfa_config)
+
+    try:
+        mfa_config = json.loads(tenant_config.mfa_config)
+    except Exception as e:
+        logger.debug(f"Error parsing mfa config: {e}")
+        return e
+    
     logger.debug(f"Tenant mfa config: {mfa_config}")
 
     if not mfa_config:
@@ -40,14 +52,15 @@ def privacy_idea_tacc(config, token, username):
         privacy_idea_url = config['tacc']['privacy_idea_url']
         privacy_idea_client_id = config['tacc']['privacy_idea_client_id']
         privacy_idea_client_key = config['tacc']['privacy_idea_client_key']
-        grant_types = config['tacc']['grant_types']
+        grant_types = config['tacc'].get('grant_types', '')
+        realm = config['tacc'].get('realm', 'tacc')
 
         jwt = get_privacy_idea_jwt(privacy_idea_url, privacy_idea_client_id, privacy_idea_client_key)
 
         if not jwt:
             return False
          
-        return verify_mfa_token(privacy_idea_url, jwt, token, username)
+        return verify_mfa_token(privacy_idea_url, jwt, token, username, realm)
 
 def get_privacy_idea_jwt(url, username, password):
     logger.debug("Generating privacy idea JWT")
@@ -68,13 +81,13 @@ def get_privacy_idea_jwt(url, username, password):
     logger.debug(jwt)
     return jwt
 
-def verify_mfa_token(url, jwt, token, username):
+def verify_mfa_token(url, jwt, token, username, realm):
     logger.debug(f"Verifying MFA token: {token} for: {username}")
     url = f"{url}/validate/check"
     logger.debug(url)
     data = {
         "user": username,
-        "realm": "tacc",
+        "realm": realm,
         "pass": token
     }
     headers = {
