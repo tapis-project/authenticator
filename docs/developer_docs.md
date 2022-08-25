@@ -112,13 +112,14 @@ There are certain fields that are required for configuring a tenant to use TACC 
 privacy_idea_client_id
 privacy_idea_client_key
 privacy_idea_url
+realm
 ```
 
 Since `mfa_config` is also a JSON object, the configuration process is very similar to how we update the `custom_idp_configuration`:
 
 ```
 c = TenantConfig.query.filter_by(tenant_id='github-demo')[0]
-d = {'github': { 'privacy_idea_client_id': 'pidea_client', 'privacy_idea_client_key': 'pidea_key', 'privacy_idea_url': 'pidea_url'}}
+d = {'github': { 'privacy_idea_client_id': 'pidea_client', 'privacy_idea_client_key': 'pidea_key', 'privacy_idea_url': 'pidea_url', 'realm': 'tacc'}}
 s = json.dumps(d)
 c.mfa_config = s
 db.session.commit()
