@@ -1,4 +1,5 @@
 import os
+import resource
 
 from tapisservice.auth import get_service_tapis_client
 from tapisservice.tenants import TenantCache
@@ -16,7 +17,10 @@ MIGRATIONS_RUNNING = os.environ.get('MIGRATIONS_RUNNING', False)
 # instantiate the tapis client here with the generic tenants manager from the common package, and then at the
 # bottom of this module we replace it with the AuthenticatorTenants
 logger.debug("creating the authenticator tapis service client...")
-t = get_service_tapis_client(tenants=auth_tenants)
+t = get_service_tapis_client(tenants=auth_tenants, 
+                             # todo -- change back once tokens api update is in prod
+                             resource_set='dev'
+                            )
 
 
 class AuthenticatorTenants(TenantCache):

@@ -114,7 +114,7 @@ def authentication():
             raise common_errors.PermissionsError("Permission denied -- Tenant admin role required for accessing the "
                                                  "authenticator admin endpoints.")
 
-    # no credentials required on the authorize, login and oa2 extenion pages
+    # no credentials required on the authorize, login and oa2 extension pages
     if '/v3/oauth2/authorize' in request.url_rule.rule or '/v3/oauth2/login' in request.url_rule.rule \
             or '/oauth2/extensions' in request.url_rule.rule or 'v3/oauth2/mfa' in request.url_rule.rule \
             or '/v3/oauth2/device' in request.url_rule.rule:
@@ -174,6 +174,21 @@ def authentication():
                 raise common_errors.BaseTapisError("Unable to resolve tenant_id for request.")
             return True
 
+    # Token Revokcation Endpoint -----
+    if '/v3/oauth2/tokens/revoke' in request.url_rule.rule:
+        # anyone with a token is currently allowed to revoke it. the only issue is whether this tokens API
+        # should revoke it. 
+        try:
+            token_str = request.get_json().get('token')
+        except Exception as e:
+            logger.info(f"Got exception trying to parse JSON from request; e: {e}; type(e):{type(e)}")
+            raise common_errors.AuthenticationError('Unable to parse message payload; is it JSON?')
+        # for now, we allow any site to revoke any token. we can revisit this in the future
+        return True
+    
+    # Token Creation Endpoints -----
+    # we've already checked the revoke endpoint specifically, so if we're here, the request is to a 
+    # token creation endpoint
     if '/v3/oauth2/tokens' in request.url_rule.rule:
         logger.debug("oauth2 tokens URL")
         # the tokens endpoint uses basic auth with the client; logic handled in the controller. # however, it does
@@ -208,7 +223,8 @@ def authentication():
                                                  f"served by this authenticator.")
         return True
 
-    if 'v3/oauth2/v2/token' in request.url_rule.rule:
+    # Special v3->v2 token generation endpoint.
+    if '/v3/oauth2/v2/token' in request.url_rule.rule:
         logger.debug("v2 token URL")
         # the v2/token endpoint takes a v3 token generated for a user and returns a v2 token for that user
 
@@ -226,6 +242,7 @@ def authentication():
 
         return True
 
+    # Various endpoints for the example webapp
     if '/v3/oauth2/logout' in request.url_rule.rule \
         or '/v3/oauth2/login' in request.url_rule.rule \
         or '/v3/oauth2/tenant' in request.url_rule.rule \

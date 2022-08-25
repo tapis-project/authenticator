@@ -1273,6 +1273,33 @@ class V2TokenResource(Resource):
         return response.json()
 
 
+class RevokeTokensResource(Resource):
+    """
+    Revoke a Tapis JWT.
+    """
+    def post(self):
+        logger.debug("top of POST /v3/oauth2/tokens/revoke")
+        validator = RequestValidator(utils.spec)
+        validated = validator.validate(FlaskOpenAPIRequest(request))        
+        if validated.errors:
+            raise errors.ResourceError(msg=f'Invalid POST data: {validated.errors}.')
+        validated_body = validated.body
+        token_str = validated.body.token
+        try:
+            token_data = validate_token(token_str)
+        except errors.AuthenticationError as e:
+            raise errors.ResourceError(msg=f'Invalid POST data; could not validate the token: debug data: {e}.')
+        # call the tokens api to actually revoke the token
+        try:
+            t.tokens.revoke_token(token=token_str, _tapis_set_x_headers_from_service=True)
+        except Exception as e:
+            logger.error(f"Got exception trying to call the tokens api to revoke a token; details: {e}")
+            raise errors.ResourceError(msg=f"Unexpected error trying to revoke the token: debug data: {e}.")
+        return utils.ok(result='', msg=f"Token {token_data['jti']} has been revoked.")
+
+
+
+
 # ---------------------------------
 # Example Token Webapp controllers
 # ---------------------------------
