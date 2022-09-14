@@ -116,7 +116,53 @@ def validate_access_token(response):
     assert claims['tapis/username'] == TEST_USERNAME
     assert claims['sub'] == f'{TEST_USERNAME}@{TEST_TENANT_ID}'
     return claims
+    
 
+def check_access_token_table(claims, grant_type, token_revoked, client_id=None):
+    """
+    Check that a token with `claims` generated using `grant_type` with `token_revoked` status 
+    appears on the AccessTokens table.
+    
+    Additionally, if a `client_id` was used to generate the token, this checks that the client_id
+    appears correctly.
+    """
+    jti = claims['jti']
+    token = models.AccessTokens.query.filter_by(jti=jti).first()
+    # the token should be on the table
+    if not token:
+        raise Exception()
+    # check that the attributes on the table match the token's claims:
+    assert token.subject == claims['sub']
+    assert token.tenant_id == claims['tapis/tenant_id']
+    assert token.username == claims['tapis/username']
+    assert token.token_revoked == token_revoked
+    assert token.grant_type == grant_type
+    if client_id:
+        assert token.client_id == client_id
+    
+
+def check_refresh_token_table(claims, grant_type, token_revoked, client_id=None):
+    """
+    Check that a token with `claims` generated using `grant_type` with `token_revoked` status 
+    appears on the RefreshTokens table.
+    
+    Additionally, if a `client_id` was used to generate the token, this checks that the client_id
+    appears correctly.
+    """
+    jti = claims['jti']
+    token = models.RefreshTokens.query.filter_by(jti=jti).first()
+    # the token should be on the table
+    if not token:
+        raise Exception()
+    # check that the attributes on the table match the token's claims:
+    assert token.subject == claims['sub']
+    assert token.tenant_id == claims['tapis/tenant_id']
+    assert token.username == claims['tapis/access_token']['tapis/username']
+    assert token.token_revoked == token_revoked
+    assert token.grant_type == grant_type
+    if client_id:
+        assert token.client_id == client_id
+            
 
 def validate_refresh_token(response):
     """
@@ -247,11 +293,13 @@ def test_password_grant_valid(client, init_db):
         claims = validate_access_token(response)
         assert claims['tapis/client_id'] == TEST_CLIENT_ID
         assert claims['tapis/grant_type'] == 'password'
+        check_access_token_table(claims, "password", False, TEST_CLIENT_ID)
 
         # validate refresh_token:
         claims = validate_refresh_token(response)
         assert claims['tapis/access_token']['tapis/client_id'] == TEST_CLIENT_ID
         assert claims['tapis/access_token']['tapis/grant_type'] == 'password'
+        check_refresh_token_table(claims, "password", False, TEST_CLIENT_ID)
 
 def test_password_grant_no_client(client, init_db):
     payload = {
@@ -444,3 +492,54 @@ def test_device_code(client, init_db):
                                 content_type='application/json')
         print(response.data)
         assert response.status_code == 200
+
+
+def test_revoke_token(client, init_db):
+    """
+    Test the revocation endpoint, and check the status of the tokens are updated on the table
+    after revoking. 
+    """
+    # first, generate an access and refresh token pair
+    with client:
+        auth_header = {'Authorization': get_basic_auth_header(TEST_CLIENT_ID, TEST_CLIENT_KEY)}
+        payload = {
+            'grant_type': 'password',
+            'username': TEST_USERNAME,
+            'password': TEST_PASSWORD
+        }
+        response = client.post(
+            "http://localhost:5000/v3/oauth2/tokens",
+            headers=auth_header,
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        assert response.status_code == 200
+        assert 'access_token' in response.json['result']
+        # access_token:
+        access_token_str = response.json['result']['access_token']['access_token']
+        access_token_claims = validate_access_token(response)
+        # refresh_token:
+        refresh_token_claims = validate_refresh_token(response)
+        refresh_token_str = response.json['result']['refresh_token']['refresh_token']
+        
+        # now, revoke the tokens ----
+        # first, the access token
+        payload = {'token': access_token_str}
+        response = client.post(
+            "http://localhost:5000/v3/oauth2/tokens/revoke",
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        assert response.status_code == 200        
+        check_access_token_table(access_token_claims, "password", True, TEST_CLIENT_ID)
+
+        # then the refresh token
+        payload = {'token': refresh_token_str}
+        response = client.post(
+            "http://localhost:5000/v3/oauth2/tokens/revoke",
+            data=json.dumps(payload),
+            content_type='application/json'
+        )
+        assert response.status_code == 200        
+
+        check_refresh_token_table(refresh_token_claims, "password", True, TEST_CLIENT_ID)
