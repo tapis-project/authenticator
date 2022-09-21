@@ -750,9 +750,6 @@ class AuthorizeResource(Resource):
                 raise errors.ResourceError(f"The device_code grant type is not allowed for this "
                                            f"tenant. Allowable grant types: {allowable_grant_types}")
         # Adding to test MFA workflow in iFrame
-        if request.args['from_mfa']:
-            username = request.args['username']
-            session['username'] = username
         # if the user has not already authenticated, we need to issue a redirect to the login screen;
         # the login screen will depend on the tenant's IdP configuration
         if 'username' not in session:
