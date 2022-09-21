@@ -454,7 +454,7 @@ class LoginResource(Resource):
         resp = make_response(render_template('login.html', **context), 200, headers)
         resp.headers['Secure'] = True
         resp.headers['SameSite'] = "None"
-        return make_response(render_template('login.html', **context), 200, headers)
+        return resp
 
     def post(self):
         # process the login form -
