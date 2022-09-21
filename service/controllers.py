@@ -572,7 +572,8 @@ class MFAResource(Resource):
                                     redirect_uri=client_redirect_uri,
                                     state=client_state,
                                     client_display_name=display_name,
-                                    response_type=response_type))
+                                    response_type=response_type,
+                                    username=username))
         else:
             context = {'error': response,
                    'username': session.get('username')}
@@ -648,7 +649,8 @@ class DeviceFlowResource(Resource):
                                         client_display_name=client.display_name,
                                         response_type='device_code',
                                         user_code=user_code,
-                                        device_code=device_code))
+                                        device_code=device_code,
+                                        from_mfa=True))
             else:
                 response = "Code not eligible to be entered"
                 context = {'error': response,
@@ -747,6 +749,10 @@ class AuthorizeResource(Resource):
             if 'device_code' not in allowable_grant_types:
                 raise errors.ResourceError(f"The device_code grant type is not allowed for this "
                                            f"tenant. Allowable grant types: {allowable_grant_types}")
+        # Adding to test MFA workflow in iFrame
+        if request.args['from_mfa']:
+            username = request.args['username']
+            session['username'] = username
         # if the user has not already authenticated, we need to issue a redirect to the login screen;
         # the login screen will depend on the tenant's IdP configuration
         if 'username' not in session:
