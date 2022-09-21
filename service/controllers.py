@@ -451,6 +451,9 @@ class LoginResource(Resource):
                    'client_redirect_uri': client_redirect_uri,
                    'client_state': client_state,
                    'tenant_id': tenant_id}
+        resp = make_response(render_template('login.html', **context), 200, headers)
+        resp.headers['Secure'] = True
+        resp.headers['SameSite'] = "None"
         return make_response(render_template('login.html', **context), 200, headers)
 
     def post(self):
@@ -504,14 +507,14 @@ class LoginResource(Resource):
                                 state=client_state,
                                 client_display_name=client_display_name,
                                 response_type='code'))
-        value = request.cookies.get('session')
-        logger.debug(request.cookies.get('session'))
+        #value = request.cookies.get('session')
+        # logger.debug(request.cookies.get('session'))
         #request.headers.add_header('SameSite', "None")
         #request.headers.add_header('Secure', True)
         #resp.set_cookie('session', value, samesite=None, secure=True)
         #resp.headers.add('Set-Cookie',f'session=.{value};SameSite=None; Secure')
-        logger.debug(request.cookies.get('session'))
-        resp.headers.add('Set-Cookie', f"session={value}; Secure; SameSite=None;")
+        logger.debug(session)
+        resp.headers.add('Set-Cookie', f"session={session}; Secure; SameSite=None;")
         resp.headers['Secure'] = True
         resp.headers['SameSite'] = "None"
         return resp 
