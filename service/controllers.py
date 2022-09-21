@@ -501,23 +501,13 @@ class LoginResource(Resource):
         if session.get('device_login'):
             redirect_url = 'deviceflowresource'
         print(redirect_url)
-        resp = redirect(url_for(redirect_url,
+        logger.debug(f"Login Session {session}")
+        return redirect(url_for(redirect_url,
                                 client_id=client_id,
                                 redirect_uri=client_redirect_uri,
                                 state=client_state,
                                 client_display_name=client_display_name,
                                 response_type='code'))
-        #value = request.cookies.get('session')
-        # logger.debug(request.cookies.get('session'))
-        #request.headers.add_header('SameSite', "None")
-        #request.headers.add_header('Secure', True)
-        #resp.set_cookie('session', value, samesite=None, secure=True)
-        #resp.headers.add('Set-Cookie',f'session=.{value};SameSite=None; Secure')
-        logger.debug(session)
-        resp.headers.add('Set-Cookie', f"session={session}; Secure; SameSite=None;")
-        resp.headers['Secure'] = True
-        resp.headers['SameSite'] = "None"
-        return resp 
 
 class MFAResource(Resource):
     def get(self):
@@ -525,6 +515,7 @@ class MFAResource(Resource):
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
+        logger.debug(f"MFA Session {session}")
         if not tenant_id:
             tenant_id = session.get('tenant_id')
         if not tenant_id:
