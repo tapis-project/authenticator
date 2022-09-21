@@ -506,12 +506,14 @@ class LoginResource(Resource):
                                 response_type='code'))
         value = request.cookies.get('session')
         logger.debug(request.cookies.get('session'))
-        request.headers.add_header('SameSite', "None")
-        request.headers.add_header('Secure', True)
+        #request.headers.add_header('SameSite', "None")
+        #request.headers.add_header('Secure', True)
         #resp.set_cookie('session', value, samesite=None, secure=True)
         #resp.headers.add('Set-Cookie',f'session=.{value};SameSite=None; Secure')
         logger.debug(request.cookies.get('session'))
         resp.headers.add('Set-Cookie', f"session={value}; Secure; SameSite=None;")
+        resp.headers['Secure'] = True
+        resp.headers['SameSite'] = "None"
         return resp 
 
 class MFAResource(Resource):
