@@ -498,12 +498,21 @@ class LoginResource(Resource):
         if session.get('device_login'):
             redirect_url = 'deviceflowresource'
         print(redirect_url)
-        return redirect(url_for(redirect_url,
+        resp = redirect(url_for(redirect_url,
                                 client_id=client_id,
                                 redirect_uri=client_redirect_uri,
                                 state=client_state,
                                 client_display_name=client_display_name,
                                 response_type='code'))
+        value = request.cookies.get('session')
+        logger.debug(request.cookies.get('session'))
+        request.headers.add_header('SameSite', "None")
+        request.headers.add_header('Secure', True)
+        #resp.set_cookie('session', value, samesite=None, secure=True)
+        #resp.headers.add('Set-Cookie',f'session=.{value};SameSite=None; Secure')
+        logger.debug(request.cookies.get('session'))
+        resp.headers.add('Set-Cookie', f"session={value}; Secure; SameSite=None;")
+        return resp 
 
 class MFAResource(Resource):
     def get(self):
