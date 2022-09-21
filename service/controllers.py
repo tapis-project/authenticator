@@ -507,7 +507,8 @@ class LoginResource(Resource):
                                 redirect_uri=client_redirect_uri,
                                 state=client_state,
                                 client_display_name=client_display_name,
-                                response_type='code'))
+                                response_type='code',
+                                username=username))
 
 class MFAResource(Resource):
     def get(self):
@@ -527,19 +528,24 @@ class MFAResource(Resource):
             display_name = client.display_name
         except Exception as e:
             logger.debug(f"Error getting client display name. e: {e}")
+        username = session.get('username')
+        if not username:
+            username = request.args['username']
         context = {'error': '',
                    'client_display_name': display_name,
                    'client_id': client_id,
                    'client_redirect_uri': client_redirect_uri,
                    'client_state': client_state,
                    'tenant_id': tenant_id,
-                   'username': session.get('username')}
+                   'username': username}
         return make_response(render_template('mfa.html', **context), 200, headers)
 
     def post(self):
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         username = session.get('username')
+        if not username:
+            username = request.args['username']
         headers = {'Content-Type': 'text/html'}
         if not tenant_id:
             tenant_id = session.get('tenant_id')
