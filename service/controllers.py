@@ -452,8 +452,8 @@ class LoginResource(Resource):
                    'client_state': client_state,
                    'tenant_id': tenant_id}
         resp = make_response(render_template('login.html', **context), 200, headers)
-        resp.headers['Secure'] = True
-        resp.headers['SameSite'] = "None"
+        #resp.headers['Secure'] = True
+        #resp.headers['SameSite'] = "None"
         return resp
 
     def post(self):
@@ -502,13 +502,14 @@ class LoginResource(Resource):
             redirect_url = 'deviceflowresource'
         print(redirect_url)
         logger.debug(f"Login Session {session}")
-        return redirect(url_for(redirect_url,
+        resp = redirect(url_for(redirect_url,
                                 client_id=client_id,
                                 redirect_uri=client_redirect_uri,
                                 state=client_state,
                                 client_display_name=client_display_name,
-                                response_type='code',
-                                username=username))
+                                response_type='code'))
+        resp.set_cookie('username', username, samesite='None', secure=True)
+        return resp
 
 class MFAResource(Resource):
     def get(self):
@@ -530,7 +531,7 @@ class MFAResource(Resource):
             logger.debug(f"Error getting client display name. e: {e}")
         username = session.get('username')
         if not username:
-            username = request.args['username']
+            username = request.cookies.get('username')
         context = {'error': '',
                    'client_display_name': display_name,
                    'client_id': client_id,
@@ -572,8 +573,7 @@ class MFAResource(Resource):
                                     redirect_uri=client_redirect_uri,
                                     state=client_state,
                                     client_display_name=display_name,
-                                    response_type=response_type,
-                                    username=username))
+                                    response_type=response_type))
         else:
             context = {'error': response,
                    'username': session.get('username')}
