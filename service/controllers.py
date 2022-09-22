@@ -841,11 +841,10 @@ class AuthorizeResource(Resource):
         client_display_name = request.form.get('client_display_name')
         try:
             logger.debug(f'trying to grab username from session: {session}')
-            username = session['username']
-            logger.debug(f'username from session: {username}')
-            if not username:
+            if session.get('username') == None:
                 username = request.cookies.get('username')
-                logger.debug(f'username from request cookies {username}')
+                logger.debug(f'found username from request cookies {username}')
+            username = session['uesrname']
         except KeyError:
             logger.debug(f"did not find username in session; this is an error. raising error. session: {session};")
             raise errors.ResourceError('username missing from session. Please login to continue.')
