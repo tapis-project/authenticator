@@ -839,15 +839,26 @@ class AuthorizeResource(Resource):
             logger.debug("did not tenant_id on g or in session; raising error.")
             raise errors.ResourceError('Tenant ID missing from session. Please logout and select a tenant.')
         client_display_name = request.form.get('client_display_name')
-        try:
-            logger.debug(f'trying to grab username from session: {session}')
-            if session.get('username') == None:
+        if 'username' not in session:
+            logger.debug('did not find username in session; checking request cookies')
+            if 'username' not in request.cookies:
+                logger.debug('username not found in session or request cookies; this is an error')
+                raise error.ResourceError('username missing from session and/or cookies. Please login to continue.')
+            else:
                 username = request.cookies.get('username')
-                logger.debug(f'found username from request cookies {username}')
-            username = session['uesrname']
-        except KeyError:
-            logger.debug(f"did not find username in session; this is an error. raising error. session: {session};")
-            raise errors.ResourceError('username missing from session. Please login to continue.')
+        else:
+            username = session['username']
+        # try:
+        #     logger.debug(f'trying to grab username from session: {session}')
+        #     if session.get('username') == None:
+        #         logger.debug('username not found in session; checking request cookies')
+        #         username = request.cookies.get('username')
+        #         logger.debug(f'found username from request cookies {username}')
+        #     else:
+        #         username = session['uesrname']
+        # except KeyError:
+        #     logger.debug(f"did not find username in session; this is an error. raising error. session: {session};")
+        #     raise errors.ResourceError('username missing from session. Please login to continue.')
         approve = request.form.get("approve")
         ttl = request.form.get("ttl", None)
         if not approve:
