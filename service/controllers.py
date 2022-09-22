@@ -826,8 +826,9 @@ class AuthorizeResource(Resource):
                    'client_state': client_state,
                    'device_login': session.get('device_login', None),
                    'device_code': request.args.get('device_code', None)}
-
-        return make_response(render_template('authorize.html', **context), 200, headers)
+        resp = make_response(render_template('authorize.html', **context), 200, headers)
+        resp.set_cookie('username', username, samesite='None', secure=True)
+        return resp
 
     def post(self):
         logger.debug("top of POST /oauth2/authorize")
@@ -841,6 +842,8 @@ class AuthorizeResource(Resource):
         client_display_name = request.form.get('client_display_name')
         try:
             username = session['username']
+            if not username:
+                username = request.cookies.get('username')
         except KeyError:
             logger.debug(f"did not find username in session; this is an error. raising error. session: {session};")
             raise errors.ResourceError('username missing from session. Please login to continue.')
