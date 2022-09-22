@@ -539,14 +539,16 @@ class MFAResource(Resource):
                    'client_state': client_state,
                    'tenant_id': tenant_id,
                    'username': username}
-        return make_response(render_template('mfa.html', **context), 200, headers)
+        resp = make_response(render_template('mfa.html', **context), 200, headers)
+        resp.set_cookie('username', username, samesite='None', secure=True)
+        return resp
 
     def post(self):
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         username = session.get('username')
         if not username:
-            username = request.args['username']
+            username = request.cookies.get('username')
         headers = {'Content-Type': 'text/html'}
         if not tenant_id:
             tenant_id = session.get('tenant_id')
@@ -568,15 +570,17 @@ class MFAResource(Resource):
             if 'device_login' in session:
                 response_type = 'device_code'
             session['mfa_validated'] = True
-            return redirect(url_for('authorizeresource',
+            resp = redirect(url_for('authorizeresource',
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
                                     state=client_state,
                                     client_display_name=display_name,
                                     response_type=response_type))
+            resp.set_cookie('username', username, samesite='None', secure=True)
+            return resp
         else:
             context = {'error': response,
-                   'username': session.get('username')}
+                   'username': username}
             return make_response(render_template('mfa.html', **context), 200, headers)
 
 
@@ -750,9 +754,16 @@ class AuthorizeResource(Resource):
                 raise errors.ResourceError(f"The device_code grant type is not allowed for this "
                                            f"tenant. Allowable grant types: {allowable_grant_types}")
         # Adding to test MFA workflow in iFrame
+        if 'username' not in session:
+            username = request.cookies.get('username')
+            if username is not None:
+                logger.debug(f"username found: {username}")
+                session['username'] = request.cookies.get('username')
         # if the user has not already authenticated, we need to issue a redirect to the login screen;
         # the login screen will depend on the tenant's IdP configuration
         if 'username' not in session:
+            if request.cookies.get('username'):
+                session['username'] = request.cookies.get('username')
             # Device login should already be in the session
             # User would have to navigate directly to authorize and put device_code response type as parameter
             if response_type == 'device_code':
