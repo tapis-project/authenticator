@@ -825,6 +825,7 @@ class AuthorizeResource(Resource):
                    'device_login': session.get('device_login', None),
                    'device_code': request.args.get('device_code', None)}
         resp = make_response(render_template('authorize.html', **context), 200, headers)
+        logger.debug(f'response username: {username}')
         resp.set_cookie('username', username, samesite='None', secure=True)
         return resp
 
@@ -839,6 +840,7 @@ class AuthorizeResource(Resource):
             raise errors.ResourceError('Tenant ID missing from session. Please logout and select a tenant.')
         client_display_name = request.form.get('client_display_name')
         try:
+            logger.debug(f'trying to grab username from session: {session}')
             username = session['username']
             logger.debug(f'username from session: {username}')
             if not username:
