@@ -762,8 +762,6 @@ class AuthorizeResource(Resource):
         # if the user has not already authenticated, we need to issue a redirect to the login screen;
         # the login screen will depend on the tenant's IdP configuration
         if 'username' not in session:
-            if request.cookies.get('username'):
-                session['username'] = request.cookies.get('username')
             # Device login should already be in the session
             # User would have to navigate directly to authorize and put device_code response type as parameter
             if response_type == 'device_code':
@@ -842,8 +840,10 @@ class AuthorizeResource(Resource):
         client_display_name = request.form.get('client_display_name')
         try:
             username = session['username']
+            logger.debug(f'username from session: {username}')
             if not username:
                 username = request.cookies.get('username')
+                logger.debug(f'username from request cookies {username}')
         except KeyError:
             logger.debug(f"did not find username in session; this is an error. raising error. session: {session};")
             raise errors.ResourceError('username missing from session. Please login to continue.')
