@@ -814,8 +814,9 @@ class AuthorizeResource(Resource):
             display_name = client.display_name
         except Exception as e:
             logger.debug(f"No client available; e: {e}")
+        username = session['username']
         context = {'error': '',
-                   'username': session['username'],
+                   'username': username,
                    'tenant_id': tenant_id,
                    'client_display_name': display_name,
                    'client_id': client_id,
