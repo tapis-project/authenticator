@@ -78,9 +78,15 @@
 <!--</style>-->
 <!--</head>-->
 
+{% if tenant_id == "jupyter-tacc-dev" %}
+<div class="container">
+  <img src="authorize/superman.jpg" alt="Superman" class="img-responsive" style="width:70%; height:70%">
+</div>
+{% else %}
 <div class="container">
     <img src="authorize/tapis.jpg" alt="Tapis" class="img-responsive" style="width:70%; height:70%">
 </div>
+{% endif %}
 
 
 {% block content %}
