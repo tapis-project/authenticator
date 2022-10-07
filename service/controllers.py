@@ -6,6 +6,7 @@ from requests.auth import HTTPBasicAuth
 import json
 from flask import g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
 from flask_restful import Resource
+from flask_wtf.csrf import CSRFProtect
 from openapi_core.shortcuts import RequestValidator
 from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 import sqlalchemy
@@ -29,6 +30,8 @@ from tapisservice.logs import get_logger
 
 logger = get_logger(__name__)
 
+app = Flask(__name__)
+csrf = CSRFProtect(app)
 
 # ------------------------------
 # REST API Endpoint controllers
@@ -508,7 +511,7 @@ class LoginResource(Resource):
                                 state=client_state,
                                 client_display_name=client_display_name,
                                 response_type='code'))
-        resp.set_cookie('username', username, samesite='None', secure=True)
+        resp.set_cookie('username', username, httponly=True, samesite='Lax', secure=True)
         return resp
 
 class MFAResource(Resource):
@@ -540,7 +543,7 @@ class MFAResource(Resource):
                    'tenant_id': tenant_id,
                    'username': username}
         resp = make_response(render_template('mfa.html', **context), 200, headers)
-        resp.set_cookie('username', username, samesite='None', secure=True)
+        resp.set_cookie('username', username, httponly=True, samesite='Lax', secure=True)
         return resp
 
     def post(self):
@@ -576,7 +579,7 @@ class MFAResource(Resource):
                                     state=client_state,
                                     client_display_name=display_name,
                                     response_type=response_type))
-            resp.set_cookie('username', username, samesite='None', secure=True)
+            resp.set_cookie('username', username, httponly=True, samesite='Lax', secure=True)
             return resp
         else:
             context = {'error': response,
@@ -827,7 +830,7 @@ class AuthorizeResource(Resource):
                    'device_code': request.args.get('device_code', None)}
         resp = make_response(render_template('authorize.html', **context), 200, headers)
         logger.debug(f'response username: {username}')
-        resp.set_cookie('username', username, samesite='None', secure=True)
+        resp.set_cookie('username', username, httponly=True, samesite='Lax', secure=True)
         return resp
 
     def post(self):
