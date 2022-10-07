@@ -4,7 +4,7 @@ from pydoc import cli
 import requests
 from requests.auth import HTTPBasicAuth
 import json
-from flask import g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
+from flask import Flask, g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
 from flask_restful import Resource
 from flask_wtf.csrf import CSRFProtect
 from openapi_core.shortcuts import RequestValidator
