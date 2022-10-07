@@ -1,3 +1,4 @@
 hashids==1.2.0
 ldap3
 requests
+flask-wtf
