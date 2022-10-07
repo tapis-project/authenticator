@@ -6,7 +6,6 @@ from requests.auth import HTTPBasicAuth
 import json
 from flask import Flask, g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
 from flask_restful import Resource
-from flask_wtf.csrf import CSRFProtect
 from openapi_core.shortcuts import RequestValidator
 from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 import sqlalchemy
@@ -30,8 +29,8 @@ from tapisservice.logs import get_logger
 
 logger = get_logger(__name__)
 
-app = Flask(__name__)
-csrf = CSRFProtect(app)
+# app = Flask(__name__)
+# csrf = CSRFProtect(app)
 
 # ------------------------------
 # REST API Endpoint controllers
