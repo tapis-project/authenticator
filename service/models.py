@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 from service import tenants
 
 app = Flask(__name__)
-csrf = CSRFProtect()
+#csrf = CSRFProtect()
 
 # app.secret_key = b"\x00" + secrets.token_bytes(12) + b"\x00"
 app.secret_key = b"AGHsjfh!#%$SNFJqw"
@@ -35,7 +35,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = full_db_url
 db = SQLAlchemy(app, session_options={"expire_on_commit": False})
 migrate = Migrate(app, db)
 
-csrf.init_app(app)
+#csrf.init_app(app)
 # get the logger instance -
 from tapisservice.logs import get_logger
 logger = get_logger(__name__)

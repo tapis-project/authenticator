@@ -5,6 +5,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import json
 from flask import Flask, g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
+from flask_wtf.csrf import CSRFProtect
 from flask_restful import Resource
 from openapi_core.shortcuts import RequestValidator
 from openapi_core.wrappers.flask import FlaskOpenAPIRequest
@@ -29,8 +30,10 @@ from tapisservice.logs import get_logger
 
 logger = get_logger(__name__)
 
-# app = Flask(__name__)
-# csrf = CSRFProtect(app)
+app = Flask(__name__)
+
+app.secret_key = b"AFHsjfh!#%$SNFJqw"
+csrf = CSRFProtect(app)
 
 # ------------------------------
 # REST API Endpoint controllers
@@ -1483,8 +1486,6 @@ def get_tokenapp_client(tenant_id=None):
     if 'localhost' in request.base_url:
         client_data = token_webapp_clients[f'local.{tenant_id}']
     return client_data
-
-
 class WebappTokenAndRedirect(Resource):
     """
     This resource implements the GET method for the primary /oauth2/webapp URL path of the Token Web app. This method
@@ -1549,6 +1550,7 @@ class WebappTokenAndRedirect(Resource):
         url = f'{base_redirect_url}/v3/oauth2/authorize?client_id={client_id}&redirect_uri={client_redirect_uri}&response_type=code&state={state}'
         return redirect(url)
 
+app.add_url_rule('/webapp', view_func=WebappTokenAndRedirect.as_view('webapp'))
 
 class WebappTokenGen(Resource):
     """
