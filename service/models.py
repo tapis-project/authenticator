@@ -2,7 +2,7 @@ from copy import deepcopy
 import datetime
 import json
 from flask import Flask, g
-from flask_wtf.csrf import CSRFProtect
+#from flask_wtf.csrf import CSRFProtect
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from hashids import Hashids
@@ -22,7 +22,7 @@ logger = get_logger(__name__)
 from service import tenants
 
 app = Flask(__name__)
-csrf = CSRFProtect(app)
+# csrf = CSRFProtect(app)
 # app.secret_key = b"\x00" + secrets.token_bytes(12) + b"\x00"
 app.secret_key = b"AGHsjfh!#%$SNFJqw"
 try:
