@@ -30,12 +30,12 @@ from tapisservice.logs import get_logger
 
 logger = get_logger(__name__)
 
-app = Flask(__name__)
+# app = Flask(__name__)
 
-app.secret_key = b"AFHsjfh!#%$SNFJqw"
-csrf = CsrfProtect()
+# app.secret_key = b"AFHsjfh!#%$SNFJqw"
+# csrf = CsrfProtect()
 
-csrf.init_app(app)
+# csrf.init_app(app)
 # ------------------------------
 # REST API Endpoint controllers
 # ------------------------------
@@ -1551,7 +1551,7 @@ class WebappTokenAndRedirect(Resource):
         url = f'{base_redirect_url}/v3/oauth2/authorize?client_id={client_id}&redirect_uri={client_redirect_uri}&response_type=code&state={state}'
         return redirect(url)
 
-app.add_url_rule('/webapp', view_func=WebappTokenAndRedirect.as_view('webapp'))
+# app.add_url_rule('/webapp', view_func=WebappTokenAndRedirect.as_view('webapp'))
 
 class WebappTokenGen(Resource):
     """
