@@ -136,7 +136,7 @@ python
 from service.models import TenantConfig, db
 import json
 c = TenantConfig.query.filter_by(tenant_id='jupyter-tacc-dev')[0]
-d = {"tacc": {"grant_types": [], "privacy_idea_client_id": <get_from_stache>, "privacy_idea_client_key": <get_from_stache>, "privacy_idea_url": "https://pidea02.tacc.utexas.edu", "realm": "tacc"}}
+d = {"tacc": {"grant_types": [], "privacy_idea_client_id": "<get_from_stache>", "privacy_idea_client_key": "<get_from_stache>", "privacy_idea_url": "https://pidea02.tacc.utexas.edu", "realm": "tacc"}}
 c.mfa_config = json_dumps(d)
 db.session.commit()
 ```
