@@ -123,6 +123,25 @@ db.session.commit()
 
 ```
 
+#### Configuring MFA Config
+When testing the MFA config (for example, for the jupyter-tacc-dev tenant) using TACC auth, 
+one needs to store the configuration in the local postgres databse. Here are the steps to do that:
+
+##### Jupyter TACC Dev
+Exec into the authenticator Python container and run the following:
+
+```
+<from within the container>
+python
+from service.models import TenantConfig, db
+import json
+c = TenantConfig.query.filter_by(tenant_id='jupyter-tacc-dev')[0]
+d = {"tacc": {"grant_types": [], "privacy_idea_client_id": <get_from_stache>, "privacy_idea_client_key": <get_from_stache>, "privacy_idea_url": "https://pidea02.tacc.utexas.edu", "realm": "tacc"}}
+c.mfa_config = json_dumps(d)
+db.session.commit()
+```
+
+
 
 #### New DB Schema
 
