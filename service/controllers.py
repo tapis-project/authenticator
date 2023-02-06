@@ -1452,6 +1452,7 @@ class WebappTokenAndRedirect(Resource):
 
     def get(self):
         token = session.get('access_token')
+        tenant_id = session.get('tenant_id')
         # if the authenticator is running locally, redirect to the local instance of the Authorization server:
         if 'localhost' in request.base_url:
             base_redirect_url = 'http://localhost:5000'
@@ -1486,9 +1487,9 @@ class WebappTokenAndRedirect(Resource):
                 logger.info(f"Got exception trying to get usernmae out of user_info object; e: {e}; user_info: {user_info}")
                 username = 'Not available'
             context['username'] = username
+            context['tenant_id'] = tenant_id
             return make_response(render_template('token-display.html', **context), 200, headers)
         # otherwise, if there is no token in the session, check the type of OAuth configured for this tenant;
-        tenant_id = session.get('tenant_id')
         if not tenant_id:
             tenant_id = g.request_tenant_id
             session['tenant_id'] = tenant_id
