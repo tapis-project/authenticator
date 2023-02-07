@@ -29,7 +29,7 @@
     },
     "definitions": {
         "grantTypes": {
-            "description": "Grant types that support MFA",
+            "description": "Grant types that support MFA. This configuration is currently ignored but may be used in a future release.",
             "type": "array",
             "items": {
                 "type": "string"
