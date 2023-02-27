@@ -1,0 +1,39 @@
+{
+    "$id": "http://github.com/tapis-project/authenticator/custom-mfa-configschema.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "Schema for the mfa_config field",
+    "additionalProperties": false,
+    "type": "object",
+    "properties": {
+        "grant_types": {
+            "type": "array",
+            "description": "Array containing list of grant types that support MFA",
+            "$ref": "#/definitions/grantTypes"
+        },
+        "privacy_idea_client_id": {
+            "type": "string",
+            "description": "Client ID for authenticating to Privacy Idea server"
+        },
+        "privacy_idea_client_key": {
+            "type": "string",
+                "description": "Client key for authenticating to Privacy Idea server"
+        },
+        "privacy_idea_url": {
+            "type": "string",
+                "description": "URL of the Privacy Idea server to authenticate to"
+        },
+        "realm": {
+            "type": "string",
+            "description": "Realm in which the Privacy Idea authentication occurs"
+        }
+    },
+    "definitions": {
+        "grantTypes": {
+            "description": "Grant types that support MFA. This configuration is currently ignored but may be used in a future release.",
+            "type": "array",
+            "items": {
+                "type": "string"
+            }
+        }
+    }
+}

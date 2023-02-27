@@ -4,7 +4,7 @@ from pydoc import cli
 import requests
 from requests.auth import HTTPBasicAuth
 import json
-from flask import Flask, g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
+from flask import g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
 from flask_restful import Resource
 from openapi_core.shortcuts import RequestValidator
 from openapi_core.wrappers.flask import FlaskOpenAPIRequest
@@ -28,6 +28,7 @@ from service.mfa import needs_mfa, call_mfa
 from tapisservice.logs import get_logger
 
 logger = get_logger(__name__)
+
 
 # ------------------------------
 # REST API Endpoint controllers
@@ -450,10 +451,7 @@ class LoginResource(Resource):
                    'client_redirect_uri': client_redirect_uri,
                    'client_state': client_state,
                    'tenant_id': tenant_id}
-        resp = make_response(render_template('login.html', **context), 200, headers)
-        #resp.headers['Secure'] = True
-        #resp.headers['SameSite'] = "None"
-        return resp
+        return make_response(render_template('login.html', **context), 200, headers)
 
     def post(self):
         # process the login form -
@@ -500,15 +498,12 @@ class LoginResource(Resource):
         if session.get('device_login'):
             redirect_url = 'deviceflowresource'
         print(redirect_url)
-        logger.debug(f"Login Session {session}")
-        resp = redirect(url_for(redirect_url,
+        return redirect(url_for(redirect_url,
                                 client_id=client_id,
                                 redirect_uri=client_redirect_uri,
                                 state=client_state,
                                 client_display_name=client_display_name,
                                 response_type='code'))
-        resp.set_cookie('username', username, httponly=True, samesite='Lax', secure=True)
-        return resp
 
 class MFAResource(Resource):
     def get(self):
@@ -516,7 +511,6 @@ class MFAResource(Resource):
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
-        logger.debug(f"MFA Session {session}")
         if not tenant_id:
             tenant_id = session.get('tenant_id')
         if not tenant_id:
@@ -528,26 +522,19 @@ class MFAResource(Resource):
             display_name = client.display_name
         except Exception as e:
             logger.debug(f"Error getting client display name. e: {e}")
-        username = session.get('username')
-        if not username:
-            username = request.cookies.get('username')
         context = {'error': '',
                    'client_display_name': display_name,
                    'client_id': client_id,
                    'client_redirect_uri': client_redirect_uri,
                    'client_state': client_state,
                    'tenant_id': tenant_id,
-                   'username': username}
-        resp = make_response(render_template('mfa.html', **context), 200, headers)
-        resp.set_cookie('username', username, httponly=True, samesite='Lax', secure=True)
-        return resp
+                   'username': session.get('username')}
+        return make_response(render_template('mfa.html', **context), 200, headers)
 
     def post(self):
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         username = session.get('username')
-        if not username:
-            username = request.cookies.get('username')
         headers = {'Content-Type': 'text/html'}
         if not tenant_id:
             tenant_id = session.get('tenant_id')
@@ -569,17 +556,15 @@ class MFAResource(Resource):
             if 'device_login' in session:
                 response_type = 'device_code'
             session['mfa_validated'] = True
-            resp = redirect(url_for('authorizeresource',
+            return redirect(url_for('authorizeresource',
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
                                     state=client_state,
                                     client_display_name=display_name,
                                     response_type=response_type))
-            resp.set_cookie('username', username, httponly=True, samesite='Lax', secure=True)
-            return resp
         else:
             context = {'error': response,
-                   'username': username}
+                   'username': session.get('username')}
             return make_response(render_template('mfa.html', **context), 200, headers)
 
 
@@ -652,8 +637,7 @@ class DeviceFlowResource(Resource):
                                         client_display_name=client.display_name,
                                         response_type='device_code',
                                         user_code=user_code,
-                                        device_code=device_code,
-                                        from_mfa=True))
+                                        device_code=device_code))
             else:
                 response = "Code not eligible to be entered"
                 context = {'error': response,
@@ -752,12 +736,6 @@ class AuthorizeResource(Resource):
             if 'device_code' not in allowable_grant_types:
                 raise errors.ResourceError(f"The device_code grant type is not allowed for this "
                                            f"tenant. Allowable grant types: {allowable_grant_types}")
-        # Adding to test MFA workflow in iFrame
-        if 'username' not in session:
-            username = request.cookies.get('username')
-            if username is not None:
-                logger.debug(f"username found: {username}")
-                session['username'] = request.cookies.get('username')
         # if the user has not already authenticated, we need to issue a redirect to the login screen;
         # the login screen will depend on the tenant's IdP configuration
         if 'username' not in session:
@@ -813,9 +791,8 @@ class AuthorizeResource(Resource):
             display_name = client.display_name
         except Exception as e:
             logger.debug(f"No client available; e: {e}")
-        username = session['username']
         context = {'error': '',
-                   'username': username,
+                   'username': session['username'],
                    'tenant_id': tenant_id,
                    'client_display_name': display_name,
                    'client_id': client_id,
@@ -824,10 +801,8 @@ class AuthorizeResource(Resource):
                    'client_state': client_state,
                    'device_login': session.get('device_login', None),
                    'device_code': request.args.get('device_code', None)}
-        resp = make_response(render_template('authorize.html', **context), 200, headers)
-        logger.debug(f'response username: {username}')
-        resp.set_cookie('username', username, httponly=True, samesite='Lax', secure=True)
-        return resp
+
+        return make_response(render_template('authorize.html', **context), 200, headers)
 
     def post(self):
         logger.debug("top of POST /oauth2/authorize")
@@ -839,26 +814,11 @@ class AuthorizeResource(Resource):
             logger.debug("did not tenant_id on g or in session; raising error.")
             raise errors.ResourceError('Tenant ID missing from session. Please logout and select a tenant.')
         client_display_name = request.form.get('client_display_name')
-        if 'username' not in session:
-            logger.debug('did not find username in session; checking request cookies')
-            if 'username' not in request.cookies:
-                logger.debug('username not found in session or request cookies; this is an error')
-                raise error.ResourceError('username missing from session and/or cookies. Please login to continue.')
-            else:
-                username = request.cookies.get('username')
-        else:
+        try:
             username = session['username']
-        # try:
-        #     logger.debug(f'trying to grab username from session: {session}')
-        #     if session.get('username') == None:
-        #         logger.debug('username not found in session; checking request cookies')
-        #         username = request.cookies.get('username')
-        #         logger.debug(f'found username from request cookies {username}')
-        #     else:
-        #         username = session['uesrname']
-        # except KeyError:
-        #     logger.debug(f"did not find username in session; this is an error. raising error. session: {session};")
-        #     raise errors.ResourceError('username missing from session. Please login to continue.')
+        except KeyError:
+            logger.debug(f"did not find username in session; this is an error. raising error. session: {session};")
+            raise errors.ResourceError('username missing from session. Please login to continue.')
         approve = request.form.get("approve")
         ttl = request.form.get("ttl", None)
         if not approve:
@@ -1480,6 +1440,8 @@ def get_tokenapp_client(tenant_id=None):
     if 'localhost' in request.base_url:
         client_data = token_webapp_clients[f'local.{tenant_id}']
     return client_data
+
+
 class WebappTokenAndRedirect(Resource):
     """
     This resource implements the GET method for the primary /oauth2/webapp URL path of the Token Web app. This method
@@ -1490,6 +1452,7 @@ class WebappTokenAndRedirect(Resource):
 
     def get(self):
         token = session.get('access_token')
+        tenant_id = session.get('tenant_id')
         # if the authenticator is running locally, redirect to the local instance of the Authorization server:
         if 'localhost' in request.base_url:
             base_redirect_url = 'http://localhost:5000'
@@ -1524,9 +1487,9 @@ class WebappTokenAndRedirect(Resource):
                 logger.info(f"Got exception trying to get usernmae out of user_info object; e: {e}; user_info: {user_info}")
                 username = 'Not available'
             context['username'] = username
+            context['tenant_id'] = tenant_id
             return make_response(render_template('token-display.html', **context), 200, headers)
         # otherwise, if there is no token in the session, check the type of OAuth configured for this tenant;
-        tenant_id = session.get('tenant_id')
         if not tenant_id:
             tenant_id = g.request_tenant_id
             session['tenant_id'] = tenant_id
@@ -1544,7 +1507,6 @@ class WebappTokenAndRedirect(Resource):
         url = f'{base_redirect_url}/v3/oauth2/authorize?client_id={client_id}&redirect_uri={client_redirect_uri}&response_type=code&state={state}'
         return redirect(url)
 
-# app.add_url_rule('/webapp', view_func=WebappTokenAndRedirect.as_view('webapp'))
 
 class WebappTokenGen(Resource):
     """
