@@ -32,10 +32,16 @@ class AuthenticatorTenants(TenantCache):
         :return:
         """
         tenant_id = tenant.tenant_id
-        # if this is not a tenant that this authenticator is supposed to serve, then just return immediately
-        if not tenant_id in conf.tenants:
-            logger.debug(f"skipping tenant_id: {tenant_id} as it is not in the list of tenants.")
+        # Authenticators never serve tenants owned at a different site:
+        if not tenant.site_id == conf.service_site_id:
+            logger.debug(f"skipping tenant_id: {tenant_id} as it is owned by site {tenant.site_id} and this authenicator is serving site {conf.service_site_id}.")
             return tenant
+        # if this is not a tenant that this authenticator is supposed to serve, then just return immediately
+        if not conf.tenants[0] == "*":
+            if not tenant_id in conf.tenants:
+                logger.debug(f"skipping tenant_id: {tenant_id} as it is not in the list of tenants.")
+                return tenant
+        # this code block here from a time before tenants were 
         if not conf.use_tenants:
             if tenant_id == 'dev':
                 tenant.ldap_url = conf.dev_ldap_url
@@ -46,6 +52,10 @@ class AuthenticatorTenants(TenantCache):
                 tenant.ldap_bind_dn = conf.dev_ldap_bind_dn
             # we only support testing the "dev" tenant ldap under the scenario of use_tenants == false.
         else:
+            # first, be sure to add the actual tenant_id to the conf.tenants attribute, because it may only have
+            # a "*" and we need to know all the tenants we are actully serving:
+            if not tenant_id in conf.tenants:
+                conf.tenants.append(tenant_id)
             # todo - the "dev_ldap_tenants_base_dn" property describes where to store the organizational units (OUs) for
             #  the tenants. this property is unique to the dev LDAP where the authenticator has write access and can
             #  create OUs for each tenant. thus, it is not stored in /returned by the tenants service, so we hard code
