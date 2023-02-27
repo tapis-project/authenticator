@@ -282,7 +282,9 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
 
 def get_tenant_user(tenant_id, username):
     """
-    Get the profile of a specific user in a tenant.
+    Get the profile of a specific user in a tenant. In particular, this function checks that
+    `username` is a valid user within the `tenant_id` tenant.
+    
     :param tenant_id:
     :param username:
     :return:
@@ -371,7 +373,9 @@ def get_dn(tenant_id, username):
 
 def check_username_password(tenant_id, username, password):
     """
-    Check 
+    Check that a username+password combination is valid within the `tenant_id` tenant.
+    Also ensures that the username is within the set of allowable accounts for the tenant.
+
     :param tenant_id: 
     :param username: 
     :param password: 
@@ -385,7 +389,7 @@ def check_username_password(tenant_id, username, password):
     except LDAPBindError as e:
         logger.debug(f'got exception checking password: {e}; type(e): {type(e)}')
         raise InvalidPasswordError("Invalid username/password combination.")
-    # the bind above just checks that the uername/password combination are in the underlying ldap; it does
+    # the bind above just checks that the username/password combination are in the underlying ldap; it does
     # not check that the user is in the user search filter for the tenant. for simplicty, we check that here
     try:
         get_tenant_user(tenant_id, username)
