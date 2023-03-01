@@ -41,7 +41,7 @@ class AuthenticatorTenants(TenantCache):
             if not tenant_id in conf.tenants:
                 logger.debug(f"skipping tenant_id: {tenant_id} as it is not in the list of tenants.")
                 return tenant
-        # this code block here from a time before tenants were 
+        # this code block here from a time when we supported not using the tenants service
         if not conf.use_tenants:
             if tenant_id == 'dev':
                 tenant.ldap_url = conf.dev_ldap_url
@@ -50,10 +50,11 @@ class AuthenticatorTenants(TenantCache):
                 tenant.dev_ldap_tenants_base_dn = conf.dev_ldap_tenants_base_dn
                 tenant.ldap_user_dn = conf.dev_ldap_user_dn
                 tenant.ldap_bind_dn = conf.dev_ldap_bind_dn
+        # -------------------------------
             # we only support testing the "dev" tenant ldap under the scenario of use_tenants == false.
         else:
             # first, be sure to add the actual tenant_id to the conf.tenants attribute, because it may only have
-            # a "*" and we need to know all the tenants we are actully serving:
+            # a "*" and we need to know all the tenants we are actually serving:
             if not tenant_id in conf.tenants:
                 conf.tenants.append(tenant_id)
             # todo - the "dev_ldap_tenants_base_dn" property describes where to store the organizational units (OUs) for
