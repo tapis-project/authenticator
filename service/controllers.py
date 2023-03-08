@@ -1442,6 +1442,18 @@ def get_tokenapp_client(tenant_id=None):
     return client_data
 
 
+def logout():
+    """
+    Helper function to reset the session whenever a logout needs to occur.
+    """
+    session.pop('username', None)
+    session.pop('tenant_id', None)
+    session.pop('access_token', None)
+    session.pop('device_login', None)
+    session.pop('mfa_required', None)
+    session.pop('mfa_validated', None)
+
+
 class WebappTokenAndRedirect(Resource):
     """
     This resource implements the GET method for the primary /oauth2/webapp URL path of the Token Web app. This method
@@ -1460,6 +1472,9 @@ class WebappTokenAndRedirect(Resource):
             # otherwise, redirect based on the tenant in the request
             base_redirect_url = g.request_tenant_base_url
         if token:
+            # tracks whether the user actually has a valid session; even though they have a token, it could
+            # be expired.
+            has_valid_session = True
             context = {'error': None,
                        'token': token}
             headers = {'Content-Type': 'text/html'}
@@ -1470,25 +1485,31 @@ class WebappTokenAndRedirect(Resource):
                 rsp = requests.get(url, headers=headers)
                 rsp.raise_for_status()
             except Exception as e:
-                msg = f'Got exception trying to call userinfo endpoint; e: {e}'
+                # Note: it could be that the user is returning to the webpage after a previous login attempt
+                # many hours later. In this case, the token will exist in the session but be expired.
+                # Therefore, if we cannot call the userinfo endpoint, we log the error, log the user out
+                # and start the OAuth flow over again.
+                msg = f'Got exception trying to call userinfo endpoint. Will log out user. Details: {e}'
+                has_valid_session = False
+                logout()
                 logger.error(msg)
-                raise errors.ResourceError(f"Unable to determine user information. Contact system administrators."
-                                           f"(Debug data: {msg})")
-            try:
-                user_info = rsp.json().get('result')
-            except Exception as e:
-                msg = f'Could not get JSON result from userinfo endpoint; e: {e}; rsp: {rsp}'
-                logger.error(msg)
-                raise errors.ResourceError(f"Unable to determine user information. Contact system administrators."
-                                           f"(Debug data: {msg})")
-            try:
-                username = user_info['username']
-            except Exception as e:
-                logger.info(f"Got exception trying to get usernmae out of user_info object; e: {e}; user_info: {user_info}")
-                username = 'Not available'
-            context['username'] = username
-            context['tenant_id'] = tenant_id
-            return make_response(render_template('token-display.html', **context), 200, headers)
+            if has_valid_session:
+                try:
+                    user_info = rsp.json().get('result')
+                except Exception as e:
+                    msg = f'Could not get JSON result from userinfo endpoint. Will log out user. Details: rsp: {rsp}'
+                    logger.error(msg)
+                    has_valid_session = False
+                    logout()
+            if has_valid_session:
+                try:
+                    username = user_info['username']
+                except Exception as e:
+                    logger.error(f"Got exception trying to get username out of userinfo endpoint response object. This should never happen. Setting username to 'Not available'. Details: {e}; user_info: {user_info}")
+                    username = 'Not available'
+                context['username'] = username
+                context['tenant_id'] = tenant_id
+                return make_response(render_template('token-display.html', **context), 200, headers)
         # otherwise, if there is no token in the session, check the type of OAuth configured for this tenant;
         if not tenant_id:
             tenant_id = g.request_tenant_id
@@ -1610,12 +1631,7 @@ class LogoutResource(Resource):
         headers = {'Content-Type': 'text/html'}
         # process the logout form -
         if request.form.get("logout"):
-            session.pop('username', None)
-            session.pop('tenant_id', None)
-            session.pop('access_token', None)
-            session.pop('device_login', None)
-            session.pop('mfa_required', None)
-            session.pop('mfa_validated', None)
+            logout()
             make_response(render_template('logout.html', logout_message='You have been logged out.'), 200, headers)
         # if they submitted the logout form but did not check the box then just return them to the logout form -
         return redirect(url_for('webapptokenandredirect'))
