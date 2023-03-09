@@ -2,6 +2,25 @@
 All notable changes to this project will be documented in this file.
 
 
+## 1.3.0 - 2023-03-12
+This production point release adds support for TACC MFA, token revocation, token tracking 
+for usage analytics and a number of bug fixes. 
+NOTE: This version of Authenticator depends on the Site Router API for Token revocation, not
+previously released. 
+
+### Breaking Changes:
+- None; Site Router is now required for revocation endpoints to function.
+
+### New features:
+- Suport for TACC MFA
+- Support for Token revocation.
+- Support for usage analytics via token tracking. 
+- Add support for configuring Tokens to serve all tenants at a site via the `tenants: ["*"]` configuration.
+
+### Bug fixes:
+- Fix a bug in the way authenticator called `jwt.decode` when decoding a CII token. Due to a recent upgrade to the Python JWT library in flaskbase, we must specify the algorithm used to decode -- in this case, `HS256`. (originally released in 1.2.1)
+
+
 ## 1.2.5 - 2022-09-15
 This preview release adds support for tracking tokens generated in SQL, including access and refresh token.
 This feature allows users to compute usage data such as how many distinct users generated access tokens in
