@@ -10,6 +10,8 @@ from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 def needs_mfa(tenant_id):
+    logger.debug(conf)
+    logger.debug(str(conf))
     if conf.turn_off_mfa:
         return False
     logger.debug("checking if tenant needs mfa")
