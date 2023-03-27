@@ -10,8 +10,6 @@ from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 def needs_mfa(tenant_id):
-    logger.info(conf)
-    logger.info(str(conf))
     if conf.turn_off_mfa:
         return False
     logger.debug("checking if tenant needs mfa")
@@ -20,6 +18,8 @@ def needs_mfa(tenant_id):
 
     try:
         mfa_config = json.loads(tenant_config.mfa_config)
+        if mfa_config['tacc']['turn_off_mfa']:
+            return False
     except Exception as e:
         logger.debug(f"Error parsing mfa config: {e}")
         return False
