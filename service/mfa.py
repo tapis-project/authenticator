@@ -18,13 +18,13 @@ def needs_mfa(tenant_id):
 
     try:
         mfa_config = json.loads(tenant_config.mfa_config)
-        if mfa_config['tacc']['turn_off_mfa']:
-            return False
+        conf_name = next(iter(mfa_config), False)
+        if not conf_name: return False
     except Exception as e:
         logger.debug(f"Error parsing mfa config: {e}")
         return False
 
-    return not not mfa_config
+    return 'mfa_config' in mfa_config
     
 def call_mfa(token, tenant_id, username):
     logger.debug(f"calling mfa for: {username}")
@@ -38,7 +38,7 @@ def call_mfa(token, tenant_id, username):
     
     logger.debug(f"Tenant mfa config: {mfa_config}")
 
-    if not mfa_config:
+    if not 'mfa_config' in mfa_config:
         return ''
 
     if "tacc" in mfa_config:
