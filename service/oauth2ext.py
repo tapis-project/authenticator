@@ -88,6 +88,14 @@ class OAuth2ProviderExtension(object):
             self.identity_redirect_url = 'https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/auth'
             # URL to use to exchange the code for an qccess token
             self.oauth2_token_url = 'https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/token'
+        elif self.ext_type == 'multi_keycloak':
+            # keycloak utilizes a client id and secret like github
+            self.client_id = self.custom_idp_config_dict.get('multi_keycloak').get('client_id')
+            self.client_key = self.custom_idp_config_dict.get('multi_keycloak').get('client_secret')
+            # initial redirect URL; used to start the oauth flow and log in the user
+            self.identity_redirect_url = self.custom_idp_config_dict.get('multi_keycloak').get('identity_redirect_url')
+            # URL to use to exchange the code for an qccess token
+            self.oauth2_token_url = self.custom_idp_config_dict.get('multi_keycloak').get('oauth2_token_url')
         
         # NOTE: each provider type must implement this check
         # elif self.ext_type == 'google'

@@ -219,6 +219,8 @@ class TenantConfigsCache(object):
             return 'cii'
         if 'tacc_keycloak' in custom_idp_config.keys():
             return 'tacc_keycloak'
+        if 'multi_keycloak' in custom_idp_config.keys():
+            return 'multi_keycloak'
 
         return None
 

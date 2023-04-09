@@ -20,7 +20,12 @@
           "description": "Properties associated with TACC Keycloak at identity.tacc.cloud",
           "$ref": "#/definitions/taccKeycloakObject"
     },
-    "cii": {
+    "multi_keycloak": {
+      "type": "object",
+        "description": "Properties associated with a generic Keycloak installation. Similar to tacc_keycloak, but allows for configuring the URLs as well to support multiple realms defined within a single Keycloak instance.",
+        "$ref": "#/definitions/multiKeycloakObject"
+  },
+  "cii": {
         "type": "object",
           "description": "Properties associated with the custom CII BlueModus OAuth",
           "$ref": "#/definitions/ciiObject"
@@ -77,7 +82,28 @@
             }
           }
     },
-    "ciiObject": {
+    "multiKeycloakObject": {
+      "type": "object",
+        "properties": {
+          "identity_redirect_url": {
+            "type": "string",
+            "description": "The URL for the identity redirect function. Includes the base URL and the realm. For example, https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/auth"
+          },
+          "oauth2_token_url": {
+            "type": "string",
+            "description": "The URL for retrieving OAuth2 token. Includes the base URL and the realm. For example, https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/token"
+          },
+          "client_key": {
+            "type": "string",
+            "description": "The client id in Keycloak that Tapis uses for this tenant. Usually a human-readable string."
+          },
+          "client_secret": {
+            "type": "string",
+            "description": "The client secret in Keycloak that Tapis uses for this tenant."
+          }
+        }
+  },
+  "ciiObject": {
        "type": "object",
          "properties": {
            "login_url": {
