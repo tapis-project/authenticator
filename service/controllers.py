@@ -415,6 +415,41 @@ class SetTenantResource(Resource):
         #                         response_type='code'))
 
 
+
+class SetIdentityProvider(Resource):
+    """
+    For tenants configured to support multiple identity providers, these URLs/pages allow users to 
+    select the identity provider they wish to authenticate with. 
+    """
+
+    def get(self):
+        headers = {'Content-Type': 'text/html'}
+        # selecting a tenant id is required before selecting an idp
+        tenant_id = g.request_tenant_id
+        if not tenant_id:
+            tenant_id = session.get('tenant_id')
+        if not tenant_id:
+            logger.debug(
+                f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}")
+            return redirect(url_for('settenantresource'))
+        is_local_development = 'localhost' in request.base_url
+        # look up the oa2ext configuration for the tenant
+        oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development)
+        context = {
+            'error': '',
+             # allowable idps -- each must have a idp_name and a idp_id field.
+            'idps': oa2ext.custom_idp_config_dict['multi_idps']['idps']
+        }
+        return make_response(render_template('select_idp.html', **context), 200, headers)
+
+    def post(self):
+        idp_id = request.form.get("idp_id")
+        logger.debug(f"setting session idp_id to: {idp_id}")
+        session['idp_id'] = idp_id
+        return redirect(url_for('authorizeresource'))
+
+
+
 class LoginResource(Resource):
     """
     Implements the URLs used by the Authorization server for logging a user into a specific tenant.
@@ -699,6 +734,7 @@ class DeviceCodeResource(Resource):
 
         return utils.ok(result=result, msg="Token created successfully.")
 
+
 class AuthorizeResource(Resource):
     """
     This resource handles the activity of a user authorizing a client (web app) to get a token. It specifies the
@@ -710,7 +746,12 @@ class AuthorizeResource(Resource):
         logger.debug("top of GET /oauth2/authorize")
         verify_client = True if 'device_login' not in session else False
         logger.debug("Authorize Resource: Checking Client")
-        client_id, client_redirect_uri, client_state, client, response_type = check_client(verify_client=verify_client)
+        # if we are using the multi_idp custom oa2 extension type it is possible we are being redirected here, not by the 
+        # original web client, but by our select_idp page, in which case we need to get the client out of the session.
+        if session.get('idp_id'):
+            client_id, client_redirect_uri, client_state, client, response_type = check_client(use_session=True, verify_client=verify_client)
+        else:    
+            client_id, client_redirect_uri, client_state, client, response_type = check_client(verify_client=verify_client)
         if not verify_client:
             response_type ='device_code'
             #add error handling
@@ -745,27 +786,47 @@ class AuthorizeResource(Resource):
                 session['device_login'] = True
             # if the tenant is configured with a custom oa2 extension, start the redirect for that --
             if tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id):
-                logger.debug(f"username not in session; issuing redirect to 3rd party oauth URL.")
+                logger.debug(f"username not in session and custom oa2 extension found.")
                 is_local_development = 'localhost' in request.base_url
-                oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development)
-                logger.debug(f"oa2ext.identity_redirect_url: {oa2ext.identity_redirect_url}")
                 # we need to save the original client in the session in this case, because there is no
                 # way to pass it through the third party OAuth server
                 session['orig_client_id'] = client_id
                 session['orig_client_redirect_uri'] = client_redirect_uri
                 session['orig_client_response_type'] = response_type
                 session['orig_client_state'] = client_state
+                oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development)
+                # If the custom oa2 extension type is "multi_idps", then the user must first select 
+                # an idp from the available list. 
+                if oa2ext.ext_type == 'multi_idps':
+                    # Once selected, the choice goes into the session and the
+                    # user is redirected back here; so first, check if the idp_id is in the session:
+                    idp_id = session.get('idp_id')
+                    if not idp_id:
+                        # user has not selected an idp yet, so redirect them to the idp selection page:
+                        return redirect(url_for('setidentityprovider'))
+                    # User has selected an idp, so we need to construct a new oa2ext object that points to
+                    # the selected idp extension. 
+                    oa2ext = OAuth2ProviderExtension(tenant_id, 
+                                                     is_local_development=is_local_development, 
+                                                     idp_id_for_multi=idp_id
+                                                     )
+
                 # cii has its own format of callback url; there is no client id that is passed.
                 if oa2ext.ext_type == 'cii':
                     url = f'{oa2ext.identity_redirect_url}?redirect={oa2ext.callback_url}'
+                # when the extension type is ldap, we redirect to the login resource
+                elif oa2ext.ext_type == 'ldap':
+                    pass
                 # TODO -- check if with github we can specify response_type. before we were not specifying it
                 #         but it seems to be part of the spec...
                 # elif oa2ext.ext_type == 'github':
                 #     url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}'
+                # In all other cases, redirect to the oa2ext identity redirect url
                 else:
                     url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}&response_type=code'
-                logger.debug(f"final redirect URL: {url}")
-                return redirect(url)
+                if not oa2ext.ext_type == 'ldap':
+                    logger.debug(f"final redirect URL: {url}")
+                    return redirect(url)
             logger.debug("username not in session; issuing redirect to login.")
             return redirect(url_for('loginresource',
                                     client_id=client_id,
@@ -984,6 +1045,13 @@ class OAuth2ProviderExtCallback(Resource):
         logger.debug(f"request for tenant {tenant_id}")
         is_local_development = 'localhost' in request.base_url
         oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development)
+        # for multi_idps, the idp_id should already be set in the session here
+        if oa2ext.ext_type == 'multi_idps':
+            idp_id = session.get('idp_id')
+            if not idp_id:
+                raise errors.ResourceError(f"Unable to process callback from Identity provider. Details: idp_id missing from session.")
+            # recompute the oa2ext object based on the idp_id
+            oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development, idp_id_for_multi=idp_id)
         # the CII OAuth2 provider does not send an authorization code, it sends the token directly, so
         #
         if oa2ext.ext_type == 'cii':
@@ -1017,7 +1085,7 @@ class TokensResource(Resource):
     def post(self):
         logger.debug("top of POST /oauth2/tokens")
         validator = RequestValidator(utils.spec)
-        # support content-type www-form by setting the body on the request eaul to the JSON
+        # support content-type www-form by setting the body on the request equal to the JSON
         if request.content_type.startswith('application/x-www-form-urlencoded'):
             logger.debug(f"handling x-www-form data")
             validated_body = TokenRequestBody(form=request.form)
@@ -1173,6 +1241,14 @@ class TokensResource(Resource):
             "access_token_ttl": access_token_ttl,
             "generate_refresh_token": False
         }
+        # TODO -- this doesn't work; the tokens endpoint is called by the client out of band
+        #         from any session. We'll have to pass the idp_id through the username or add 
+        #         a new field to the AuthorizationCode table.
+        # if generating a token for a tenant with multiple idps, set the idp_id in the claim
+        logger.debug(f"session: {session}")
+        if session.get('idp_id'):
+            content['claims']['tapis/idp_id'] = session.get('idp_id')
+
         # only generate a refresh token when OAuth client is passed
         if client_id and client_key:
             content["generate_refresh_token"] = True
@@ -1452,6 +1528,12 @@ def logout():
     session.pop('device_login', None)
     session.pop('mfa_required', None)
     session.pop('mfa_validated', None)
+    session.pop('state', None)
+    session.pop('idp_id', None)
+    session.pop('orig_client_id', None)
+    session.pop('orig_client_redirect_uri', None)
+    session.pop('orig_client_response_type', None)
+    session.pop('orig_client_state', None)
 
 
 class WebappTokenAndRedirect(Resource):
