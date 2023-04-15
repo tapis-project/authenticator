@@ -246,6 +246,7 @@ def authentication():
     if '/v3/oauth2/logout' in request.url_rule.rule \
         or '/v3/oauth2/login' in request.url_rule.rule \
         or '/v3/oauth2/tenant' in request.url_rule.rule \
+        or '/v3/oauth2/idp' in request.url_rule.rule \
         or '/v3/oauth2/webapp' in request.url_rule.rule \
         or '/v3/oauth2/portal-login' in request.url_rule.rule:
         # or '/v3/oauth2/webapp/callback' in request.url_rule.rule \

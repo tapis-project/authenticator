@@ -32,7 +32,7 @@ class OAuth2ProviderExtension(object):
     This class contains attributes and methods for working with a 3rd party OAuth2 provider.
     For each provider that is supported, some custom code is needed. See the module-level docstring.
     """
-    def __init__(self, tenant_id, is_local_development=False):
+    def __init__(self, tenant_id, is_local_development=False, idp_id_for_multi=None):
         # the tenant id for this OAuth2 provider
         self.tenant_id = tenant_id
         # the custom tenant config for this tenant
@@ -40,7 +40,25 @@ class OAuth2ProviderExtension(object):
         # the type of OAuth2 provider, such as github
         self.ext_type = tenant_configs_cache.get_custom_oa2_extension_type(tenant_id)
         # the actual custom_idp_configuration object, as a python dictionary
-        self.custom_idp_config_dict = json.loads(self.tenant_config.custom_idp_configuration)
+        # if the type multi_idps, there are two cases: the first time called
+        # the user will not have selected the ipd_id (in which case idp_id_for_multi will be None)
+        # so just return the whole config, otherwise, return just the config for the idp_id:
+        if self.ext_type == 'multi_idps' and idp_id_for_multi:
+            logger.debug(f"Second call for multi_idps with idp_id_for_multi: {idp_id_for_multi}")
+            # first load the whole config
+            mutli_idp_config = json.loads(self.tenant_config.custom_idp_configuration)
+            # go through all the idp configs and get the specific config out:
+            for idp in mutli_idp_config['multi_idps']['idps']:
+                if idp['idp_id'] == idp_id_for_multi:
+                    logger.debug(f"Found the idp_id: {idp}")
+                    self.custom_idp_config_dict = idp['idp_description']
+                    # set the type to the type corresponding to the idp_id
+                    for k in idp['idp_description'].keys():
+                        # the type is the first and only key, but can use indexes with dict_keys
+                        self.ext_type = k
+                        break
+        else:
+            self.custom_idp_config_dict = json.loads(self.tenant_config.custom_idp_configuration)
         # whether or not this authenticator is running in local development mode (i.e., on localhost)
         self.is_local_development = is_local_development
         # validate that this tenant should be using the OAuth2 extension module.
@@ -88,15 +106,31 @@ class OAuth2ProviderExtension(object):
             self.identity_redirect_url = 'https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/auth'
             # URL to use to exchange the code for an qccess token
             self.oauth2_token_url = 'https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/token'
+            logger.debug("properties set of tacc_keycloak ")
         elif self.ext_type == 'multi_keycloak':
             # keycloak utilizes a client id and secret like github
             self.client_id = self.custom_idp_config_dict.get('multi_keycloak').get('client_id')
             self.client_key = self.custom_idp_config_dict.get('multi_keycloak').get('client_secret')
             # initial redirect URL; used to start the oauth flow and log in the user
             self.identity_redirect_url = self.custom_idp_config_dict.get('multi_keycloak').get('identity_redirect_url')
-            # URL to use to exchange the code for an qccess token
+            # URL to use to exchange the code for an access token
             self.oauth2_token_url = self.custom_idp_config_dict.get('multi_keycloak').get('oauth2_token_url')
-        
+            # URL to look up user info from token
+            self.user_info_url = self.custom_idp_config_dict.get('multi_keycloak').get('user_info_url')
+            logger.debug("properties set of tacc_keycloak ")
+        elif self.ext_type == 'ldap':
+            # NOTE: for the "ldap" type, we don't actually set any of the custom attributes, 
+            # but we still need a check here to not fall into the ERROR else below.
+            # We don't have any custom attributes because those are set in the individual idp types.
+            # 
+            logger.debug("Note setting any properties for ldap.")
+        elif self.ext_type == 'multi_idps':
+            # NOTE: for the "multi_idps" type, we don't actually set any of the custom attributes, 
+            # but we still need a check here to not fall into the ERROR else below.
+            # We don't have any custom attributes because those are set in the individual idp types.
+            # 
+            logger.debug("Note setting any properties for multi_idps.")
+    
         # NOTE: each provider type must implement this check
         # elif self.ext_type == 'google'
         #     ...
@@ -143,7 +177,7 @@ class OAuth2ProviderExtension(object):
             "redirect_uri": self.callback_url
         }
         # keycloak requires the "grant_type" parameter
-        if self.ext_type == 'tacc_keycloak':
+        if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak':
             body["grant_type"] = "authorization_code"
         logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}")
         try:
@@ -198,15 +232,17 @@ class OAuth2ProviderExtension(object):
         """
         logger.debug("top of get_user_from_token")
         # todo -- each OAuth2 provider will have a different mechanism for determining the user's identity
-        if self.ext_type == 'github' or self.ext_type == 'tacc_keycloak':
+        if self.ext_type == 'github' or self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak':
             if self.ext_type == 'github':
                 user_info_url = 'https://api.github.com/user'
             if self.ext_type == 'tacc_keycloak':
                 user_info_url = 'https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/userinfo'
+            if self.ext_type == 'multi_keycloak':
+                user_info_url = self.user_info_url
             if self.ext_type == 'github':
                 headers = {'Authorization': f'token {self.access_token}',
                         'Accept': 'application/vnd.github.v3+json'}
-            if self.ext_type == 'tacc_keycloak':
+            if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak':
                 headers = {'Authorization': f'Bearer {self.access_token}',}
             try:
                 rsp = requests.get(user_info_url, headers=headers)
@@ -215,7 +251,7 @@ class OAuth2ProviderExtension(object):
                              f"exception: {e}")
                 raise errors.ServiceConfigError("Error determining user identity. Contact server administrator.")
             if not rsp.status_code == 200:
-                logger.error("Did not get 200 from request to look up user's identity with {self.ext_type}. Debug data:"
+                logger.error(f"Did not get 200 from request to look up user's identity with {self.ext_type}. Debug data:"
                              f"status code: {rsp.status_code};"
                              f"rsp content: {rsp.content}")
                 raise errors.ServiceConfigError("Error determining user identity. Contact server administrator.")
@@ -228,17 +264,22 @@ class OAuth2ProviderExtension(object):
                                                     "Contact server administrator.")
                 
                     self.username = f'{username}@github.com'
-            elif self.ext_type == 'tacc_keycloak':
+            elif self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak':
                 logger.info(f"Response content from keycloak: {rsp.content}")
                 try:
-                    username = rsp.json().get('email')
+                    rsp_data = rsp.json()
                 except Exception as e:
-                    logger.error(f"Got error trying to parse the username from the TACC Keycloak instance; error: {e}")
+                    logger.error(f"Got error trying to parse the JSON from the Keycloak instance; error: {e}")
                     raise errors.ServiceConfigError("Error determining user identity: could not parse identity response. "
                                                     "Contact server administrator.")                    
+                username = None
+                if 'preferred_username' in rsp_data:
+                    username = rsp_data.get('preferred_username')
+                elif 'email' in rsp_data:
+                    username = rsp_data.get('email')
                 if not username:
-                    logger.error(f"Could not parse the username from the TACC Keycloak instance; username was empty")
-                    raise errors.ServiceConfigError("Error determining user identity: username was empty. "
+                    logger.error(f"Could not parse the username from the Keycloak instance; username could not be determined.")
+                    raise errors.ServiceConfigError("Error determining user identity: username could not be determined. "
                                                     "Contact server administrator.")
                 self.username = username
             logger.debug(f"Successfully determined user's identity: {self.username}")

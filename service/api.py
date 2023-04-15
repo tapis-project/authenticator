@@ -9,7 +9,7 @@ from service.controllers import AuthorizeResource, ClientsResource, ClientResour
     ProfilesResource, ProfileResource, StaticFilesResource, LoginResource, SetTenantResource, LogoutResource, \
     WebappTokenGen, WebappTokenAndRedirect, TenantConfigResource, UserInfoResource, OAuth2ProviderExtCallback, \
     OAuthMetadataResource, MFAResource, DeviceFlowResource, DeviceCodeResource, V2TokenResource, \
-    RevokeTokensResource
+    RevokeTokensResource, SetIdentityProvider
 from service.ldap import populate_test_ldap
 from service.models import db, app, initialize_tenant_configs
 
@@ -78,6 +78,7 @@ api.add_resource(MFAResource, '/v3/oauth2/mfa')
 api.add_resource(DeviceFlowResource, '/v3/oauth2/device')
 api.add_resource(DeviceCodeResource, '/v3/oauth2/device/code')
 api.add_resource(SetTenantResource, '/v3/oauth2/tenant')
+api.add_resource(SetIdentityProvider, '/v3/oauth2/idp')
 api.add_resource(LogoutResource, '/v3/oauth2/logout')
 api.add_resource(OAuth2ProviderExtCallback, '/v3/oauth2/extensions/oa2/callback')
 

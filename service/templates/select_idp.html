@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% block content %}
+<body>
+
+<div class="container">
+<h2> Tapis Authorization - Tenant {{ tenant_id }}</h2>
+ <p> Select the account type you would like to use to log in.</p>
+
+ <form action="" method="post">
+
+     {% if error %}
+   <div class="container">
+      <p>Error: {{ error }}</p>
+   </div>
+     {% endif %}
+
+     <div class="container">
+        {% for idp in idps %}
+        <input type="radio", name="idp_id", value="{{ idp.idp_id }}"
+        <label for="{{ idp.idp_id }}">{{ idp.idp_name }}</label><br>
+        {% endfor %}
+        <button type="submit">Submit</button>
+     </div>
+
+</form>
+</div>
+{% endblock %}

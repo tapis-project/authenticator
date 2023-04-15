@@ -29,7 +29,12 @@
         "type": "object",
           "description": "Properties associated with the custom CII BlueModus OAuth",
           "$ref": "#/definitions/ciiObject"
-    }
+    },
+  "multi_idps": {
+    "type": "object",
+    "description": "Properties associated with multiple identity providers.",
+    "$ref": "#/definitions/mutliIdpsObject"
+  }
 
    },
   "definitions": {
@@ -87,11 +92,15 @@
         "properties": {
           "identity_redirect_url": {
             "type": "string",
-            "description": "The URL for the identity redirect function. Includes the base URL and the realm. For example, https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/auth"
+            "description": "The URL for the identity redirect function. Includes the base URL and the realm. For example, https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/auth. NOTE: newer Keycloak versions do not include the /auth."
           },
           "oauth2_token_url": {
             "type": "string",
-            "description": "The URL for retrieving OAuth2 token. Includes the base URL and the realm. For example, https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/token"
+            "description": "The URL for retrieving OAuth2 token. Includes the base URL and the realm. For example, https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/token. NOTE: newer Keycloak versions do not include the /auth."
+          },
+          "user_info_url": {
+            "type": "string",
+            "description": "The URL for retrieving user info from the token. Includes the base URL and the realm. For example, https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/userinfo. NOTE: newer Keycloak versions do not include the /auth."
           },
           "client_key": {
             "type": "string",
@@ -103,6 +112,39 @@
           }
         }
   },
+
+  "mutliIdpsObject": {
+    "type": "object",
+    "properties": {
+      "idps": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/identityProviderObject"
+        }
+      }
+    }
+  },
+
+  "identityProviderObject": {
+    "type": "object",
+    "properties": {
+      "idp_id": {
+        "type": "string",
+        "description": "Unique identifier for the identity provider."
+      },
+      "idp_name": {
+        "type": "string",
+        "description": "The name of the identity provider; displayed to the user when choosing which identity provider to user to login with."
+      },
+      "idp_description": {
+        "type": "object",
+        "oneOf": [{"ref": "#/definitions/multiKeycloakObject"}, {"ref": "#/definitions/taccKeycloakObject"}, {"ref": "#/definitions/githubObject"}]
+
+      }
+    }
+    
+  },
+
   "ciiObject": {
        "type": "object",
          "properties": {

@@ -221,7 +221,10 @@ class TenantConfigsCache(object):
             return 'tacc_keycloak'
         if 'multi_keycloak' in custom_idp_config.keys():
             return 'multi_keycloak'
-
+        if 'multi_idps' in custom_idp_config.keys():
+            return 'multi_idps'
+        if 'ldap' in custom_idp_config.keys():
+            return 'ldap'
         return None
 
     def get_mfa_type(self, tenant_id):
