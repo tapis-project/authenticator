@@ -225,6 +225,8 @@ class TenantConfigsCache(object):
             return 'multi_idps'
         if 'ldap' in custom_idp_config.keys():
             return 'ldap'
+        if 'globus' in custom_idp_config.keys():
+            return 'globus'
         return None
 
     def get_mfa_type(self, tenant_id):

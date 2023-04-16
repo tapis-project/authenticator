@@ -12,29 +12,34 @@
     },
     "github": {
         "type": "object",
-          "description": "Properties associated with github OAuth",
-          "$ref": "#/definitions/githubObject"
+        "description": "Properties associated with github OAuth",
+        "$ref": "#/definitions/githubObject"
     },
     "tacc_keycloak": {
         "type": "object",
-          "description": "Properties associated with TACC Keycloak at identity.tacc.cloud",
-          "$ref": "#/definitions/taccKeycloakObject"
+        "description": "Properties associated with TACC Keycloak at identity.tacc.cloud",
+        "$ref": "#/definitions/taccKeycloakObject"
     },
     "multi_keycloak": {
       "type": "object",
-        "description": "Properties associated with a generic Keycloak installation. Similar to tacc_keycloak, but allows for configuring the URLs as well to support multiple realms defined within a single Keycloak instance.",
-        "$ref": "#/definitions/multiKeycloakObject"
-  },
-  "cii": {
-        "type": "object",
-          "description": "Properties associated with the custom CII BlueModus OAuth",
-          "$ref": "#/definitions/ciiObject"
+      "description": "Properties associated with a generic Keycloak installation. Similar to tacc_keycloak, but allows for configuring the URLs as well to support multiple realms defined within a single Keycloak instance.",
+      "$ref": "#/definitions/multiKeycloakObject"
     },
-  "multi_idps": {
-    "type": "object",
-    "description": "Properties associated with multiple identity providers.",
-    "$ref": "#/definitions/mutliIdpsObject"
-  }
+    "globus": {
+      "type": "object",
+      "description": "Properties associated with a Globus Auth.",
+      "$ref": "#/definitions/globusObject"
+    },
+    "cii": {
+        "type": "object",
+        "description": "Properties associated with the custom CII BlueModus OAuth",
+        "$ref": "#/definitions/ciiObject"
+    },
+    "multi_idps": {
+      "type": "object",
+      "description": "Properties associated with multiple identity providers.",
+      "$ref": "#/definitions/mutliIdpsObject"
+    }
 
    },
   "definitions": {
@@ -77,7 +82,7 @@
       "taccKeycloakObject": {
         "type": "object",
           "properties": {
-            "client_key": {
+            "client_id": {
               "type": "string",
               "description": "The TACC Keycloak client id Tapis uses for this tenant. Usually a human-readable string."
             },
@@ -102,7 +107,7 @@
             "type": "string",
             "description": "The URL for retrieving user info from the token. Includes the base URL and the realm. For example, https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/userinfo. NOTE: newer Keycloak versions do not include the /auth."
           },
-          "client_key": {
+          "client_id": {
             "type": "string",
             "description": "The client id in Keycloak that Tapis uses for this tenant. Usually a human-readable string."
           },
@@ -111,6 +116,31 @@
             "description": "The client secret in Keycloak that Tapis uses for this tenant."
           }
         }
+  },
+  "globusObject": {
+    "type": "object",
+    "properties": {
+      "client_id": {
+        "type": "string",
+        "description": "The Globus Auth client id Tapis uses for this tenant."
+      },
+      "client_secret": {
+        "type": "string",
+        "description": "The Globus Auth client secret Tapis uses for this tenant."
+      },
+      "identity_redirect_url": {
+        "type": "string",
+        "description": "The URL for the identity redirect function; As of 4/2023, this should be https://auth.globus.org/v2/oauth2/authorize"
+      },
+      "oauth2_token_url": {
+        "type": "string",
+        "description": "The URL for retrieving OAuth2 token; as of 4/2023, this should be https://auth.globus.org/v2/oauth2/token"
+      },
+      "user_info_url": {
+        "type": "string",
+        "description": "The URL for retrieving user info from the token; as of 4/2023, this should be https://auth.globus.org/v2/oauth2/userinfo"
+      }
+    }
   },
 
   "mutliIdpsObject": {

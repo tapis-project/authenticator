@@ -436,6 +436,7 @@ class SetIdentityProvider(Resource):
         # look up the oa2ext configuration for the tenant
         oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development)
         context = {
+            'tenant_id': tenant_id,
             'error': '',
              # allowable idps -- each must have a idp_name and a idp_id field.
             'idps': oa2ext.custom_idp_config_dict['multi_idps']['idps']
@@ -695,7 +696,7 @@ class DeviceCodeResource(Resource):
     def post(self):
         logger.debug("In device code resource")
         validator = RequestValidator(utils.spec)
-        # support content-type www-form by setting the body on the request eaul to the JSON
+        # support content-type www-form by setting the body on the request eqaul to the JSON
         result = validator.validate(FlaskOpenAPIRequest(request))
         if result.errors:
             raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
@@ -814,6 +815,9 @@ class AuthorizeResource(Resource):
                 # cii has its own format of callback url; there is no client id that is passed.
                 if oa2ext.ext_type == 'cii':
                     url = f'{oa2ext.identity_redirect_url}?redirect={oa2ext.callback_url}'
+                # for globus, we set the scope parameter as well
+                elif oa2ext.ext_type == 'globus':
+                    url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}&response_type=code&scope=openid profile'
                 # when the extension type is ldap, we redirect to the login resource
                 elif oa2ext.ext_type == 'ldap':
                     pass

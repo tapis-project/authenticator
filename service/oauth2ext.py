@@ -118,6 +118,15 @@ class OAuth2ProviderExtension(object):
             # URL to look up user info from token
             self.user_info_url = self.custom_idp_config_dict.get('multi_keycloak').get('user_info_url')
             logger.debug("properties set of tacc_keycloak ")
+        elif self.ext_type == 'globus':
+            self.client_id = self.custom_idp_config_dict.get('globus').get('client_id')
+            self.client_key = self.custom_idp_config_dict.get('globus').get('client_secret')
+            # initial redirect URL; used to start the oauth flow and log in the user
+            self.identity_redirect_url = self.custom_idp_config_dict.get('globus').get('identity_redirect_url')
+            # URL to use to exchange the code for an qccess token
+            self.oauth2_token_url = self.custom_idp_config_dict.get('globus').get('oauth2_token_url')
+            # URL to look up user info from token
+            self.user_info_url = self.custom_idp_config_dict.get('globus').get('user_info_url')
         elif self.ext_type == 'ldap':
             # NOTE: for the "ldap" type, we don't actually set any of the custom attributes, 
             # but we still need a check here to not fall into the ERROR else below.
@@ -176,8 +185,8 @@ class OAuth2ProviderExtension(object):
             "code": self.authorization_code,
             "redirect_uri": self.callback_url
         }
-        # keycloak requires the "grant_type" parameter
-        if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak':
+        # keycloak and globus require the "grant_type" parameter
+        if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
             body["grant_type"] = "authorization_code"
         logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}")
         try:
@@ -232,17 +241,17 @@ class OAuth2ProviderExtension(object):
         """
         logger.debug("top of get_user_from_token")
         # todo -- each OAuth2 provider will have a different mechanism for determining the user's identity
-        if self.ext_type == 'github' or self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak':
+        if self.ext_type == 'github' or self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
             if self.ext_type == 'github':
                 user_info_url = 'https://api.github.com/user'
             if self.ext_type == 'tacc_keycloak':
                 user_info_url = 'https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/userinfo'
-            if self.ext_type == 'multi_keycloak':
+            if self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
                 user_info_url = self.user_info_url
             if self.ext_type == 'github':
                 headers = {'Authorization': f'token {self.access_token}',
                         'Accept': 'application/vnd.github.v3+json'}
-            if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak':
+            if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
                 headers = {'Authorization': f'Bearer {self.access_token}',}
             try:
                 rsp = requests.get(user_info_url, headers=headers)
@@ -263,13 +272,13 @@ class OAuth2ProviderExtension(object):
                     raise errors.ServiceConfigError("Error determining user identity: username was empty. "
                                                     "Contact server administrator.")
                 
-                    self.username = f'{username}@github.com'
-            elif self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak':
-                logger.info(f"Response content from keycloak: {rsp.content}")
+                self.username = f'{username}@github.com'
+            elif self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
+                logger.info(f"Response content from Globus/keycloak: {rsp.content}")
                 try:
                     rsp_data = rsp.json()
                 except Exception as e:
-                    logger.error(f"Got error trying to parse the JSON from the Keycloak instance; error: {e}")
+                    logger.error(f"Got error trying to parse the JSON from the Globus/Keycloak instance; error: {e}")
                     raise errors.ServiceConfigError("Error determining user identity: could not parse identity response. "
                                                     "Contact server administrator.")                    
                 username = None
@@ -278,7 +287,7 @@ class OAuth2ProviderExtension(object):
                 elif 'email' in rsp_data:
                     username = rsp_data.get('email')
                 if not username:
-                    logger.error(f"Could not parse the username from the Keycloak instance; username could not be determined.")
+                    logger.error(f"Could not parse the username from the Globus/Keycloak instance; username could not be determined.")
                     raise errors.ServiceConfigError("Error determining user identity: username could not be determined. "
                                                     "Contact server administrator.")
                 self.username = username
@@ -309,6 +318,6 @@ class OAuth2ProviderExtension(object):
         #     ...
         else:
             logger.error(f"ERROR! OAuth2ProviderExtension.get_user_from_token not implemented for OAuth2 provider "
-                         f"extension {self.ext_type}.")
-            raise errors.ServiceConfigError(f"Error determining user identity: extension type {self.ext_type} not "
+                         f"extension type ({self.ext_type}).")
+            raise errors.ServiceConfigError(f"Error determining user identity: extension type ({self.ext_type}) not "
                                             f"supported.")
