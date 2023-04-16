@@ -2,23 +2,39 @@
 {% block content %}
 <body>
  <div class="container">
-    <h2> Tapis Tenant {{ tenant_id }}</h2>
+    <h2> User Profile And Access Token</h2>
  </div>
      {% if error %}
-   <div class="container">
+ <div class="container">
       <p>Error: {{ error }}</p>
-   </div>
+ </div>
      {% endif %}
 
-   <div class="container">
-    <div>
-        Username: {{ username }}
-    </div>
-       Token generated:
-       <div class="container p-3 my-3 bg-dark text-white">
-        <p id="tokenString">{{ token }}</p>
-    </div>
+ <div class="container">
+   <table id="details" class="table table-striped">
+      <thead>
+          <tr>
+            <th>Token Details</th>
+            <th width="200px"> </th>
+          </tr>
+      </thead>
+      <tbody>
+         <tr>
+            <td>Tenant ID</td>
+            <td>{{ tenant_id }}</td>
+        </tr>
+        <tr>
+              <td>Username</td>
+              <td>{{ username }}</td>
+          </tr>
+          <tr>
+              <td>Access Token</td>
+              <td>{{ token }}</td>
+          </tr>
+      </tbody>
+   </table>
+ </div>
 
 
-   </div>
+
 {% endblock %}
