@@ -53,6 +53,18 @@ Docker container with the volume created, and creates the initial (empty) databa
 2. `make migrate.upgrade` - runs the migrations contained within the `migrations/versions` directory.
 3. `docker-compose up -d authenticator` - starts the Authenticator.
 
+#### Running the Tests
+You can run the tests on your local machine using the following:
+
+```
+make clean
+make build
+make init_dbs
+make migrate.upgrade
+make test
+```
+Note that this will remove the 
+
 #### Updating the API After the First Setup
 Once the First Time Setup has been done a machine, updates can be fetched applied as follows:
 

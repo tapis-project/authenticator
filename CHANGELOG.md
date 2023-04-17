@@ -2,6 +2,23 @@
 All notable changes to this project will be documented in this file.
 
 
+## 1.3.1 - 2023-05-02 (target)
+
+### Breaking Changes:
+- None
+
+### New features
+- Add support for "multi_keycloak" OAuth extension type, allowing tenants to configure arbitrary KeyCloak
+  instances.
+- Add support for "globus" OAuth extension type, enabling use of Globus Auth/CILogon without KeyCloak.
+- Add support for "multi_idps" extension type, enabling tenants to configure multiple identity provider 
+  backends including: GitHub, KeyCloak, Globus, LDAP, etc.
+- Updates to the HTML in the example token web app.
+
+### Bug fixes:
+- None
+
+
 ## 1.3.0 - 2023-03-12
 This production point release adds support for TACC MFA, token revocation, token tracking 
 for usage analytics and a number of bug fixes. 
