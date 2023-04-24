@@ -21,7 +21,7 @@ from service.errors import InvalidPasswordError
 from service.models import db, TenantConfig, AccessTokens, RefreshTokens, Client, TokenRequestBody, Token, AuthorizationCode, DeviceCode, token_webapp_clients, tenant_configs_cache
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 from service.oauth2ext import OAuth2ProviderExtension
-from service.mfa import needs_mfa, call_mfa
+from service.mfa import needs_mfa, call_mfa, check_mfa_expired
 
 
 # get the logger instance -
@@ -524,6 +524,26 @@ class LoginResource(Resource):
             context['error'] = 'Invalid username/password combination.'
             return make_response(render_template('login.html', **context), 200, headers)
         # the username and password were accepted; set the session and redirect to the authorization page.
+        # first, check if this is a multi_idp situation
+        idp_id = session.get('idp_id')
+        if idp_id:
+            is_local_development = 'localhost' in request.base_url
+            oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development)    
+            # if we have set the idp_id in the session, we need to check if this idp_id should be
+            # appended to the username
+            append_idp_to_username = False
+            # loop through all the idps for the one in the session, and check that one for a 
+            # flag, `append_idp_to_username`
+            for idp in oa2ext.custom_idp_config_dict["multi_idps"]['idps']:
+                # we found the idp config
+                if idp['idp_id'] == session.get('idp_id'):
+                    # the append_idp_to_username attribute is optional
+                    append_idp_to_username = idp.get('append_idp_to_username')
+                    # either way, exit the loop because we've found the idp
+                    break
+            if append_idp_to_username:
+                username = f"{username}@{idp_id}"
+
         session['username'] = username
         mfa_required = needs_mfa(tenant_id)
         redirect_url = 'authorizeresource'
@@ -821,10 +841,6 @@ class AuthorizeResource(Resource):
                 # when the extension type is ldap, we redirect to the login resource
                 elif oa2ext.ext_type == 'ldap':
                     pass
-                # TODO -- check if with github we can specify response_type. before we were not specifying it
-                #         but it seems to be part of the spec...
-                # elif oa2ext.ext_type == 'github':
-                #     url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}'
                 # In all other cases, redirect to the oa2ext identity redirect url
                 else:
                     url = f'{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}&response_type=code'
@@ -929,6 +945,9 @@ class AuthorizeResource(Resource):
                 "generate_refresh_token": False,
                 "tapis/redirect_uri": client.callback_url
             }
+            # if the idp_id is in the session, set it as an additional claim
+            if session.get('idp_id'):
+                content['claims']['tapis/idp_id'] = session.get('idp_id')
             try:
                 logger.debug(f"calling tokens API to create a token for implicit grant type; content: {content}")
                 tokens = t.tokens.create_token(**content, use_basic_auth=False)
@@ -945,6 +964,8 @@ class AuthorizeResource(Resource):
                 raise errors.ResourceError("Failure to generate an access token; please try again later.")
             url = f'{client.callback_url}?access_token={access_token}&state={state}&expires_in={expires_in}&token_type=Bearer'
             logger.debug(f"issuing redirect to {client.callback_url}")
+            if check_mfa_expired():
+                session.pop("mfa_validated", None)
             return redirect(url)
 
         # authorization_code grant type ---------------------------------------------
@@ -958,6 +979,7 @@ class AuthorizeResource(Resource):
                                            username=username,
                                            client_id=client_id,
                                            client_key=client.client_key,
+                                           tapis_idp_id=session.get('idp_id'),
                                            redirect_url=client.callback_url,
                                            code=AuthorizationCode.generate_code(),
                                            expiry_time=AuthorizationCode.compute_expiry())
@@ -971,6 +993,8 @@ class AuthorizeResource(Resource):
             # issue redirect to client callback_url with authorization code:
             url = f'{client.callback_url}?code={authz_code}&state={state}'
             logger.debug(f"issuing redirect to {client.callback_url}")
+            if check_mfa_expired():
+                session.pop("mfa_validated", None)
             return redirect(url)
         elif client_response_type == 'device_code':
             if 'device_code' not in allowable_grant_types:
@@ -1016,6 +1040,8 @@ class AuthorizeResource(Resource):
                 return make_response(render_template("authorize.html", **context), 200, headers)
             if int(ttl) > 0:
                 device_code.access_token_ttl = int(ttl) * 60 * 60 * 24
+            if session.get('idp_id'):
+                device_code.tapis_idp_id = session.get('idp_id')
             try:
                 logger.debug(f"Updating device code: {device_code}")
                 db.session.commit()
@@ -1032,7 +1058,10 @@ class AuthorizeResource(Resource):
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
             session.pop('device_login')
+            if check_mfa_expired():
+                session.pop("mfa_validated", None)
             return make_response(render_template("success.html"), 200, headers)
+
 
 class OAuth2ProviderExtCallback(Resource):
     """
@@ -1054,6 +1083,17 @@ class OAuth2ProviderExtCallback(Resource):
             idp_id = session.get('idp_id')
             if not idp_id:
                 raise errors.ResourceError(f"Unable to process callback from Identity provider. Details: idp_id missing from session.")
+            # first, check if we need to append the idp_id to the username for this idp id
+            append_idp_to_username = False
+            # loop through all the idps for the one in the session, and check that one for a 
+            # flag, `append_idp_to_username`
+            for idp in oa2ext.custom_idp_config_dict["multi_idps"]['idps']:
+                # we found the idp config
+                if idp['idp_id'] == session.get('idp_id'):
+                    # the append_idp_to_username attribute is optional
+                    append_idp_to_username = idp.get('append_idp_to_username')
+                    # either way, exit the loop because we've found the idp
+                    break
             # recompute the oa2ext object based on the idp_id
             oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development, idp_id_for_multi=idp_id)
         # the CII OAuth2 provider does not send an authorization code, it sends the token directly, so
@@ -1066,7 +1106,10 @@ class OAuth2ProviderExtCallback(Resource):
             # exchange the authorization code for a token
             oa2ext.get_token_using_auth_code()
         # derive the user's identity from the token
-        session['username'] = oa2ext.get_user_from_token()
+        if append_idp_to_username:
+            session['username'] = oa2ext.get_user_from_token(idp_id=session.get('idp_id'))
+        else:    
+            session['username'] = oa2ext.get_user_from_token()
         #  Get the origin client out of the session and then redirect to authorization page
         client_id, client_redirect_uri, client_state, client, response_type = check_client(use_session=True)
         return redirect(url_for('authorizeresource',
@@ -1149,6 +1192,9 @@ class TokensResource(Resource):
                 raise errors.ResourceError(msg=f'Invalid client credentials: {client_id}, {client_key}. '
                                                f'session: {session}')
 
+        # the idp_id is only set for some tenant config; we fill it in later
+        idp_id = None
+
         # checks by grant type:
         if grant_type == 'password':
             # validate user/pass against ldap
@@ -1177,21 +1223,27 @@ class TokensResource(Resource):
                 raise errors.ResourceError("Required authorization_code parameter missing.")
             # this server MUST expire the authorization code after a single use; multiple uses of the same
             # authorization code are NOT permitted by the OAuth2 spec: https://tools.ietf.org/html/rfc6749#section-4.1.2
-            username = AuthorizationCode.validate_and_consume_code(tenant_id=tenant_id,
-                                                                   code=code,
-                                                                   client_id=client_id,
-                                                                   client_key=client_key)
+            db_code = AuthorizationCode.validate_and_consume_code(tenant_id=tenant_id,
+                                                                  code=code,
+                                                                  client_id=client_id,
+                                                                  client_key=client_key)
+            username = db_code.username
+            idp_id = db_code.tapis_idp_id
         elif grant_type == 'device_code':
             code = data.get('device_code')
             if not code:
                 logger.debug("no device code found in the request")
                 raise errors.ResourceError("Required device_code parameter missing.")
             logger.debug(f"consuming device code: {code}")
-            username, ttl = DeviceCode.validate_and_consume_code(tenant_id=tenant_id,
-                                                            code=code,
-                                                            client_id=client_id,
-                                                            client_key=client_key)
-            logger.debug(f"USERNAME: {username}; TTL: {ttl}")
+            db_code = DeviceCode.validate_and_consume_code(tenant_id=tenant_id,
+                                                           code=code,
+                                                           client_id=client_id,
+                                                           client_key=client_key)
+            username = db_code.username, 
+            ttl = db_code.access_token_ttl
+            idp_id = db_code.tapis_idp_id
+
+            logger.debug(f"USERNAME: {username}; TTL: {ttl}; idp_id: {db_code.idp_id}")
         elif grant_type == 'refresh_token':
             logger.debug("performing refresh token checks.")
             refresh_token = data.get('refresh_token')
@@ -1245,13 +1297,8 @@ class TokensResource(Resource):
             "access_token_ttl": access_token_ttl,
             "generate_refresh_token": False
         }
-        # TODO -- this doesn't work; the tokens endpoint is called by the client out of band
-        #         from any session. We'll have to pass the idp_id through the username or add 
-        #         a new field to the AuthorizationCode table.
-        # if generating a token for a tenant with multiple idps, set the idp_id in the claim
-        logger.debug(f"session: {session}")
-        if session.get('idp_id'):
-            content['claims']['tapis/idp_id'] = session.get('idp_id')
+        if idp_id:
+            content['claims']['tapis/idp_id'] = idp_id
 
         # only generate a refresh token when OAuth client is passed
         if client_id and client_key:

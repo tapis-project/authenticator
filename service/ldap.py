@@ -124,7 +124,7 @@ def list_tapis_ous():
         raise DAOError(msg)
     if not result:
         msg = f'Got an error trying to list Tapis OUs. message: {conn.result}'
-        logger.error(msg)
+        logger.info(msg)
     # return the results -
     result = []
     for ent in conn.entries:

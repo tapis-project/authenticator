@@ -169,7 +169,10 @@
       "idp_description": {
         "type": "object",
         "oneOf": [{"ref": "#/definitions/multiKeycloakObject"}, {"ref": "#/definitions/taccKeycloakObject"}, {"ref": "#/definitions/githubObject"}]
-
+      },
+      "append_idp_to_username": {
+        "type": "boolean",
+        "description": "Whether Authenticator should append the idp_id to the username for this idp. Default is false."
       }
     }
     

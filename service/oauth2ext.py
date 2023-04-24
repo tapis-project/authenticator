@@ -234,9 +234,10 @@ class OAuth2ProviderExtension(object):
             raise errors.ResourceError()
         return self.access_token
 
-    def get_user_from_token(self):
+    def get_user_from_token(self, idp_id=None):
         """
         Determines the username for the user once an access token has been obtained.
+        In case of multi_idps, pass the idp_id if it should be appended to the username.
         :return:
         """
         logger.debug("top of get_user_from_token")
@@ -273,6 +274,7 @@ class OAuth2ProviderExtension(object):
                                                     "Contact server administrator.")
                 
                 self.username = f'{username}@github.com'
+
             elif self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
                 logger.info(f"Response content from Globus/keycloak: {rsp.content}")
                 try:
@@ -292,6 +294,8 @@ class OAuth2ProviderExtension(object):
                                                     "Contact server administrator.")
                 self.username = username
             logger.debug(f"Successfully determined user's identity: {self.username}")
+            if idp_id:
+                self.username = f"{self.username}@{idp_id}"
             return self.username
 
         elif self.ext_type == 'cii':
@@ -313,6 +317,8 @@ class OAuth2ProviderExtension(object):
                                            f"administrator."
                                            f"(Debug message:{msg})")
             logger.debug(f"Successfully determined user's identity: {self.username}")
+            if idp_id:
+                self.username = f"{self.username}@{idp_id}"
             return self.username
         # elif self.ext_type == 'google':
         #     ...

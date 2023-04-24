@@ -24,6 +24,16 @@ def needs_mfa(tenant_id):
 
     return not not mfa_config
     
+
+def check_mfa_expired(last_mfa_timestamp=None):
+    """
+    Based on the tenant's MFA config and an optional MFA timestamp corresponding to the 
+    last time an MFA was completed, determine whether the MFA session should be expired.
+    """
+    # todo -- check tenant config and add timestamp functionality
+    return True
+
+
 def call_mfa(token, tenant_id, username):
     logger.debug(f"calling mfa for: {username}")
     tenant_config = tenant_configs_cache.get_config(tenant_id)

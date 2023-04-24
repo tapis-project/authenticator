@@ -1,3 +1,4 @@
+import threading
 from flask_migrate import Migrate
 from tapisservice.config import conf
 from tapisservice.tapisflask.utils import TapisApi, handle_error, flask_errors_dict
@@ -29,23 +30,54 @@ def authnz_for_authenticator():
 db.init_app(app)
 migrate = Migrate(app, db)
 
+# The following code prevents multiple threads from attempting to run the initialization code concurrently.
+# However, flask servers are typically run with multiple python processes, so the initialization code is
+# still run multiple times.
+#
+# Lock object and global boolean is used to coordinate which thread will run the initialization code, such as 
+# creating records in the database for new tenants, etc. We only want one thread to run this
+# code, so we check this variable first
+global lock
+lock = threading.Lock()
+
+global initialize_code_has_run
+initialize_code_has_run = False
+
+# per-thread boolean to know whether it needs to run the initialization code
+run_initialize_code = False
 
 # create the initial tenantconfig objects for all tenants assigned to this authenticator if they do not exist
 # don't run this during migrations
 if not MIGRATIONS_RUNNING:
-    for tenant_id in conf.tenants:
-        initialize_tenant_configs(tenant_id)
+    # Acquiring the lock blocks until it is free, so ultimately, all threads will acquire it.
+    # However, the `initialize_code_has_run` global is only updated once the lock is acquired, so
+    # it will only be false for one thread.
+    lock.acquire()
+    logger.info("Lock acquired")
+    if not initialize_code_has_run:
+        logger.info("running initialization code.")
+        initialize_code_has_run = True
+        run_initialize_code = True
+    else:
+        logger.info("Initialization code already ran, not running it.")
 
-# initialize the test LDAP ---
-# TODO - this code is run by every thread but is not thread safe!
-if conf.populate_dev_ldap:
-    # check that a tenant id was configure:
-    if not conf.dev_ldap_tenant_id:
-        msg = "Set populate_dev_ldep but did not set the dev_ldap_tenant_id. Quiting now..."
-        logger.error(msg)
-        BaseTapisError(msg)
-    populate_test_ldap(tenant_id=conf.dev_ldap_tenant_id)
+    if run_initialize_code:
+        # initialize the tenant configs
+        for tenant_id in conf.tenants:
+            result = initialize_tenant_configs(tenant_id)
+            if not result:
+                break
 
+        # initialize the test LDAP ---
+        if result and conf.populate_dev_ldap:
+            # check that a tenant id was configure:
+            if not conf.dev_ldap_tenant_id:
+                msg = "Set populate_dev_ldep but did not set the dev_ldap_tenant_id. Quiting now..."
+                logger.error(msg)
+                BaseTapisError(msg)
+            populate_test_ldap(tenant_id=conf.dev_ldap_tenant_id)
+    # release the lock to prevent other threads from deadlock 
+    lock.release()
 
 # flask restful API object ----
 api = TapisApi(app, errors=flask_errors_dict)
@@ -91,3 +123,5 @@ api.add_resource(StaticFilesResource, '/v3/oauth2/authorize/<path>')
 
 # v2 resources
 api.add_resource(V2TokenResource, '/v3/oauth2/v2/token')
+
+logger.info("Authenitcator ready")

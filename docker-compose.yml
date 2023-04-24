@@ -28,12 +28,16 @@ services:
         environment:
           LDAP_DOMAIN: "tapis"
           LDAP_ORGANISATION: "Tapis"
-          LDAP_ROOTPASS: "<TODO_get_from_SK>"
+          # primary site in develop
+          LDAP_ROOTPASS: "jIWPb59CuNM4TwxkkSIk37A"
+          # associate site in test
+        #   LDAP_ROOTPASS: "Df3CK8Rw79Caxhi1U8kofFw"
 
     migrations:
         image: tapis/authenticator-migrations
         volumes:
             - ./config-local.json:/home/tapis/config.json
+            # - ./config-local-uh.json:/home/tapis/config.json
         networks:
             - authenticator
 
@@ -43,6 +47,8 @@ services:
             - "5000:5000"
         volumes:
             - ./config-local.json:/home/tapis/config.json
+            # - ./config-local-uh.json:/home/tapis/config.json
+            # - ./config-local-sdsc.json:/home/tapis/config.json
             - ./service.log:/home/tapis/service.log
         networks:
             - authenticator
@@ -56,6 +62,10 @@ services:
             - ./service.log:/home/tapis/service.log
         networks:
             - authenticator
+        # uncomment if you want full standard output for all tests, including ones that pass
+        # command: -rP
+        # uncomment if you just want a test container
+        # entrypoint: ["sleep", "9999999"]
 
 
     pgadmin:

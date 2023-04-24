@@ -45,7 +45,7 @@ class TenantConfig(db.Model):
     __tablename__ = 'tenantconfig'
 
     id = db.Column(db.Integer, primary_key=True)
-    tenant_id = db.Column(db.String(50), unique=False, nullable=False, index=True)
+    tenant_id = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
     # json serialized list of strings of allowable grant types, comma separated
     # ex:'["authorization_code", "password", "implicit", "device_code", "refresh_token", "impersonation", "delegation"]'
@@ -113,9 +113,10 @@ def initialize_tenant_configs(tenant_id):
     try:
         config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
     except Exception as e:
-        logger.error(f"got exception trying to check for the existence of a TenantConfig record for tenant: {tenant_id};"
-                     f"exception: {e}. Giving up..")
-        raise e
+        logger.info(f"got exception trying to check for the existence of a TenantConfig record for tenant: {tenant_id}.")
+        db.session.rollback()
+        logger.debug(f"exception details: {e}")
+        return None
     # if the config doesn't already exist, create it:
     if config:
         logger.debug(f"Found config for tenant {tenant_id}; config: {config.serialize}")
@@ -148,10 +149,13 @@ def initialize_tenant_configs(tenant_id):
     try:
         db.session.add(config)
         db.session.commit()
+        return config
     except Exception as e:
-        logger.error(f"Got exception trying to add a new config for tenant {tenant_id} to the db. Exception: {e}."
-                     f" Giving up...")
-        raise e
+        logger.info(f"Got exception trying to add a new config for tenant {tenant_id} to the db."
+                     f"Multiple threads trying to add the same tenant.")
+        db.session.rollback()
+        logger.debug(f"Exception details: {e}.")
+        return None
 
 
 class TenantConfigsCache(object):
@@ -248,8 +252,9 @@ except Exception as e:
         raise e
     else:
         logger.warn(f"got exception try to load tenant configs object while migrations were running. This better "
-                    f"be because the migrations are creating the TenantConfigs relations. Setting cache object to"
-                    f"none. e: {e}")
+                    f"be because the migrations are creating the TenantConfigs relations. Setting cache object to "
+                    f"none. ")
+        logger.debug(f"Exception details: {e}")
         tenant_configs_cache = None
 
 
@@ -362,6 +367,12 @@ class AuthorizationCode(db.Model):
     redirect_url = db.Column(db.String(200), unique=False, nullable=True)
     create_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     expiry_time = db.Column(db.DateTime, nullable=False)
+    # additional custom tapis claims
+    # the tapis idp_id used for the authentication
+    tapis_idp_id = db.Column(db.String(50), unique=False, nullable=True)
+    # metadata about whether an MFA was performed and if so, how recently 
+    # currently not implemented 
+    tapis_mfa = db.Column(db.String(200), unique=False, nullable=True)
 
     def __repr__(self):
         return f'{self.code}'
@@ -431,7 +442,7 @@ class AuthorizationCode(db.Model):
         except Exception as e:
             logger.error(f"Got exception trying to delete authorization code; code: {code}; e: {e}; type(e): {type(e)}")
             raise errors.InvalidAuthorizationCodeError(msg="authorization code could not be deleted.")
-        return code.username
+        return code
 
 class DeviceCode(db.Model):
     __tablename__ = 'device_codes'
@@ -448,6 +459,12 @@ class DeviceCode(db.Model):
     create_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     expiry_time = db.Column(db.DateTime, nullable=False)
     access_token_ttl = db.Column(db.Integer, nullable=False)
+    # additional custom tapis claims
+    # the tapis idp_id used for the authentication
+    tapis_idp_id = db.Column(db.String(50), unique=False, nullable=True)
+    # metadata about whether an MFA was performed and if so, how recently 
+    # currently not implemented 
+    tapis_mfa = db.Column(db.String(200), unique=False, nullable=True)
 
     def __repr__(self):
         return f'{self.code}'
@@ -545,7 +562,7 @@ class DeviceCode(db.Model):
         except Exception as e:
             logger.error(f"Got exception trying to delete device code; code: {code}; e: {e}; type(e): {type(e)}")
             raise errors.InvalidDeviceCodeError(msg="device code could not be deleted.")
-        return code.username, code.access_token_ttl
+        return code
 
 
 class AccessTokens(db.Model):
@@ -968,7 +985,8 @@ def add_client_to_db(data):
         else:
             logger.debug(f"client with id {data['client_id']} for tenant {data['tenant_id']} already existed.")
     except Exception as e:
-        logger.info(f"Got exception trying to create the token web app client; this better be migrations; e: {e}")
+        logger.info(f"Got exception trying to create the token web app client; this better be migrations.")
+        logger.debug(f"Exception details: {e}")
         db.session.rollback()
 
 
