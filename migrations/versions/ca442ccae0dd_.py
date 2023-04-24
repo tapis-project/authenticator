@@ -7,6 +7,7 @@ Create Date: 2023-04-20 15:29:31.465644
 """
 from alembic import op
 import sqlalchemy as sa
+from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 
