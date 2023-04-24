@@ -1,6 +1,7 @@
 # image: tapis/authenticator-migrations
 from tapis/authenticator
 
+RUN pip install --upgrade alembic==1.10.4
 COPY migrations /home/tapis/migrations
 
 ENV MIGRATIONS_RUNNING=True
