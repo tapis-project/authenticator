@@ -79,20 +79,24 @@ If you change any of the SQL table schemas, either via a change to one of the ex
 `db.models` class in `models.py`, you will need to generate a new migration version. We use alembic to manage
 migrations. Here are the steps:
 
-0. First, start up the authenticator stack (including postgres database) as is, before making any changes. 
+0. First, statt up the authenticator stack (including postgres database) as is, before making any changes. Check
+   that there are no problems with your existing checkout/development environment. 
 1. Make changes to the models.py file to reflect the updates you want to make.
 2. Rebuild the containers (``make build``), specifically need the migrations container to be rebuilt.
-3. Exec into a new migrations container:
+3. Shut down all the services (``make clean``).
+4. Start up the db containers (``make init_dbs``).
+5. Run the existing migrations (``make migrate.upgrade``).
+6. Exec into a new migrations container:
    docker run -it --entrypoint=bash --network=authenticator_authenticator tapis/authenticator-migrations
-4. Once inside the container:
+7. Once inside the container:
   $ flask db migrate
   $ flask db upgrade   
 Note that the migrate step should create a new migration Python source file in /home/tapis/migrations/versions/
 Note also that the upgrade step (that applies the generated file) could fail if, for example, your changes include 
 a new, non-nullable field. For such changes, you will need to make custom changes to the migration Python source
 file. 
-6. Back outside of the container, copy the migration file to the migrations directory within this repo.
-7. Be sure to update the migrations Python source file, as needed. There are good references on the web for how to 
+8. Back outside of the container, copy the migration file to the migrations directory within this repo.
+9. Be sure to update the migrations Python source file, as needed. There are good references on the web for how to 
 do this; see, for example, https://medium.com/the-andela-way/alembic-how-to-add-a-non-nullable-field-to-a-populated-table-998554003134
    
 
