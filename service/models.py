@@ -1,7 +1,7 @@
 from copy import deepcopy
 import datetime
 import json
-from flask import Flask, g
+from flask import session, Flask, g
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from hashids import Hashids
@@ -21,6 +21,8 @@ logger = get_logger(__name__)
 from service import tenants
 
 app = Flask(__name__)
+# set the session expiry to a low level to force logins
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(seconds=10)
 
 # app.secret_key = b"\x00" + secrets.token_bytes(12) + b"\x00"
 app.secret_key = b"AGHsjfh!#%$SNFJqw"
