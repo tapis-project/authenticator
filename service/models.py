@@ -171,6 +171,7 @@ class TenantConfigsCache(object):
         # todo -- setting this to 4 seconds for now but we can increase; 4 seconds should allow us to
         # use one cache instance throughout the life of a single request.
         self.cache_lifetime = datetime.timedelta(seconds=4)
+        
 
     def load_tenant_config_cache(self):
         """
@@ -180,6 +181,7 @@ class TenantConfigsCache(object):
         configs = TenantConfig.query.all()
         self.tenant_config_models = configs
         self.last_update = datetime.datetime.now()
+        db.session.commit()
         return configs
 
     def get_config(self, tenant_id):
@@ -198,6 +200,9 @@ class TenantConfigsCache(object):
         while tries < 2:
             for t in self.tenant_config_models:
                 if t.tenant_id == tenant_id:
+                    # we commit here because the get_config() is the method that actually issues the sql call
+                    # because the ORM is lazy and does not load it ahead of time.
+                    db.session.commit()
                     return t
             # the first pass through, if we didn't find the tenant_id, reload the cache and try again
             if tries==0:
@@ -205,6 +210,9 @@ class TenantConfigsCache(object):
                 tries = 1
                 continue
             tries = 2
+        # we commit here because the get_config() is the method that actually issues the sql call
+        # because the ORM is lazy and does not load it ahead of time.
+        db.session.commit()
         raise ServiceConfigError(f"tenant id {tenant_id} not found in tenant configurations.")
 
     def get_custom_oa2_extension_type(self, tenant_id):
@@ -216,6 +224,9 @@ class TenantConfigsCache(object):
         logger.debug(f"top of get_custom_oa2_extension_type for tenant: {tenant_id}")
         config = self.get_config(tenant_id)
         custom_idp_config = json.loads(config.custom_idp_configuration)
+        # we commit here because the get_config() is the method that actually issues the sql call
+        # because the ORM is lazy and does not load it ahead of time.
+        db.session.commit()
         # check whether the tenant config has one of the OAuth2 extension configuration properties.
         # this check will expand over time as we add support for additional types of OAuth2 extension modules.
         # TODO -- this must be updated for every new custom oa2 extension type.
@@ -239,6 +250,10 @@ class TenantConfigsCache(object):
         logger.debug()
         config = self.get_config(tenant_id)
         mfa_config = json.loads(config.mfa_config)
+        # we commit here because the get_config() is the method that actually issues the sql call
+        # because the ORM is lazy and does not load it ahead of time.
+        db.session.commit()
+
         # TODO parse mfa_config for mfa_type, for now only available for tacc OTP
         return "tacc"
 
@@ -758,6 +773,10 @@ class LdapUser(object):
             msg = f'Got exception trying to add a user to LDAP; exception: {e}'
             logger.error(msg)
             raise DAOError("Unable to communicate with LDAP database when trying to save user account.")
+        # handle the case where the record was already added:
+        if not result and hasattr(conn.result, 'get') and 'entryAlreadyExists' in conn.result.get('description'):
+            logger.debug("user was previously added to the LDAP.")
+            return True
         if not result:
             msg = f'Got False result trying to add a user with dn {self.dn} to LDAP; error data: {conn.result}'
             logger.error(msg)
