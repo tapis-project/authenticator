@@ -29,10 +29,6 @@ def authnz_for_authenticator():
 db.init_app(app)
 migrate = Migrate(app, db)
 
-# The following code prevents multiple threads from attempting to run the initialization code concurrently.
-# However, flask servers are typically run with multiple python processes, so the initialization code is
-# still run multiple times.
-#
 
 # create the initial tenantconfig objects for all tenants assigned to this authenticator if they do not exist
 # don't run this during migrations
@@ -50,7 +46,7 @@ if not MIGRATIONS_RUNNING:
     if result and conf.populate_dev_ldap:
         # check that a tenant id was configure:
         if not conf.dev_ldap_tenant_id:
-            msg = "Set populate_dev_ldep but did not set the dev_ldap_tenant_id. Quiting now..."
+            msg = "Set populate_dev_ldap but did not set the dev_ldap_tenant_id. Quitting now..."
             logger.error(msg)
             BaseTapisError(msg)
         populate_test_ldap(tenant_id=conf.dev_ldap_tenant_id)
