@@ -1,8 +1,18 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 1.3.2 - 2023-05-08
+### Breaking Changes:
+- None
 
-## 1.3.1 - 2023-05-02 (target)
+### New features
+- None
+
+### Bug fixes:
+- Fix an issue where the tenant_config_cache was leaving an acces share relation (table) lock on the table indefinitely, preventing alter table commands from completing. 
+
+
+## 1.3.1 - 2023-05-02
 
 ### Breaking Changes:
 - None

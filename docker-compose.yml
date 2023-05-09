@@ -40,6 +40,7 @@ services:
             # - ./config-local-uh.json:/home/tapis/config.json
         networks:
             - authenticator
+        #entrypoint: ["sleep", "99999"]
 
     authenticator:
         image: tapis/authenticator
