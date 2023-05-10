@@ -186,7 +186,8 @@ class UserInfoResource(Resource):
         tenant_id = g.request_tenant_id
         # note that the user info endpoint is more limited for custom oauth idp extensions in general because the
         # custom OAuth server may not provider a profile endpoint.
-        if tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id):
+        custom_oa2_extension_type = tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id)
+        if custom_oa2_extension_type and not custom_oa2_extension_type == 'ldap':
             result = {"username": g.username}
             return utils.ok(result=result, msg="User profile retrieved successfully.")
 
@@ -200,7 +201,8 @@ class ProfileResource(Resource):
         tenant_id = g.request_tenant_id
         # note that the user info endpoint is more limited for custom oauth idp extensions in general because the
         # custom OAuth server may not provider a profile endpoint.
-        if tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id):
+        custom_oa2_extension_type = tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id)
+        if custom_oa2_extension_type and not custom_oa2_extension_type == 'ldap':
             result = {"username": g.username}
             return utils.ok(result=result, msg="User profile retrieved successfully.")
         user = get_tenant_user(tenant_id=tenant_id, username=username)

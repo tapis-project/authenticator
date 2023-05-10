@@ -96,4 +96,4 @@ api.add_resource(StaticFilesResource, '/v3/oauth2/authorize/<path>')
 # v2 resources
 api.add_resource(V2TokenResource, '/v3/oauth2/v2/token')
 
-logger.info("Authenitcator ready")
+logger.info("Authenticator ready")
