@@ -1,6 +1,17 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 1.3.3 - 2023-05-11
+### Breaking Changes:
+- None
+
+### New features
+- Update the oa3 spec with a comment to indicate that Profile fields are optional; add check for custom idp types and still try to get the profile fields in those cases.
+
+### Bug fixes:
+- None
+
+
 ## 1.3.2 - 2023-05-08
 ### Breaking Changes:
 - None
@@ -9,7 +20,7 @@ All notable changes to this project will be documented in this file.
 - None
 
 ### Bug fixes:
-- Fix an issue where the tenant_config_cache was leaving an acces share relation (table) lock on the table indefinitely, preventing alter table commands from completing. 
+- Fix an issue where the tenant_config_cache was leaving an access share relation (table) lock on the table indefinitely, preventing alter table commands from completing. 
 
 
 ## 1.3.1 - 2023-05-02
