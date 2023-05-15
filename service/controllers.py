@@ -30,6 +30,8 @@ from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 
+DEFAULT_DEVICE_CODE_TOKEN_TTL = 30
+
 # ------------------------------
 # REST API Endpoint controllers
 # ------------------------------
@@ -327,7 +329,7 @@ class TenantConfigResource(Resource):
             logger.debug(f"returning msg: {msg}")
             raise errors.ResourceError(f"Invalid PUT data; {msg}")
         logger.debug("returning serialized tenant object.")
-        # reload the config cache updn update --
+        # reload the config cache upon update --
         tenant_configs_cache.load_tenant_config_cache()
         return utils.ok(result=config.serialize, msg="Tenant config object updated successfully.")
 
@@ -336,7 +338,7 @@ class TenantConfigResource(Resource):
 # Authorization Server controllers
 # ---------------------------------
 
-def check_client(use_session=False, verify_client=True):
+def check_client(use_session=False):
     """
     Utility function used by several controller classes.
     Checks the request for associated client query parameters, validates them against the client registered in the DB
@@ -354,8 +356,6 @@ def check_client(use_session=False, verify_client=True):
         raise errors.ResourceError("tenant_id missing.")
     if not tenant_id in conf.tenants:
         raise errors.ResourceError(f"This application is not configured to serve the requested tenant {tenant_id}.")
-    if not verify_client:
-        return None, None, None, None, None
     if use_session:
         client_id = session.get('orig_client_id')
         client_redirect_uri = session.get('orig_client_redirect_uri')
@@ -370,15 +370,17 @@ def check_client(use_session=False, verify_client=True):
         client_state = request.args.get('state')
     if not client_id:
         raise errors.ResourceError("Required query parameter client_id missing.")
-    if not client_redirect_uri:
-        raise errors.ResourceError("Required query parameter redirect_uri missing.")
-    if not response_type == 'code' and not response_type == 'token' and not response_type == 'device_code':
-        raise errors.ResourceError("Required query parameter response_type missing or not supported.")
     # make sure the client exists and the redirect_uri matches
     logger.debug(f"checking for client with id: {client_id} in tenant {tenant_id}")
     client = Client.query.filter_by(tenant_id=tenant_id, client_id=client_id).first()
     if not client:
         raise errors.ResourceError("Invalid client.")
+    if 'device_login' in session:
+        return client_id, None, None, None, None
+    if not client_redirect_uri:
+        raise errors.ResourceError("Required query parameter redirect_uri missing.")
+    if not response_type == 'code' and not response_type == 'token' and not response_type == 'device_code':
+        raise errors.ResourceError("Required query parameter response_type missing or not supported.")
     if not client.callback_url == client_redirect_uri:
         raise errors.ResourceError(
             "redirect_uri query parameter does not match the registered callback_url for the client.")
@@ -461,10 +463,7 @@ class LoginResource(Resource):
     def get(self):
         logger.debug("Logging in")
         logger.debug(f"Session: {session}")
-        verify_client = True if 'device_login' not in session else False
-        if 'device_login' in session:
-            logger.debug("At login resource for Device Flow")
-        client_id, client_redirect_uri, client_state, client, response_type = check_client(verify_client=verify_client)
+        client_id, client_redirect_uri, client_state, client, response_type = check_client()
         # selecting a tenant id is required before logging in -
         tenant_id = g.request_tenant_id
         if not tenant_id:
@@ -637,16 +636,21 @@ class DeviceFlowResource(Resource):
         logger.debug("GET - Device Flow")
         tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
+        client_id = request.args.get("client_id")
+        if not client_id:
+            context = {'error': 'Invalid URL: client_id must be passed.'}
+            return make_response(render_template('device-code.html', **context), 200, headers)
+        logger.debug(f"Got client id: {client_id}")
         session['device_login'] = True
         if not tenant_id:
             tenant_id = session.get('tenant_id')
         if not tenant_id:
             logger.debug(
-                f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}")
-            return redirect(url_for('loginresource'))
+                f"did not find tenant_id in session; issuing redirect to AuthorizeResource. session: {session}")
+            return redirect(url_for('authorizeresource', client_id=client_id))
         if 'username' not in session:
-            logger.debug(f"username not found in session: {session}")
-            return redirect(url_for('loginresource'))
+            logger.debug(f"username not found in session: {session}; issuing redirect to authorize")
+            return redirect(url_for('authorizeresource', client_id=client_id))
         context = {'error': '',
                    'tenant_id': tenant_id,
                    'username': session.get('username')}
@@ -654,7 +658,6 @@ class DeviceFlowResource(Resource):
 
     def post(self):
         logger.debug("POST - Device Flow")
-        #client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
         session['device_login'] = True
@@ -672,6 +675,9 @@ class DeviceFlowResource(Resource):
         user_code = request.form.get('user_code')
         device_code = DeviceCode.query.filter_by(tenant_id=tenant_id,
                                                     user_code=user_code).first()
+        if not device_code:
+            raise errors.ResourceError("Invalid code.")
+        logger.debug(f"Got device code: {device_code}")
         # ask about this
         try:
             client = Client.query.filter_by(client_id=device_code.client_id).first()
@@ -684,6 +690,7 @@ class DeviceFlowResource(Resource):
                 status = "Entered"
                 try:
                     device_code.status = status
+                    device_code.username = session.get('username')
                     db.session.commit()
                 except Exception as e:
                     logger.error("Error trying to update device code entry; error: {e}")
@@ -711,7 +718,7 @@ class DeviceCodeResource(Resource):
     """
     POST request for creating a device code
     input:
-    * client_id: ceated by user
+    * client_id: created by user
     optional:
     * ttl: time to live for token
     """
@@ -723,6 +730,7 @@ class DeviceCodeResource(Resource):
         if result.errors:
             raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
         validated_body = result.body
+        logger.debug(f"validate_body: {validated_body}")
         client_id = validated_body.client_id
         logger.debug("Checked client_id: %s", client_id)
         tenant_id = g.request_tenant_id
@@ -730,18 +738,19 @@ class DeviceCodeResource(Resource):
         if not client:
             logger.debug(f"client not found in db. client_id: {client_id}")
             raise errors.ResourceError(f'Invalid client: {client_id}')
-        username = session.get('username')
-        logger.debug(f"username: {username}")
+        # we just need the part of the URL up to the "/v3/oauth2" (i.e., the base URL) so we 
+        # split on that:
+        device_code_base_url = request.base_url.split("/v3/oauth2")[0]
         device_code = DeviceCode(tenant_id=tenant_id,
-                                           username=username,
-                                           client_id=client_id,
-                                           client_key=client.client_key,
-                                           code=DeviceCode.generate_code(),
-                                           user_code=DeviceCode.generate_user_code(),
-                                           status="Created",
-                                           verification_uri=DeviceCode.generate_verification_uri(tenant_id, client_id),
-                                           expiry_time=DeviceCode.compute_expiry(),
-                                           access_token_ttl=DeviceCode.set_ttl())
+                                 username=None,
+                                 client_id=client_id,
+                                 client_key=client.client_key,
+                                 code=DeviceCode.generate_code(),
+                                 user_code=DeviceCode.generate_user_code(),
+                                 status="Created",
+                                 verification_uri=DeviceCode.generate_verification_uri(tenant_id, client_id, BASE_URL=device_code_base_url),
+                                 expiry_time=DeviceCode.compute_expiry(),
+                                 access_token_ttl=DeviceCode.set_ttl())
         try:
             db.session.add(device_code)
             db.session.commit()
@@ -761,26 +770,23 @@ class DeviceCodeResource(Resource):
 class AuthorizeResource(Resource):
     """
     This resource handles the activity of a user authorizing a client (web app) to get a token. It specifies the
-    name of the client requesting authorization and asks the user to approve it. This resource is only called once
-    the user has authenticated.
+    name of the client requesting authorization and asks the user to approve it.
+    It also serves as a starting point for various OAuth2 flows, including authorization, implicit, and
+    device code. 
     """
 
     def get(self):
         logger.debug("top of GET /oauth2/authorize")
-        verify_client = True if 'device_login' not in session else False
+        is_device_flow = True if 'device_login' in session else False
         logger.debug("Authorize Resource: Checking Client")
         # if we are using the multi_idp custom oa2 extension type it is possible we are being redirected here, not by the 
         # original web client, but by our select_idp page, in which case we need to get the client out of the session.
         if session.get('idp_id'):
-            client_id, client_redirect_uri, client_state, client, response_type = check_client(use_session=True, verify_client=verify_client)
+            client_id, client_redirect_uri, client_state, client, response_type = check_client(use_session=True)
         else:    
-            client_id, client_redirect_uri, client_state, client, response_type = check_client(verify_client=verify_client)
-        if not verify_client:
+            client_id, client_redirect_uri, client_state, client, response_type = check_client()
+        if is_device_flow:
             response_type ='device_code'
-            #add error handling
-            device_code = DeviceCode.query.filter_by(code=request.args.get('device_code')).first()
-            #add error handling
-            client = Client.query.filter_by(client_id=device_code.client_id).first()
         tenant_id = session.get('tenant_id')
         if not tenant_id:
             tenant_id = g.request_tenant_id
@@ -903,7 +909,6 @@ class AuthorizeResource(Resource):
             logger.debug(f"did not find username in session; this is an error. raising error. session: {session};")
             raise errors.ResourceError('username missing from session. Please login to continue.')
         approve = request.form.get("approve")
-        ttl = request.form.get("ttl", None)
         if not approve:
             logger.debug("user did not approve.")
             headers = {'Content-Type': 'text/html'}
@@ -917,12 +922,13 @@ class AuthorizeResource(Resource):
         if not client_id:
                 logger.debug("client_id missing from form.")
                 raise errors.ResourceError("client_id missing.")
-        if client_response_type != 'device_code':
-            # retrieve client data from form and db -
-            client = Client.query.filter_by(client_id=client_id).first()
-            if not client:
-                logger.debug(f"client not found in db. client_id: {client_id}")
-                raise errors.ResourceError(f'Invalid client: {client_id}')
+
+        # retrieve client data from form and db -
+        client = Client.query.filter_by(client_id=client_id).first()
+        if not client:
+            logger.debug(f"client not found in db. client_id: {client_id}")
+            raise errors.ResourceError(f'Invalid client: {client_id}')
+
         # check original response_type passed in by the client and make sure grant type supported by the tenant --
         config = tenant_configs_cache.get_config(tenant_id)
         allowable_grant_types = json.loads(config.allowable_grant_types)
@@ -1004,6 +1010,7 @@ class AuthorizeResource(Resource):
                                            f"tenant. Allowable grant types: {allowable_grant_types}")
             code = request.form.get('device_code')
             logger.debug(f"Device code passed in: {code}")
+            # check that device code exists in the database
             try:
                 device_code = DeviceCode.query.filter_by(code=code,
                                                         tenant_id=tenant_id,
@@ -1021,9 +1028,13 @@ class AuthorizeResource(Resource):
                    'client_redirect_uri': client_redirect_uri,
                    'client_response_type': 'device_code',
                    'client_state': client_state,
+                   'device_code': code,
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
             headers = {'Content-Type': 'text/html'}
+            ttl = request.form.get("ttl", DEFAULT_DEVICE_CODE_TOKEN_TTL)
+            if ttl == "" or ttl == " ":
+                ttl = DEFAULT_DEVICE_CODE_TOKEN_TTL
             try:
                 int(ttl)
             except ValueError:
@@ -1037,6 +1048,7 @@ class AuthorizeResource(Resource):
                    'client_redirect_uri': client_redirect_uri,
                    'client_response_type': 'device_code',
                    'client_state': client_state,
+                   'device_code': code,
                    'device_login': session.get('device_login', '')}
                 print(f"User entered: {ttl} which is not an int")
                 return make_response(render_template("authorize.html", **context), 200, headers)
@@ -1057,6 +1069,7 @@ class AuthorizeResource(Resource):
                    'client_redirect_uri': client_redirect_uri,
                    'client_response_type': 'device_code',
                    'client_state': client_state,
+                   'device_code': code,
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
             session.pop('device_login')
@@ -1245,7 +1258,7 @@ class TokensResource(Resource):
             ttl = db_code.access_token_ttl
             idp_id = db_code.tapis_idp_id
 
-            logger.debug(f"USERNAME: {username}; TTL: {ttl}; idp_id: {db_code.idp_id}")
+            logger.debug(f"USERNAME: {username}; TTL: {ttl}; idp_id: {db_code.tapis_idp_id}")
         elif grant_type == 'refresh_token':
             logger.debug("performing refresh token checks.")
             refresh_token = data.get('refresh_token')

@@ -468,11 +468,11 @@ class DeviceCode(db.Model):
     code = db.Column(db.String(50), unique=True, nullable=False)
     user_code = db.Column(db.String(10), unique=True, nullable=False)
     tenant_id = db.Column(db.String(50), unique=False, nullable=False)
-    username = db.Column(db.String(50), unique=False, nullable=False)
+    username = db.Column(db.String(50), unique=False, nullable=True)
     client_id = db.Column(db.String(80), db.ForeignKey('clients.client_id'), unique=False, nullable=False)
     client_key = db.Column(db.String(80), unique=False, nullable=False)
     status = db.Column(db.String(50), unique=False, nullable=False)
-    verification_uri = db.Column(db.String(80), unique=False, nullable=False)
+    verification_uri = db.Column(db.String(500), unique=False, nullable=False)
     create_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     expiry_time = db.Column(db.DateTime, nullable=False)
     access_token_ttl = db.Column(db.Integer, nullable=False)
@@ -544,7 +544,6 @@ class DeviceCode(db.Model):
                                           client_id=client_id,
                                           client_key=client_key).first()
         logger.debug(code_result)
-        logger.error("device code expired")
         if not code_result:
             logger.debug(f"Device Code: {code_result} not found")
             raise errors.InvalidDeviceCodeError(msg="device code not valid.")

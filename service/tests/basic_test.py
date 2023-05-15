@@ -483,8 +483,6 @@ def test_implicit_grant(client, init_db):
 
 def test_device_code(client, init_db):
     with client:
-        with client.session_transaction() as sess:
-            sess['username'] = TEST_USERNAME
         data={'client_id': TEST_CLIENT_ID}
         
         response = client.post('http://localhost:5000/v3/oauth2/device/code',

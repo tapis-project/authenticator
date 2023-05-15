@@ -1,6 +1,18 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 1.3.4 - 2023-05-30 (target)
+### Breaking Changes:
+- None
+
+### New features
+- None
+
+### Bug fixes:
+- This release fixes some issues with the device code flow, including when generating a device code and 
+  when using device codes with non-ldap identity providers. 
+
+
 ## 1.3.3 - 2023-05-11
 ### Breaking Changes:
 - None
