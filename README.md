@@ -79,7 +79,7 @@ If you change any of the SQL table schemas, either via a change to one of the ex
 `db.models` class in `models.py`, you will need to generate a new migration version. We use alembic to manage
 migrations. Here are the steps:
 
-0. First, statt up the authenticator stack (including postgres database) as is, before making any changes. Check
+0. First, start up the authenticator stack (including postgres database) as is, before making any changes. Check
    that there are no problems with your existing checkout/development environment. 
 1. Make changes to the models.py file to reflect the updates you want to make.
 2. Rebuild the containers (``make build``), specifically need the migrations container to be rebuilt.

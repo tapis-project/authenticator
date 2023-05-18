@@ -11,6 +11,7 @@ All notable changes to this project will be documented in this file.
 ### Bug fixes:
 - This release fixes some issues with the device code flow, including when generating a device code and 
   when using device codes with non-ldap identity providers. 
+- This release also fixes a bug in the OAuth2ProviderExtCallback controller where the append_idp_to_username was not defined if the ext type was not "multi_idps". This bug impacted tenants such as CII with a different custom IdP type.
 
 
 ## 1.3.3 - 2023-05-11
