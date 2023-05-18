@@ -1093,13 +1093,13 @@ class OAuth2ProviderExtCallback(Resource):
         logger.debug(f"request for tenant {tenant_id}")
         is_local_development = 'localhost' in request.base_url
         oa2ext = OAuth2ProviderExtension(tenant_id, is_local_development=is_local_development)
+        append_idp_to_username = False
         # for multi_idps, the idp_id should already be set in the session here
         if oa2ext.ext_type == 'multi_idps':
             idp_id = session.get('idp_id')
             if not idp_id:
                 raise errors.ResourceError(f"Unable to process callback from Identity provider. Details: idp_id missing from session.")
-            # first, check if we need to append the idp_id to the username for this idp id
-            append_idp_to_username = False
+            # First, check if we need to append the idp_id to the username for this idp id
             # loop through all the idps for the one in the session, and check that one for a 
             # flag, `append_idp_to_username`
             for idp in oa2ext.custom_idp_config_dict["multi_idps"]['idps']:
