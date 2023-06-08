@@ -1196,6 +1196,26 @@ class TokensResource(Resource):
             except Exception as e:
                 raise errors.ResourceError(msg='Invalid headers. Basic authentication with client id and key '
                                                'required but missing.')
+        if grant_type == 'device_code':
+            client_id = data.get('client_id')
+            if not client_id:
+                logger.debug("No client id passed in the request")
+                raise errors.ResourceError(msg="Required client_id parameter missing.")
+
+            code = data.get('device_code')
+            if not code:
+                logger.debug("no device code found in the request")
+                raise errors.ResourceError(msg="Required device_code parameter missing.")
+            
+            logger.debug(f"consuming device code: {code}")
+            db_code = DeviceCode.validate_and_consume_code(code)
+
+            if client_id != db_code.client_id:
+                logger.debug("Passed in client_id and client_id of code are not equal")
+                raise errors.ResourceError(msg="Client IDs do not match between device code and passed in client_id")
+
+            client_key = db_code.client_key
+        
         if not client_id and not client_key and grant_type == 'password':
             logger.debug("Allowing the password grant request even though the auth header missing.")
         # check that client is in db
@@ -1245,20 +1265,12 @@ class TokensResource(Resource):
             username = db_code.username
             idp_id = db_code.tapis_idp_id
         elif grant_type == 'device_code':
-            code = data.get('device_code')
-            if not code:
-                logger.debug("no device code found in the request")
-                raise errors.ResourceError("Required device_code parameter missing.")
-            logger.debug(f"consuming device code: {code}")
-            db_code = DeviceCode.validate_and_consume_code(tenant_id=tenant_id,
-                                                           code=code,
-                                                           client_id=client_id,
-                                                           client_key=client_key)
-            username = db_code.username, 
+            username = db_code.username 
             ttl = db_code.access_token_ttl
             idp_id = db_code.tapis_idp_id
 
             logger.debug(f"USERNAME: {username}; TTL: {ttl}; idp_id: {db_code.tapis_idp_id}")
+
         elif grant_type == 'refresh_token':
             logger.debug("performing refresh token checks.")
             refresh_token = data.get('refresh_token')
@@ -1299,8 +1311,10 @@ class TokensResource(Resource):
         url = f'{g.request_tenant_base_url}/v3/tokens'
         #override this
         access_token_ttl = config.default_access_token_ttl
+
         if grant_type == 'device_code':
             access_token_ttl = ttl
+        
         content = {
             "token_tenant_id": f"{tenant_id}",
             "account_type": "user",

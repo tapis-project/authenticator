@@ -529,7 +529,7 @@ class DeviceCode(db.Model):
         return datetime.datetime.utcnow() + datetime.timedelta(seconds=DeviceCode.CODE_TTL)
 
     @classmethod
-    def validate_code(cls, tenant_id, code, client_id, client_key):
+    def validate_code(cls, code):
         """
         Validate the use of a device code. This method checks the code expiry and client credentials against the
         DeviceCode table.
@@ -539,11 +539,7 @@ class DeviceCode(db.Model):
         :param client_key: (str) Associated client_secret.
         :return:
         """
-        code_result = cls.query.filter_by(tenant_id=tenant_id,
-                                          code=code,
-                                          client_id=client_id,
-                                          client_key=client_key).first()
-        logger.debug(code_result)
+        code_result = cls.query.filter_by(code=code).first()
         if not code_result:
             logger.debug(f"Device Code: {code_result} not found")
             raise errors.InvalidDeviceCodeError(msg="device code not valid.")
@@ -560,7 +556,7 @@ class DeviceCode(db.Model):
         return code_result
         
     @classmethod
-    def validate_and_consume_code(cls, tenant_id, code, client_id, client_key):
+    def validate_and_consume_code(cls, code):
         """
         Validate the use of a device code and then consume it. This method checks the code expiry and
         client credentials against the DeviceCode table; if valid the code is then deleted.
@@ -570,7 +566,7 @@ class DeviceCode(db.Model):
         :param client_key: (str) Associated client_secret.
         :return:
         """
-        code = DeviceCode.validate_code(tenant_id, code, client_id, client_key)
+        code = DeviceCode.validate_code(code)
         try:
             db.session.delete(code)
             db.session.commit()
@@ -911,6 +907,7 @@ class Token(object):
         result['redirect_uri'] = getattr(data, 'redirect_uri', None)
         result['code'] = getattr(data, 'code', None)
         # device code grant:
+        result['client_id'] = getattr(data, 'client_id', None)
         result['device_code'] = getattr(data, 'device_code', None)
         # refresh token:
         result['refresh_token'] = getattr(data, 'refresh_token', None)
