@@ -145,6 +145,7 @@ class ClientResource(Resource):
             raise errors.PermissionsError("Not authorized for this client.")
         client.active = False
         db.session.commit()
+        return utils.ok(result=client.serialize, msg="Client status updated to inactive successfully")
 
 
 class ProfilesResource(Resource):
