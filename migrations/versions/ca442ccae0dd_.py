@@ -58,6 +58,10 @@ def upgrade():
 
     # The following code runs the migration in the existing alembic transaction (which works, in general)
     conn = op.get_bind()
+    # first, delete any TenandConfig records with duplicate tenant id's.
+    conn.execute("DELETE FROM public.tenantconfig a USING public.tenantconfig b WHERE a.id < b.id AND a.tenant_id = b.tenant_id")
+
+    # next, add the uniqueness constraint to the tenant_id field of the TenantConfig table.
     conn.execute("alter table public.tenantconfig add constraint uq_tenantconfig_tenant_id unique (tenant_id)")
     logger.info("Migration ca442ccae0dd_ exiting without completing.")
     # ### end Alembic commands ###
