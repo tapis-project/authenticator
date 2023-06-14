@@ -1,7 +1,23 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 1.3.4 - 2023-05-30 (target)
+
+## 1.3.5 - 2023-06-27 (target)
+### Breaking Changes:
+- The DELETE /v3/oauth2/clients endpoint now returns the standard 5-stanza Tapis response. Previously, it returned
+an empty HTTP response. Applications that use this endpoint should be updated to handle a non-empty response.
+- The POST /v3/oauth2/tokens endpoint has been changed in the case of the device_code grant to require only the client_id as a POST parameter. Previously, the client_id and client_key were erroneously both required to be passed using an HTTP Basic Auth header. Client applications that utilized the device code grant type and passed the client credentials as part of the HTTP Basic Auth header must be updated to pass only the client id as part of the POST payload. The OA3 spec has been updated to reflect this new requirement. See issue #32.
+
+### New features
+- By default, an account with username "admin" is now created in the dev tenant (see issue #33).
+- 
+
+### Bug fixes:
+- The POST /v3/oauth2/tokens endpoint has been changed in the case of the device_code grant to require only the client_id as a POST parameter. Previously, the client_id and client_key were erroneously both required to be passed using an HTTP Basic Auth header. Client applications that utilized the device code grant type and passed the client credentials as part of the HTTP Basic Auth header must be updated to pass only the client id as part of the POST payload. The OA3 spec has been updated to reflect this new requirement. See issue #32.
+- The OA3 spec has been updated to correct the DELETE /v3/oauth2/clients endpoint (it was mislabeled "Delete a tenant") and to specify the TapisJWT authentication on endpoints that require it (see issue #34)
+
+
+## 1.3.4 - 2023-05-30
 ### Breaking Changes:
 - None
 
