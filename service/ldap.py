@@ -467,6 +467,14 @@ def populate_test_ldap(tenant_id):
         add_test_user(tenant_id, username)
     else:
         logger.debug(f"user {username} already present.")
+    # Add "admin" user which is the default tenant admin for the dev tenant.
+    username = 'admin'
+    if username not in usernames:
+        logger.debug(f"adding user {username}")
+        add_test_user(tenant_id, username)
+    else:
+        logger.debug(f"user {username} already present.")
+
 
 
 def populate_ldap_with_training_accounts(tenant_id, accounts):
