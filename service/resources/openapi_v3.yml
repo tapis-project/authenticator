@@ -24,8 +24,7 @@ servers:
       description: The tenant_id associated with the request.
 - url: /
   description: catch-all server definition for other Tapis instances.
-security:
-  - TapisJWT: []
+
 
 paths:
   /v3/oauth2/hello:
@@ -271,8 +270,6 @@ paths:
       summary: Generate a Tapis JWT
       description: Generate a Tapis JWT using some OAuth2 grant type. Typically, a request to this endpoint is the last step in the token generation process. The fields required in the request payload depend on the grant type being used (see details below).
       operationId: create_token
-      security:
-        - TapisJWT: []
       requestBody:
         required: true
         content:
@@ -298,9 +295,11 @@ paths:
     post:
       tags:
         - Tokens
-      summary: Create a v2 token from a Tapis v3 JWT.
+      summary: Create a v2 bearer token from a Tapis v3 JWT.
       description: Create a v2 token from a Tapis v3 JWT. Note that only some tenants for both v2 and v3 are supported.
       operationId: create_v2_token
+      security:
+        - TapisJWT: []
       requestBody:
         required: true
         content:
