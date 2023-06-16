@@ -6,8 +6,11 @@ from requests.auth import HTTPBasicAuth
 import json
 from flask import g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
 from flask_restful import Resource
-from openapi_core.shortcuts import RequestValidator
-from openapi_core.wrappers.flask import FlaskOpenAPIRequest
+# TODO: tapipy-1.4.0
+# from openapi_core.shortcuts import RequestValidator
+# from openapi_core.wrappers.flask import FlaskOpenAPIRequest
+from openapi_core import openapi_request_validator
+from openapi_core.contrib.flask import FlaskOpenAPIRequest
 import sqlalchemy
 import secrets
 
@@ -72,8 +75,10 @@ class ClientsResource(Resource):
         return utils.ok(result=[cl.serialize for cl in clients], msg="Clients retrieved successfully.")
 
     def post(self):
-        validator = RequestValidator(utils.spec)
-        result = validator.validate(FlaskOpenAPIRequest(request))
+        # TODO: tapipy-1.4.0
+        # validator = RequestValidator(utils.spec)
+        # result = validator.validate(FlaskOpenAPIRequest(request))
+        result = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
         if result.errors:
             raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
         validated_body = result.body
@@ -124,8 +129,10 @@ class ClientResource(Resource):
             raise errors.ResourceError(msg=f'No client found with id {client_id}.')
         if not client.username == g.username:
             raise errors.PermissionsError("Not authorized for this client.")
-        validator = RequestValidator(utils.spec)
-        result = validator.validate(FlaskOpenAPIRequest(request))
+        # TODO: for tapipy-1.4.0
+        # validator = RequestValidator(utils.spec)
+        # result = validator.validate(FlaskOpenAPIRequest(request))
+        result = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
         if result.errors:
             print(f"openapi_core validation failed. errors: {result.errors}")
             raise errors.ResourceError(msg=f'Invalid PUT data: {result.errors}')
@@ -233,8 +240,10 @@ class TenantConfigResource(Resource):
         if not config:
             raise errors.ResourceError(f"Config for tenant {tenant_id} does not exist. Contact system administrators.")
         logger.debug(f"update request for tenant {tenant_id}; config: {config.serialize}")
-        validator = RequestValidator(utils.spec)
-        result = validator.validate(FlaskOpenAPIRequest(request))
+        # TODO: for tapipy-1.4.0
+        # validator = RequestValidator(utils.spec)
+        # result = validator.validate(FlaskOpenAPIRequest(request))
+        result = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
         if result.errors:
             logger.debug(f"openapi_core validation failed. errors: {result.errors}")
             raise errors.ResourceError(msg=f'Invalid PUT data: {result.errors}.')
@@ -725,9 +734,12 @@ class DeviceCodeResource(Resource):
     """
     def post(self):
         logger.debug("In device code resource")
-        validator = RequestValidator(utils.spec)
         # support content-type www-form by setting the body on the request eqaul to the JSON
-        result = validator.validate(FlaskOpenAPIRequest(request))
+
+        # TODO: tapipy-1.4.0        
+        # validator = RequestValidator(utils.spec)        
+        # result = validator.validate(FlaskOpenAPIRequest(request))
+        result = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
         if result.errors:
             raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
         validated_body = result.body
@@ -1147,13 +1159,15 @@ class TokensResource(Resource):
 
     def post(self):
         logger.debug("top of POST /oauth2/tokens")
-        validator = RequestValidator(utils.spec)
-        # support content-type www-form by setting the body on the request equal to the JSON
+        # support content-type www-form by setting the body on the request equal to the JSON        
         if request.content_type.startswith('application/x-www-form-urlencoded'):
             logger.debug(f"handling x-www-form data")
             validated_body = TokenRequestBody(form=request.form)
         else:
-            result = validator.validate(FlaskOpenAPIRequest(request))
+            # TODO: tapipy-1.4.0
+            # validator = RequestValidator(utils.spec)        
+            # result = validator.validate(FlaskOpenAPIRequest(request))
+            result = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
             if result.errors:
                 raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
             validated_body = result.body
@@ -1496,8 +1510,10 @@ class RevokeTokensResource(Resource):
     """
     def post(self):
         logger.debug("top of POST /v3/oauth2/tokens/revoke")
-        validator = RequestValidator(utils.spec)
-        validated = validator.validate(FlaskOpenAPIRequest(request))        
+        # TODO: tapipy-1.4.0
+        # validator = RequestValidator(utils.spec)
+        # validated = validator.validate(FlaskOpenAPIRequest(request))
+        validated = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
         if validated.errors:
             raise errors.ResourceError(msg=f'Invalid POST data: {validated.errors}.')
         validated_body = validated.body

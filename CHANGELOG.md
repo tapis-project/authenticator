@@ -10,7 +10,7 @@ an empty HTTP response. Applications that use this endpoint should be updated to
 
 ### New features
 - By default, an account with username "admin" is now created in the dev tenant (see issue #33).
-- 
+- Upgrade to tapipy 1.4.0 and associated library upgrades (e.g., openapi-core 0.16 from 0.12). This upgrade improves spec loading times and reduces the overall time for the authenticator service to start up. See issue 
 
 ### Bug fixes:
 - The POST /v3/oauth2/tokens endpoint has been changed in the case of the device_code grant to require only the client_id as a POST parameter. Previously, the client_id and client_key were erroneously both required to be passed using an HTTP Basic Auth header. Client applications that utilized the device code grant type and passed the client credentials as part of the HTTP Basic Auth header must be updated to pass only the client id as part of the POST payload. The OA3 spec has been updated to reflect this new requirement. See issue #32.
