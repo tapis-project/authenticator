@@ -16,15 +16,23 @@
         },
         "privacy_idea_client_key": {
             "type": "string",
-                "description": "Client key for authenticating to Privacy Idea server"
+            "description": "Client key for authenticating to Privacy Idea server"
         },
         "privacy_idea_url": {
             "type": "string",
-                "description": "URL of the Privacy Idea server to authenticate to"
+            "description": "URL of the Privacy Idea server to authenticate to"
         },
         "realm": {
             "type": "string",
             "description": "Realm in which the Privacy Idea authentication occurs"
+        },
+        "expire": {
+            "type": "boolean",
+            "description": "Determines if a user's MFA should expire"
+        },
+        "expiry_frequency": {
+            "type": "integer",
+            "description": "How long until MFA expires, in seconds"
         }
     },
     "definitions": {

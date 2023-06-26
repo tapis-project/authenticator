@@ -2,6 +2,7 @@ from tapisservice import errors
 from tapisservice.config import conf
 from tapisservice.tapisflask import utils
 import json
+import time
 import requests
 from service.models import TenantConfig, tenant_configs_cache
 
@@ -9,7 +10,7 @@ from tapisservice.logs import get_logger
 
 logger = get_logger(__name__)
 
-def needs_mfa(tenant_id):
+def needs_mfa(tenant_id, mfa_timestamp=None):
     if conf.turn_off_mfa:
         return False
     logger.debug("checking if tenant needs mfa")
@@ -22,15 +23,22 @@ def needs_mfa(tenant_id):
         logger.debug(f"Error parsing mfa config: {e}")
         return False
 
-    return not not mfa_config
+    expired = check_mfa_expired(mfa_config, mfa_timestamp)
+
+    return expired
     
 
-def check_mfa_expired(last_mfa_timestamp=None):
+def check_mfa_expired(mfa_config, mfa_timestamp=None):
     """
     Based on the tenant's MFA config and an optional MFA timestamp corresponding to the 
     last time an MFA was completed, determine whether the MFA session should be expired.
     """
-    # todo -- check tenant config and add timestamp functionality
+    if mfa_timestamp is not None:
+        if "tacc" in mfa_config:
+            if mfa_config['tacc']['expire']:
+                current_time = time.time()
+                if current_time - mfa_timestamp > int(mfa_config['tacc']['expiry_frequency']):
+                    return False
     return True
 
 

@@ -4,6 +4,7 @@ from pydoc import cli
 import requests
 from requests.auth import HTTPBasicAuth
 import json
+import time
 from flask import g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
 from flask_restful import Resource
 # TODO: tapipy-1.4.0
@@ -556,7 +557,8 @@ class LoginResource(Resource):
                 username = f"{username}@{idp_id}"
 
         session['username'] = username
-        mfa_required = needs_mfa(tenant_id)
+        mfa_timestamp = session.get('mfa_timestamp', None)
+        mfa_required = needs_mfa(tenant_id, mfa_timestamp)
         redirect_url = 'authorizeresource'
         if mfa_required:
             redirect_url = 'mfaresource'
@@ -623,6 +625,7 @@ class MFAResource(Resource):
             if 'device_login' in session:
                 response_type = 'device_code'
             session['mfa_validated'] = True
+            session['mfa_timestamp'] = time.time()
             return redirect(url_for('authorizeresource',
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
