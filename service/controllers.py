@@ -992,7 +992,8 @@ class AuthorizeResource(Resource):
                 raise errors.ResourceError("Failure to generate an access token; please try again later.")
             url = f'{client.callback_url}?access_token={access_token}&state={state}&expires_in={expires_in}&token_type=Bearer'
             logger.debug(f"issuing redirect to {client.callback_url}")
-            if check_mfa_expired():
+            mfa_config = json.loads(config.mfa_config)
+            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
                 session.pop("mfa_validated", None)
             return redirect(url)
 
@@ -1021,7 +1022,8 @@ class AuthorizeResource(Resource):
             # issue redirect to client callback_url with authorization code:
             url = f'{client.callback_url}?code={authz_code}&state={state}'
             logger.debug(f"issuing redirect to {client.callback_url}")
-            if check_mfa_expired():
+            mfa_config = json.loads(config.mfa_config)
+            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
                 session.pop("mfa_validated", None)
             return redirect(url)
         elif client_response_type == 'device_code':
@@ -1093,7 +1095,8 @@ class AuthorizeResource(Resource):
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
             session.pop('device_login')
-            if check_mfa_expired():
+            mfa_config = json.loads(config.mfa_config)
+            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
                 session.pop("mfa_validated", None)
             return make_response(render_template("success.html"), 200, headers)
 
