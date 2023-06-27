@@ -881,8 +881,12 @@ class AuthorizeResource(Resource):
         if not tenant_id:
             tenant_id = session.get('tenant_id')
         logger.debug(f"session in authorize: {session}")
-        if session.get('mfa_required'):
-            if not session.get('mfa_validated'):
+        if session.get('mfa_required') == True:
+            config = tenant_configs_cache.get_config(tenant_id)
+            mfa_config = json.loads(config.mfa_config)
+            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
+                session.pop('mfa_validated', None)
+            if session.get('mfa_validated') == False:
                 logger.debug("Authorize Resource: Redirecting to MFA")
                 return redirect(url_for('mfaresource',
                                         client_id=client_id,
