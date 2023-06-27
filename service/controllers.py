@@ -882,8 +882,11 @@ class AuthorizeResource(Resource):
             tenant_id = session.get('tenant_id')
         logger.debug(f"session in authorize: {session}")
         if session.get('mfa_required') == True:
+            logger.info("MFA REQUIRED")
             config = tenant_configs_cache.get_config(tenant_id)
             mfa_config = json.loads(config.mfa_config)
+            logger.info(f"MFA Config: {mfa_config}")
+            logger.info(f"MFA Timestamp: {session.get('mfa_timestamp', None)}")
             if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
                 session.pop('mfa_validated', None)
             if session.get('mfa_validated') == False:
