@@ -880,7 +880,7 @@ class AuthorizeResource(Resource):
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get('tenant_id')
-        logger.debug(f"session in authorize: {session}")
+        logger.info(f"session in authorize: {session}")
         if session.get('mfa_required') == True:
             logger.info("MFA REQUIRED")
             config = tenant_configs_cache.get_config(tenant_id)
