@@ -23,6 +23,7 @@ def needs_mfa(tenant_id, mfa_timestamp=None):
         logger.debug(f"Error parsing mfa config: {e}")
         return False
 
+    return not not mfa_config
     expired = check_mfa_expired(mfa_config, mfa_timestamp)
 
     return expired
@@ -33,9 +34,7 @@ def check_mfa_expired(mfa_config, mfa_timestamp=None):
     Based on the tenant's MFA config and an optional MFA timestamp corresponding to the 
     last time an MFA was completed, determine whether the MFA session should be expired.
     """
-    logger.info("Checking MFA expired")
-    logger.info(f"MFA Config: {mfa_config}")
-    logger.info(f"MFA Timestamp: {mfa_timestamp}")
+    logger.debug("Checking MFA expired")
     if mfa_timestamp is not None:
         if "tacc" in mfa_config:
             if mfa_config['tacc']['expire']:

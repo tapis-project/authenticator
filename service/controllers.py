@@ -557,8 +557,8 @@ class LoginResource(Resource):
                 username = f"{username}@{idp_id}"
 
         session['username'] = username
-        mfa_timestamp = session.get('mfa_timestamp', None)
-        mfa_required = needs_mfa(tenant_id, mfa_timestamp)
+        #mfa_timestamp = session.get('mfa_timestamp', None)
+        mfa_required = needs_mfa(tenant_id)
         redirect_url = 'authorizeresource'
         if mfa_required:
             redirect_url = 'mfaresource'
@@ -625,7 +625,7 @@ class MFAResource(Resource):
             if 'device_login' in session:
                 response_type = 'device_code'
             session['mfa_validated'] = True
-            session['mfa_timestamp'] = time.time()
+            #session['mfa_timestamp'] = time.time()
             return redirect(url_for('authorizeresource',
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
@@ -880,15 +880,8 @@ class AuthorizeResource(Resource):
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get('tenant_id')
-        logger.info(f"session in authorize: {session}")
+        logger.debug(f"session in authorize: {session}")
         if session.get('mfa_required') == True:
-            logger.info("MFA REQUIRED")
-            config = tenant_configs_cache.get_config(tenant_id)
-            mfa_config = json.loads(config.mfa_config)
-            logger.info(f"MFA Config: {mfa_config}")
-            logger.info(f"MFA Timestamp: {session.get('mfa_timestamp', None)}")
-            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
-                session.pop('mfa_validated', None)
             if session.get('mfa_validated') == False:
                 logger.debug("Authorize Resource: Redirecting to MFA")
                 return redirect(url_for('mfaresource',
@@ -995,9 +988,6 @@ class AuthorizeResource(Resource):
                 raise errors.ResourceError("Failure to generate an access token; please try again later.")
             url = f'{client.callback_url}?access_token={access_token}&state={state}&expires_in={expires_in}&token_type=Bearer'
             logger.debug(f"issuing redirect to {client.callback_url}")
-            mfa_config = json.loads(config.mfa_config)
-            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
-                session.pop("mfa_validated", None)
             return redirect(url)
 
         # authorization_code grant type ---------------------------------------------
@@ -1025,9 +1015,6 @@ class AuthorizeResource(Resource):
             # issue redirect to client callback_url with authorization code:
             url = f'{client.callback_url}?code={authz_code}&state={state}'
             logger.debug(f"issuing redirect to {client.callback_url}")
-            mfa_config = json.loads(config.mfa_config)
-            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
-                session.pop("mfa_validated", None)
             return redirect(url)
         elif client_response_type == 'device_code':
             if 'device_code' not in allowable_grant_types:
@@ -1098,9 +1085,6 @@ class AuthorizeResource(Resource):
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
             session.pop('device_login')
-            mfa_config = json.loads(config.mfa_config)
-            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
-                session.pop("mfa_validated", None)
             return make_response(render_template("success.html"), 200, headers)
 
 
@@ -1701,12 +1685,7 @@ class WebappTokenAndRedirect(Resource):
                     username = 'Not available'
                 context['username'] = username
                 context['tenant_id'] = tenant_id
-                config = tenant_configs_cache.get_config(tenant_id)
-                mfa_config = json.loads(config.mfa_config)
-                logger.info(f"MFA Config: {mfa_config}")
-                logger.info(f"MFA Timestamp: {session.get('mfa_timestamp', None)}")
-                if not check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
-                    return make_response(render_template('token-display.html', **context), 200, headers)
+                return make_response(render_template('token-display.html', **context), 200, headers)
         # otherwise, if there is no token in the session, check the type of OAuth configured for this tenant;
         if not tenant_id:
             tenant_id = g.request_tenant_id
