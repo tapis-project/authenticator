@@ -1703,6 +1703,8 @@ class WebappTokenAndRedirect(Resource):
                 context['tenant_id'] = tenant_id
                 config = tenant_configs_cache.get_config(tenant_id)
                 mfa_config = json.loads(config.mfa_config)
+                logger.info(f"MFA Config: {mfa_config}")
+                logger.info(f"MFA Timestamp: {session.get('mfa_timestamp', None)}")
                 if not check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
                     return make_response(render_template('token-display.html', **context), 200, headers)
         # otherwise, if there is no token in the session, check the type of OAuth configured for this tenant;
