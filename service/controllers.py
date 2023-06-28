@@ -1701,7 +1701,10 @@ class WebappTokenAndRedirect(Resource):
                     username = 'Not available'
                 context['username'] = username
                 context['tenant_id'] = tenant_id
-                return make_response(render_template('token-display.html', **context), 200, headers)
+                config = tenant_configs_cache.get_config(tenant_id)
+                mfa_config = json.loads(config.mfa_config)
+                if not check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
+                    return make_response(render_template('token-display.html', **context), 200, headers)
         # otherwise, if there is no token in the session, check the type of OAuth configured for this tenant;
         if not tenant_id:
             tenant_id = g.request_tenant_id
