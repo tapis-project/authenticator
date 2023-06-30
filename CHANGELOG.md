@@ -8,9 +8,9 @@ All notable changes to this project will be documented in this file.
 an empty HTTP response. Applications that use this endpoint should be updated to handle a non-empty response.
 - The POST /v3/oauth2/tokens endpoint has been changed in the case of the device_code grant to require only the client_id as a POST parameter. Previously, the client_id and client_key were erroneously both required to be passed using an HTTP Basic Auth header. Client applications that utilized the device code grant type and passed the client credentials as part of the HTTP Basic Auth header must be updated to pass only the client id as part of the POST payload. The OA3 spec has been updated to reflect this new requirement. See issue #32.
 
-### New features
+### New features:
 - By default, an account with username "admin" is now created in the dev tenant (see issue #33).
-- Upgrade to tapipy 1.4.0 and associated library upgrades (e.g., openapi-core 0.16 from 0.12). This upgrade improves spec loading times and reduces the overall time for the authenticator service to start up. See issue 
+- Upgrade to tapipy 1.4.0 and associated library upgrades (e.g., openapi-core 0.16 from 0.12). This upgrade improves spec loading times and reduces the overall time for the authenticator service to start up. See issue #31.
 
 ### Bug fixes:
 - The POST /v3/oauth2/tokens endpoint has been changed in the case of the device_code grant to require only the client_id as a POST parameter. Previously, the client_id and client_key were erroneously both required to be passed using an HTTP Basic Auth header. Client applications that utilized the device code grant type and passed the client credentials as part of the HTTP Basic Auth header must be updated to pass only the client id as part of the POST payload. The OA3 spec has been updated to reflect this new requirement. See issue #32.
@@ -21,7 +21,7 @@ an empty HTTP response. Applications that use this endpoint should be updated to
 ### Breaking Changes:
 - None
 
-### New features
+### New features:
 - None
 
 ### Bug fixes:
@@ -34,7 +34,7 @@ an empty HTTP response. Applications that use this endpoint should be updated to
 ### Breaking Changes:
 - None
 
-### New features
+### New features:
 - Update the oa3 spec with a comment to indicate that Profile fields are optional; add check for custom idp types and still try to get the profile fields in those cases.
 
 ### Bug fixes:
@@ -45,7 +45,7 @@ an empty HTTP response. Applications that use this endpoint should be updated to
 ### Breaking Changes:
 - None
 
-### New features
+### New features:
 - None
 
 ### Bug fixes:
@@ -57,7 +57,7 @@ an empty HTTP response. Applications that use this endpoint should be updated to
 ### Breaking Changes:
 - None
 
-### New features
+### New features:
 - Add support for "multi_keycloak" OAuth extension type, allowing tenants to configure arbitrary KeyCloak
   instances.
 - Add support for "globus" OAuth extension type, enabling use of Globus Auth/CILogon without KeyCloak.
