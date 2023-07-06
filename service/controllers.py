@@ -1685,6 +1685,20 @@ class WebappTokenAndRedirect(Resource):
                     username = 'Not available'
                 context['username'] = username
                 context['tenant_id'] = tenant_id
+                config = tenant_configs_cache.get_config(tenant_id)
+                mfa_config = json.loads(config.mfa_config)
+                if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
+                    session["mfa_validated"] = False
+                    tokenapp_client = get_tokenapp_client()
+                    client_id = tokenapp_client['client_id']
+                    client_redirect_uri = tokenapp_client['callback_url']
+                    state = secrets.token_hex(24)
+                    session['state'] = state
+                    return redirect(url_for('mfaresource',
+                                        client_id=client_id,
+                                        redirect_uri=client_redirect_uri,
+                                        state=state,
+                                        response_type='code'))
                 return make_response(render_template('token-display.html', **context), 200, headers)
         # otherwise, if there is no token in the session, check the type of OAuth configured for this tenant;
         if not tenant_id:
