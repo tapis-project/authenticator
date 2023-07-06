@@ -625,7 +625,7 @@ class MFAResource(Resource):
             if 'device_login' in session:
                 response_type = 'device_code'
             session['mfa_validated'] = True
-            #session['mfa_timestamp'] = time.time()
+            session['mfa_timestamp'] = time.time()
             return redirect(url_for('authorizeresource',
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
