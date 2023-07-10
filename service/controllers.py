@@ -810,6 +810,8 @@ class AuthorizeResource(Resource):
         # check if the grant type is supported by this tenant
         config = tenant_configs_cache.get_config(tenant_id)
         allowable_grant_types = json.loads(config.allowable_grant_types)
+        mfa_config = json.loads(config.mfa_config)
+
         if response_type == 'token':
             if 'implicit' not in allowable_grant_types:
                 raise errors.ResourceError(f"The implicit grant type is not allowed for this "
@@ -880,15 +882,21 @@ class AuthorizeResource(Resource):
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get('tenant_id')
-        logger.debug(f"session in authorize: {session}")
+
+        logger.info(f"session in authorize: {session}")
+        
         if session.get('mfa_required') == True:
+            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
+                logger.info("MFA Expired")
+                session['mfa_validated'] = False
             if session.get('mfa_validated') == False:
-                logger.debug("Authorize Resource: Redirecting to MFA")
+                logger.info("Authorize Resource: Redirecting to MFA")
                 return redirect(url_for('mfaresource',
                                         client_id=client_id,
                                         redirect_uri=client_redirect_uri,
                                         state=client_state,
                                         response_type=response_type))
+
         headers = {'Content-Type': 'text/html'}
         logger.debug("Request args: %s" % request.args)
         display_name = ''
@@ -948,6 +956,19 @@ class AuthorizeResource(Resource):
         # check original response_type passed in by the client and make sure grant type supported by the tenant --
         config = tenant_configs_cache.get_config(tenant_id)
         allowable_grant_types = json.loads(config.allowable_grant_types)
+        mfa_config = json.loads(mfa_config)
+
+        if session.get('mfa_required') == True:
+            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
+                logger.info("MFA Expired")
+                session['mfa_validated'] = False
+                logger.info("Authorize Resource: Redirecting to MFA")
+                return redirect(url_for('mfaresource',
+                                        client_id=client_id,
+                                        redirect_uri=client_redirect_uri,
+                                        state=client_state,
+                                        response_type=client_response_type))
+        
         # implicit grant type -------------------------------------------------------
         if client_response_type == 'token':
             if 'implicit' not in allowable_grant_types:
