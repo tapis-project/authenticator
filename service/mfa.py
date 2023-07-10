@@ -34,14 +34,16 @@ def check_mfa_expired(mfa_config, mfa_timestamp=None):
     Based on the tenant's MFA config and an optional MFA timestamp corresponding to the 
     last time an MFA was completed, determine whether the MFA session should be expired.
     """
-    logger.debug("Checking MFA expired")
+    logger.info("Checking MFA expired")
     if mfa_timestamp is not None:
+        logger.info(f"mfa_timestamp: {mfa_timestamp}")
         if "tacc" in mfa_config:
+            logger.info(f"check mfa expired config: {mfa_config}")
             if mfa_config['tacc']['expire']:
                 current_time = time.time()
                 if current_time - mfa_timestamp > int(mfa_config['tacc']['expiry_frequency']):
-                    return False
-    return True
+                    return True
+    return False
 
 
 def call_mfa(token, tenant_id, username):

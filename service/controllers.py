@@ -1687,6 +1687,7 @@ class WebappTokenAndRedirect(Resource):
                 context['tenant_id'] = tenant_id
                 config = tenant_configs_cache.get_config(tenant_id)
                 mfa_config = json.loads(config.mfa_config)
+                logger.info(f"MFA CONFIG: {mfa_config}")
                 if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
                     session["mfa_validated"] = False
                     tokenapp_client = get_tokenapp_client()
