@@ -917,7 +917,7 @@ class AuthorizeResource(Resource):
         return make_response(render_template('authorize.html', **context), 200, headers)
 
     def post(self):
-        logger.debug("top of POST /oauth2/authorize")
+        logger.info("top of POST /oauth2/authorize")
         # selecting a tenant id is required before logging in -
         tenant_id = g.request_tenant_id
         if not tenant_id:
@@ -957,6 +957,8 @@ class AuthorizeResource(Resource):
         allowable_grant_types = json.loads(config.allowable_grant_types)
         mfa_config = json.loads(mfa_config)
 
+        logger.info(f"session in auth POST: {session}")
+
         if session.get('mfa_required') == True:
             if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
                 logger.info("MFA Expired")
@@ -967,6 +969,8 @@ class AuthorizeResource(Resource):
                                         redirect_uri=client_redirect_uri,
                                         state=client_state,
                                         response_type=client_response_type))
+        
+        logger.info(f"does basic test make it here?")
         
         # implicit grant type -------------------------------------------------------
         if client_response_type == 'token':

@@ -329,6 +329,7 @@ def test_authorization_code(client, init_db):
         with client.session_transaction() as sess:
             sess['username'] = TEST_USERNAME
         # once we leave the context, session updates applied via sess object are available -
+        print("post to authorize in test")
         response = client.post('http://localhost:5000/v3/oauth2/authorize',
                                data={'tenant_id': TEST_TENANT_ID,
                                      'approve': True,
@@ -336,6 +337,7 @@ def test_authorization_code(client, init_db):
                                      'client_redirect_uri': TEST_CLIENT_REDIRECT_URI,
                                      'client_response_type': 'code'
                                      })
+        print(response)
         assert response.status_code == 302
         # note: response.data is a raw bytes object containing the full HTML returned from the page.
         # try this if you want to debug ===>  print(response.data)
