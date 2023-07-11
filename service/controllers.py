@@ -566,7 +566,6 @@ class LoginResource(Resource):
             session['mfa_required'] = True
         if session.get('device_login'):
             redirect_url = 'deviceflowresource'
-        print(redirect_url)
         return redirect(url_for(redirect_url,
                                 client_id=client_id,
                                 redirect_uri=client_redirect_uri,
@@ -884,7 +883,7 @@ class AuthorizeResource(Resource):
             tenant_id = session.get('tenant_id')
 
         logger.info(f"session in authorize: {session}")
-        
+
         if session.get('mfa_required') == True:
             if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
                 logger.info("MFA Expired")
