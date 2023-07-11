@@ -1239,8 +1239,12 @@ class TokensResource(Resource):
                 logger.debug("no device code found in the request")
                 raise errors.ResourceError(msg="Required device_code parameter missing.")
             
-            logger.debug(f"consuming device code: {code}")
+            logger.info(f"consuming device code: {code}")
             db_code = DeviceCode.validate_and_consume_code(code)
+            logger.info(f"db_code: {db_code}")
+            if not db_code:
+                logger.info("No db_code found")
+                raise errors.ResourceError(msg=f"No db_code found for {code}")
 
             if client_id != db_code.client_id:
                 logger.debug("Passed in client_id and client_id of code are not equal")
