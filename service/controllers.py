@@ -959,16 +959,17 @@ class AuthorizeResource(Resource):
 
         logger.info(f"session in auth POST: {session}")
 
-        if session.get('mfa_required') == True:
-            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
-                logger.info("MFA Expired")
-                session['mfa_validated'] = False
-                logger.info("Authorize Resource: Redirecting to MFA")
-                return redirect(url_for('mfaresource',
-                                        client_id=client_id,
-                                        redirect_uri=client_redirect_uri,
-                                        state=client_state,
-                                        response_type=client_response_type))
+        if mfa_config:
+            if session.get('mfa_required') == True:
+                if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
+                    logger.info("MFA Expired")
+                    session['mfa_validated'] = False
+                    logger.info("Authorize Resource: Redirecting to MFA")
+                    return redirect(url_for('mfaresource',
+                                            client_id=client_id,
+                                            redirect_uri=client_redirect_uri,
+                                            state=client_state,
+                                            response_type=client_response_type))
         
         logger.info(f"does basic test make it here?")
         
