@@ -955,7 +955,7 @@ class AuthorizeResource(Resource):
         # check original response_type passed in by the client and make sure grant type supported by the tenant --
         config = tenant_configs_cache.get_config(tenant_id)
         allowable_grant_types = json.loads(config.allowable_grant_types)
-        mfa_config = json.loads(mfa_config)
+        mfa_config = json.loads(config.mfa_config)
 
         logger.info(f"session in auth POST: {session}")
 
