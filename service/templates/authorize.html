@@ -31,7 +31,10 @@
             <input type="hidden" name="device_code" value="{{ device_code }}">
             {% endif %}
             {% if user_code %}
-            <input type="hidden" name="device_code" value="{{ device_code }}">
+            <input type="hidden" name="user_code" value="{{ user_code }}">
+            {% endif %}
+            {% if test %}
+            <input type="hidden" name="user_code" value="{{ user_code }}">
             {% endif %}
         </label>
         <button type="submit">Submit</button>

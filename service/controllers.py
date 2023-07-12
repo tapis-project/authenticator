@@ -685,6 +685,7 @@ class DeviceFlowResource(Resource):
             return redirect(url_for('loginresource'), 302, headers)
 
         user_code = request.form.get('user_code')
+        logger.info(f"user code: {user_code}")
         device_code = DeviceCode.query.filter_by(tenant_id=tenant_id,
                                                     user_code=user_code).first()
         if not device_code:
@@ -714,7 +715,8 @@ class DeviceFlowResource(Resource):
                                         client_display_name=client.display_name,
                                         response_type='device_code',
                                         user_code=user_code,
-                                        device_code=device_code))
+                                        device_code=device_code,
+                                        test='test'))
             else:
                 response = "Code not eligible to be entered"
                 context = {'error': response,
