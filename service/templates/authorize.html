@@ -30,6 +30,9 @@
             {% if device_code %}
             <input type="hidden" name="device_code" value="{{ device_code }}">
             {% endif %}
+            {% if user_code %}
+            <input type="hidden" name="device_code" value="{{ device_code }}">
+            {% endif %}
         </label>
         <button type="submit">Submit</button>
      </div>

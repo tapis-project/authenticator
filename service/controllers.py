@@ -791,7 +791,7 @@ class AuthorizeResource(Resource):
     """
 
     def get(self):
-        logger.debug("top of GET /oauth2/authorize")
+        logger.info("top of GET /oauth2/authorize")
         is_device_flow = True if 'device_login' in session else False
         logger.debug("Authorize Resource: Checking Client")
         # if we are using the multi_idp custom oa2 extension type it is possible we are being redirected here, not by the 
@@ -897,7 +897,7 @@ class AuthorizeResource(Resource):
                                         response_type=response_type))
 
         headers = {'Content-Type': 'text/html'}
-        logger.debug("Request args: %s" % request.args)
+        logger.info(f"Request args: {request.args}")
         display_name = ''
         try:
             display_name = client.display_name
@@ -940,6 +940,7 @@ class AuthorizeResource(Resource):
                                 f'must approve the request.'}
             return make_response(render_template('authorize.html', **context), 200, headers)
 
+        logger.info(f"request.form: {request.form}")
         state = request.form.get("client_state")
         client_response_type = request.form.get('client_response_type')
         client_id = request.form.get('client_id', None)
