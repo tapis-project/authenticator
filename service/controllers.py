@@ -708,6 +708,7 @@ class DeviceFlowResource(Resource):
                 except Exception as e:
                     logger.error("Error trying to update device code entry; error: {e}")
                     raise errors.ResourceError("Unable to update device, cannot continue device flow")
+                logger.info("Redirecting to authorize resource from POST DeviceFlow resource")
                 return redirect(url_for('authorizeresource',
                                         client_id=client.client_id,
                                         redirect_uri=None,
