@@ -1041,8 +1041,8 @@ class AuthorizeResource(Resource):
             if 'device_code' not in allowable_grant_types:
                 raise errors.ResourceError(f"The authorization_code grant type is not allowed for this "
                                            f"tenant. Allowable grant types: {allowable_grant_types}")
-            code = request.form.get('device_code')
-            logger.debug(f"Device code passed in: {code}")
+            code = request.form.get('user_code')
+            logger.info(f"Device code passed in: {code}")
             # check that device code exists in the database
             try:
                 device_code = DeviceCode.query.filter_by(code=code,
