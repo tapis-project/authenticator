@@ -615,12 +615,15 @@ class MFAResource(Resource):
                 f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}")
             return redirect(url_for('loginresource'), 200, headers)
         mfa_token = request.form.get('mfa_token')
+        source = request.form.get('source', None)
+        user_code = request.form.get('user_code', None)
+        device_code = request.form.get('device_code', None)
+        
         response = "Incorrect MFA token"
         logger.debug("MFA CODE: %s" % mfa_token)
         validated = call_mfa(mfa_token, tenant_id, username)
         display_name = ''
         redirect_url = 'authorizeresource'
-        source = request.form.get('source', None)
         try:
             display_name = client.display_name
         except Exception as e:
@@ -630,8 +633,6 @@ class MFAResource(Resource):
             if 'device_login' in session and source != 'authorize':
                 redirect_url = 'deviceflowresource'
                 response_type = 'device_code'
-                user_code = request.form.get('user_code', None)
-                device_code = request.form.get('device_code', None)
             session['mfa_validated'] = True
             session['mfa_timestamp'] = time.time()
             return redirect(url_for(redirect_url,
