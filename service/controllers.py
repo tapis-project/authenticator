@@ -957,21 +957,16 @@ class AuthorizeResource(Resource):
         allowable_grant_types = json.loads(config.allowable_grant_types)
         mfa_config = json.loads(config.mfa_config)
 
-        logger.info(f"session in auth POST: {session}")
-
         if mfa_config:
             if session.get('mfa_required') == True:
                 if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
-                    logger.info("MFA Expired")
                     session['mfa_validated'] = False
-                    logger.info("Authorize Resource: Redirecting to MFA")
+                    logger.info("Authorize Resource: MFA expired, redirecting to MFA resource")
                     return redirect(url_for('mfaresource',
                                             client_id=client_id,
                                             redirect_uri=client_redirect_uri,
                                             state=client_state,
                                             response_type=client_response_type))
-        
-        logger.info(f"does basic test make it here?")
         
         # implicit grant type -------------------------------------------------------
         if client_response_type == 'token':
@@ -1041,6 +1036,7 @@ class AuthorizeResource(Resource):
             url = f'{client.callback_url}?code={authz_code}&state={state}'
             logger.debug(f"issuing redirect to {client.callback_url}")
             return redirect(url)
+
         elif client_response_type == 'device_code':
             if 'device_code' not in allowable_grant_types:
                 raise errors.ResourceError(f"The authorization_code grant type is not allowed for this "
@@ -1052,6 +1048,7 @@ class AuthorizeResource(Resource):
                 device_code = DeviceCode.query.filter_by(code=code,
                                                         tenant_id=tenant_id,
                                                         status="Entered").first()
+                logger.info(f"User code entered for device code: {device_code}")
             except Exception as e:
                 logger.debug(f"Error grabbing code: {code}; error: {e}")
                 error = e
@@ -1094,7 +1091,7 @@ class AuthorizeResource(Resource):
             if session.get('idp_id'):
                 device_code.tapis_idp_id = session.get('idp_id')
             try:
-                logger.debug(f"Updating device code: {device_code}")
+                logger.info(f"Updating device code: {device_code}")
                 db.session.commit()
             except Exception as e:
                 logger.error(f"Error updating {device_code}; e: {e}")
