@@ -912,7 +912,8 @@ class AuthorizeResource(Resource):
                    'client_response_type': response_type,
                    'client_state': client_state,
                    'device_login': session.get('device_login', None),
-                   'device_code': request.args.get('device_code', None)}
+                   'device_code': request.args.get('device_code', None),
+                   'user_code': request.args.get('user_code', None)}
 
         return make_response(render_template('authorize.html', **context), 200, headers)
 
