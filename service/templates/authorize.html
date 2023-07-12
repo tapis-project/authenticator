@@ -18,6 +18,8 @@
      <div class="container">
         <label>
           {% if device_login %}
+          User Code: {{ user_code }}
+          Device Code: {{ device_code }}
           <label for="ttl">Time for token to live in days (default: 30)</label>
           <input type="text" id="ttl" name="ttl">
           {% endif %}

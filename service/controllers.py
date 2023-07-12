@@ -556,6 +556,7 @@ class LoginResource(Resource):
             if append_idp_to_username:
                 username = f"{username}@{idp_id}"
 
+        response_type = 'code'
         session['username'] = username
         #mfa_timestamp = session.get('mfa_timestamp', None)
         mfa_required = needs_mfa(tenant_id)
@@ -565,13 +566,13 @@ class LoginResource(Resource):
             session['mfa_validated'] = False
             session['mfa_required'] = True
         if session.get('device_login'):
-            redirect_url = 'deviceflowresource'
+            response_type = 'device_code'
         return redirect(url_for(redirect_url,
                                 client_id=client_id,
                                 redirect_uri=client_redirect_uri,
                                 state=client_state,
                                 client_display_name=client_display_name,
-                                response_type='code'))
+                                response_type=response_type))
 
 class MFAResource(Resource):
     def get(self):
@@ -596,7 +597,10 @@ class MFAResource(Resource):
                    'client_redirect_uri': client_redirect_uri,
                    'client_state': client_state,
                    'tenant_id': tenant_id,
-                   'username': session.get('username')}
+                   'username': session.get('username'),
+                   'user_code': request.args.get('user_code', None),
+                   'device_code': request.args.get('device_code', None),
+                   'source': request.args.get('source', None)}
         return make_response(render_template('mfa.html', **context), 200, headers)
 
     def post(self):
@@ -615,22 +619,30 @@ class MFAResource(Resource):
         logger.debug("MFA CODE: %s" % mfa_token)
         validated = call_mfa(mfa_token, tenant_id, username)
         display_name = ''
+        redirect_url = 'authorizeresource'
+        source = request.form.get('source', None)
         try:
             display_name = client.display_name
         except Exception as e:
             logger.debug(f"Error getting client display name. e: {e}")
         if validated:
-            response_type = 'code'
-            if 'device_login' in session:
+            # response_type = 'code'
+            if 'device_login' in session and source != 'authorize':
+                redirect_url = 'deviceflowresource'
                 response_type = 'device_code'
+                user_code = request.form.get('user_code', None)
+                device_code = request.form.get('device_code', None)
             session['mfa_validated'] = True
             session['mfa_timestamp'] = time.time()
-            return redirect(url_for('authorizeresource',
+            return redirect(url_for(redirect_url,
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
                                     state=client_state,
                                     client_display_name=display_name,
-                                    response_type=response_type))
+                                    response_type=response_type,
+                                    user_code=user_code,
+                                    device_code=device_code,
+                                    source=source))
         else:
             context = {'error': response,
                    'username': session.get('username')}
@@ -716,8 +728,7 @@ class DeviceFlowResource(Resource):
                                         client_display_name=client.display_name,
                                         response_type='device_code',
                                         user_code=user_code,
-                                        device_code=device_code,
-                                        test='test'))
+                                        device_code=device_code))
             else:
                 response = "Code not eligible to be entered"
                 context = {'error': response,
@@ -887,18 +898,6 @@ class AuthorizeResource(Resource):
 
         logger.info(f"session in authorize: {session}")
 
-        if session.get('mfa_required') == True:
-            if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
-                logger.info("MFA Expired")
-                session['mfa_validated'] = False
-            if session.get('mfa_validated') == False:
-                logger.info("Authorize Resource: Redirecting to MFA")
-                return redirect(url_for('mfaresource',
-                                        client_id=client_id,
-                                        redirect_uri=client_redirect_uri,
-                                        state=client_state,
-                                        response_type=response_type))
-
         headers = {'Content-Type': 'text/html'}
         logger.info(f"Request args: {request.args}")
         display_name = ''
@@ -1048,6 +1047,7 @@ class AuthorizeResource(Resource):
                                            f"tenant. Allowable grant types: {allowable_grant_types}")
             code = request.form.get('user_code')
             logger.info(f"User code passed in: {code}")
+
             # check that device code exists in the database
             try:
                 device_code = DeviceCode.query.filter_by(user_code=code,
@@ -1070,8 +1070,22 @@ class AuthorizeResource(Resource):
                    'device_code': code,
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
-            logger.info("Past exception")
-            logger.info(f"Default TTL: {DEFAULT_DEVICE_CODE_TOKEN_TTL}")
+
+            if session.get('mfa_required') == True:
+                if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
+                    logger.info("MFA Expired")
+                    session['mfa_validated'] = False
+                if session.get('mfa_validated') == False:
+                    logger.info("Authorize Resource: Redirecting to MFA")
+                    return redirect(url_for('mfaresource',
+                                            client_id=client_id,
+                                            redirect_uri=client_redirect_uri,
+                                            state=client_state,
+                                            response_type='device_code',
+                                            user_code=code,
+                                            device_code=device_code,
+                                            source='authorize'))
+
             headers = {'Content-Type': 'text/html'}
             ttl = request.form.get("ttl", DEFAULT_DEVICE_CODE_TOKEN_TTL)
             if ttl == "" or ttl == " ":
