@@ -645,7 +645,7 @@ class DeviceFlowResource(Resource):
         """
         Displays page with box to enter user code
         """
-        logger.debug("GET - Device Flow")
+        logger.info("GET - Device Flow")
         tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
         client_id = request.args.get("client_id")
@@ -669,7 +669,7 @@ class DeviceFlowResource(Resource):
         return make_response(render_template('device-code.html', **context), 200, headers)
 
     def post(self):
-        logger.debug("POST - Device Flow")
+        logger.info("POST - Device Flow")
         tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
         session['device_login'] = True
@@ -689,7 +689,7 @@ class DeviceFlowResource(Resource):
                                                     user_code=user_code).first()
         if not device_code:
             raise errors.ResourceError("Invalid code.")
-        logger.debug(f"Got device code: {device_code}")
+        logger.info(f"Got device code: {device_code}")
         # ask about this
         try:
             client = Client.query.filter_by(client_id=device_code.client_id).first()
@@ -1042,10 +1042,10 @@ class AuthorizeResource(Resource):
                 raise errors.ResourceError(f"The authorization_code grant type is not allowed for this "
                                            f"tenant. Allowable grant types: {allowable_grant_types}")
             code = request.form.get('user_code')
-            logger.info(f"Device code passed in: {code}")
+            logger.info(f"User code passed in: {code}")
             # check that device code exists in the database
             try:
-                device_code = DeviceCode.query.filter_by(code=code,
+                device_code = DeviceCode.query.filter_by(user_code=code,
                                                         tenant_id=tenant_id,
                                                         status="Entered").first()
                 logger.info(f"User code entered for device code: {device_code}")
@@ -1065,6 +1065,8 @@ class AuthorizeResource(Resource):
                    'device_code': code,
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
+            logger.info("Past exception")
+            logger.info(f"Default TTL: {DEFAULT_DEVICE_CODE_TOKEN_TTL}")
             headers = {'Content-Type': 'text/html'}
             ttl = request.form.get("ttl", DEFAULT_DEVICE_CODE_TOKEN_TTL)
             if ttl == "" or ttl == " ":
@@ -1087,7 +1089,9 @@ class AuthorizeResource(Resource):
                 print(f"User entered: {ttl} which is not an int")
                 return make_response(render_template("authorize.html", **context), 200, headers)
             if int(ttl) > 0:
+                logger.info("ttl > 0")
                 device_code.access_token_ttl = int(ttl) * 60 * 60 * 24
+                logger.info("set new access_token_ttl")
             if session.get('idp_id'):
                 device_code.tapis_idp_id = session.get('idp_id')
             try:
