@@ -27,6 +27,12 @@
             <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
             <input type="hidden" name="client_state" value="{{ client_state }}">
             <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
+            {% if device_code is not none %}
+            <input type="hidden" name="device_code" value="{{ device_code }}">
+            {% endif %}
+            {% if user_code is not none %}
+            <input type="hidden" name="user_code" value="{{ user_code }}">
+            {% endif %}
         </label>
         <button type="submit">Submit</button>
      </div>
