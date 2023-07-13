@@ -822,6 +822,21 @@ class AuthorizeResource(Resource):
         allowable_grant_types = json.loads(config.allowable_grant_types)
         mfa_config = json.loads(config.mfa_config)
 
+        if mfa_config:
+            if session.get('mfa_required') == True:
+                if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
+                    session['mfa_validated'] = False
+                if session.get('mfa_validated') == False:
+                    logger.debug("Authorize Resource: Redirecting to MFA")
+                    return redirect(url_for('mfaresource',
+                                            client_id=client_id,
+                                            redirect_uri=client_redirect_uri,
+                                            state=client_state,
+                                            response_type=response_type,
+                                            user_code=request.args.get('user_code', None),
+                                            device_code=request.args.get('device_code', None),
+                                            source='authorize'))
+
         if response_type == 'token':
             if 'implicit' not in allowable_grant_types:
                 raise errors.ResourceError(f"The implicit grant type is not allowed for this "
@@ -953,6 +968,21 @@ class AuthorizeResource(Resource):
         config = tenant_configs_cache.get_config(tenant_id)
         allowable_grant_types = json.loads(config.allowable_grant_types)
         mfa_config = json.loads(config.mfa_config)
+
+        if mfa_config:
+            if session.get('mfa_required') == True:
+                if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
+                    session['mfa_validated'] = False
+                if session.get('mfa_validated') == False:
+                    logger.debug("Authorize Resource: Redirecting to MFA")
+                    return redirect(url_for('mfaresource',
+                                            client_id=client_id,
+                                            redirect_uri=client_redirect_uri,
+                                            state=client_state,
+                                            response_type=client_response_type,
+                                            user_code=request.args.get('user_code', None),
+                                            device_code=request.args.get('device_code', None),
+                                            source='authorize'))
         
         # implicit grant type -------------------------------------------------------
         if client_response_type == 'token':
@@ -1053,21 +1083,6 @@ class AuthorizeResource(Resource):
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
 
-            if mfa_config:
-                if session.get('mfa_required') == True:
-                    if check_mfa_expired(mfa_config, session.get('mfa_timestamp', None)):
-                        session['mfa_validated'] = False
-                    if session.get('mfa_validated') == False:
-                        logger.debug("Authorize Resource: Redirecting to MFA")
-                        return redirect(url_for('mfaresource',
-                                                client_id=client_id,
-                                                redirect_uri=client_redirect_uri,
-                                                state=client_state,
-                                                response_type='device_code',
-                                                user_code=code,
-                                                device_code=device_code,
-                                                source='authorize'))
-
             headers = {'Content-Type': 'text/html'}
             ttl = request.form.get("ttl", DEFAULT_DEVICE_CODE_TOKEN_TTL)
             if ttl == "" or ttl == " ":
@@ -1075,7 +1090,6 @@ class AuthorizeResource(Resource):
             try:
                 int(ttl)
             except ValueError:
-                client_redirect_uri = request.form.get('client_redirect_uri')
                 client_state = request.form.get('client_state')
                 context = {'error': 'Please enter an integer',
                    'username': session['username'],
