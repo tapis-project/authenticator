@@ -12,7 +12,8 @@ import uuid
 from tapisservice.config import conf
 from tapisservice.errors import DAOError, ServiceConfigError
 from tapisservice.logs import get_logger
-from service import errors
+from service.errors import InvalidAuthorizationCodeError, InvalidDeviceCodeError
+
 
 from service import MIGRATIONS_RUNNING
 
@@ -434,10 +435,10 @@ class AuthorizationCode(db.Model):
                                           client_id=client_id,
                                           client_key=client_key).first()
         if not code_result:
-            raise errors.InvalidAuthorizationCodeError(msg="authorization code not valid.")
+            raise InvalidAuthorizationCodeError(msg="authorization code not valid.")
         # check for an expired code, plus a fudge factor for clock skew:
         if not datetime.datetime.utcnow() <= code_result.expiry_time + datetime.timedelta(seconds=6):
-            raise errors.InvalidAuthorizationCodeError(msg="authorization code has expired.")
+            raise InvalidAuthorizationCodeError(msg="authorization code has expired.")
         return code_result
         
     @classmethod
@@ -458,7 +459,7 @@ class AuthorizationCode(db.Model):
             logger.debug(f"validated and consumed authorization code: {code}")
         except Exception as e:
             logger.error(f"Got exception trying to delete authorization code; code: {code}; e: {e}; type(e): {type(e)}")
-            raise errors.InvalidAuthorizationCodeError(msg="authorization code could not be deleted.")
+            raise InvalidAuthorizationCodeError(msg="authorization code could not be deleted.")
         return code
 
 class DeviceCode(db.Model):
@@ -533,48 +534,41 @@ class DeviceCode(db.Model):
         """
         Validate the use of a device code. This method checks the code expiry and client credentials against the
         DeviceCode table.
-        :param tenant_id (str) The tenant_id for which the device code belongs.
-        :param code: (str) The device code.
-        :param client_id: (str) The client_id owning the code.
-        :param client_key: (str) Associated client_secret.
+
         :return:
         """
         code_result = cls.query.filter_by(code=code).first()
         if not code_result:
             logger.debug(f"Device Code: {code_result} not found")
-            raise errors.InvalidDeviceCodeError(msg="device code not valid.")
+            raise InvalidDeviceCodeError(msg="device code not valid.")
         if not code_result.status == "Entered":
             logger.debug(f"Device Code: {code_result} not ready to be used")
-            raise errors.InvalidDeviceCodeError(msg="device code not ready.")
+            raise InvalidDeviceCodeError(msg="device code not ready.")
         # check for an expired code, plus a fudge factor for clock skew:
         if not datetime.datetime.utcnow() <= code_result.expiry_time + datetime.timedelta(seconds=6):
             logger.error(f"Device Code: {code_result} expired")
             db.session.delete(code_result)
             db.session.commit()
             logger.error(f"Device Code: {code_result} deleted")
-            raise errors.InvalidDeviceCodeError(msg="device code has expired and is now deleted.")
+            raise InvalidDeviceCodeError(msg="device code has expired and is now deleted.")
         return code_result
         
     @classmethod
-    def validate_and_consume_code(cls, code):
+    def consume_code(cls, code):
         """
         Validate the use of a device code and then consume it. This method checks the code expiry and
         client credentials against the DeviceCode table; if valid the code is then deleted.
-        :param tenant_id (str) The tenant_id for which the device code belongs.
-        :param code: (str) The device code.
-        :param client_id: (str) The client_id owning the code.
-        :param client_key: (str) Associated client_secret.
-        :return:
+        :return: cod
         """
         code = DeviceCode.validate_code(code)
         try:
             db.session.delete(code)
             db.session.commit()
-            logger.debug(f"Validated and consumed device code: {code}")
+            logger.debug(f"Consumed device code: {code}")
         except Exception as e:
             logger.error(f"Got exception trying to delete device code; code: {code}; e: {e}; type(e): {type(e)}")
-            raise errors.InvalidDeviceCodeError(msg="device code could not be deleted.")
-        return code
+            raise InvalidDeviceCodeError(msg="device code could not be deleted.")
+        return True
 
 
 class AccessTokens(db.Model):

@@ -558,8 +558,8 @@ class LoginResource(Resource):
 
         response_type = 'code'
         session['username'] = username
-        #mfa_timestamp = session.get('mfa_timestamp', None)
-        mfa_required = needs_mfa(tenant_id)
+        mfa_timestamp = session.get('mfa_timestamp', None)
+        mfa_required = needs_mfa(tenant_id, mfa_timestamp)
         redirect_url = 'authorizeresource'
         if mfa_required:
             redirect_url = 'mfaresource'
@@ -768,6 +768,9 @@ class DeviceCodeResource(Resource):
         # we just need the part of the URL up to the "/v3/oauth2" (i.e., the base URL) so we 
         # split on that:
         device_code_base_url = request.base_url.split("/v3/oauth2")[0]
+        if not 'localhost' in device_code_base_url:
+            device_code_base_url = device_code_base_url.replace('http://', 'https://')
+        
         device_code = DeviceCode(tenant_id=tenant_id,
                                  username=None,
                                  client_id=client_id,
@@ -1259,7 +1262,7 @@ class TokensResource(Resource):
                 raise errors.ResourceError(msg="Required device_code parameter missing.")
             
             logger.debug(f"consuming device code: {code}")
-            db_code = DeviceCode.validate_and_consume_code(code)
+            db_code = DeviceCode.validate_code(code)
             if not db_code:
                 raise errors.ResourceError(msg=f"No db_code found for {code}")
 
@@ -1268,6 +1271,8 @@ class TokensResource(Resource):
                 raise errors.ResourceError(msg="Client IDs do not match between device code and passed in client_id")
 
             client_key = db_code.client_key
+
+            DeviceCode.consume_code(code)
         
         if not client_id and not client_key and grant_type == 'password':
             logger.debug("Allowing the password grant request even though the auth header missing.")
