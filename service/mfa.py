@@ -19,15 +19,12 @@ def needs_mfa(tenant_id, mfa_timestamp=None):
 
     try:
         mfa_config = json.loads(tenant_config.mfa_config)
+        expired = check_mfa_expired(mfa_config, mfa_timestamp)
     except Exception as e:
         logger.debug(f"Error parsing mfa config: {e}")
         return False
 
-    return not not mfa_config
-    expired = check_mfa_expired(mfa_config, mfa_timestamp)
-
-    return expired
-    
+    return not not mfa_config and expired
 
 def check_mfa_expired(mfa_config, mfa_timestamp=None):
     """
@@ -40,8 +37,8 @@ def check_mfa_expired(mfa_config, mfa_timestamp=None):
             if mfa_config['tacc']['expire']:
                 current_time = time.time()
                 if current_time - mfa_timestamp > int(mfa_config['tacc']['expiry_frequency']):
-                    return False
-    return True
+                    return True
+    return False
 
 
 def call_mfa(token, tenant_id, username):
