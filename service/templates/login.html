@@ -2,11 +2,11 @@
 
 {% block assets %}
 {{ block.super }}
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.0/dist/core-styles.settings.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.0/dist/settings/color--portal.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.0/dist/settings/font--portal.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.0/dist/trumps/s-form--login.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.0/dist/trumps/s-form-page.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/core-styles.settings.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/settings/color--portal.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/settings/font--portal.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/trumps/s-form--login.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/trumps/s-form-page.css">
 {% endblock %}
 
 {% block banner %}
@@ -18,10 +18,10 @@
 <main class="s-form-page">
   <form action="" method="post" class="s-form s-form--login">
     <h1>
-      <img
-        src="/authorize/tapis-and-tacc.png"
-        alt="TACC Logo"
-      />
+      <figure>
+        {% include branding.html with tenant_id=tenant_id only %}
+        {% include branding.html with tenant_id="tacc" only %}
+      </figure>
       <span>Tapis Login</span>
     </h1>
     <p>Tenant {{ tenant_id }}</p>
