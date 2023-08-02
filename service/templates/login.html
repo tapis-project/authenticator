@@ -5,6 +5,8 @@
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/core-styles.settings.css">
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/settings/color--portal.css">
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/settings/font--portal.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/elements/links.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/trumps/s-form.css">
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/trumps/s-form--login.css">
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.16.1/dist/trumps/s-form-page.css">
 {% endblock %}
@@ -22,9 +24,9 @@
         {% include branding.html with tenant_id=tenant_id only %}
         {% include branding.html with tenant_id="tacc" only %}
       </figure>
-      <span>Tapis Login</span>
+      <span>Log In</span>
     </h1>
-    <p>Tenant {{ tenant_id }}</p>
+    <p>to continue to {{ tenant_id }}</p>
 
     {% if error %}
     <ul>
@@ -45,10 +47,31 @@
     <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
     <input type="hidden" name="client_state" value="{{ client_state }}">
     <footer>
+      <a
+        href="https://accounts.tacc.utexas.edu/register"
+        rel="noreferrer"
+        target="_blank"
+      >
+        Create Account
+      </a>
       <button type="submit">Login</button>
     </footer>
     <nav>
-      <p>Forgot <a href="mailto:CICSupport@tacc.utexas.edu">password?</a></p>
+      <p>Having trouble logging in?</p>
+      <a
+        href="https://tacc.utexas.edu/about/help/"
+        rel="noreferrer"
+        target="_blank"
+      >
+        Reset Password
+      </a>
+      <a
+        href="https://accounts.tacc.utexas.edu/forgot_password"
+        rel="noreferrer"
+        target="_blank"
+      >
+        Account Help
+      </a>
     </nav>
   </form>
   <footer>
