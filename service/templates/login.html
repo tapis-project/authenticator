@@ -15,10 +15,12 @@
 {% endblock %}
 {% block head_extra %}
 <style>
-/* So body is as tall as page, thus sticky footer sticks to bottom of page */
-/* FAQ: Replace base.html fixed footer because it has a disadvantage—
-        it covers the login form on screens shorter than the form */
 body {
+  background-color: var(--global-color-primary--light);
+
+  /* So body is as tall as page, thus sticky footer sticks to bottom of page */
+  /* FAQ: Replace base.html fixed footer because it has a disadvantage—
+          it covers the login form on screens shorter than the form */
   min-height: 100vh;
 }
 </style>
