@@ -1,4 +1,5 @@
 from copy import deepcopy
+import os
 import datetime
 import json
 from flask import session, Flask, g
@@ -25,8 +26,9 @@ app = Flask(__name__)
 # set the session expiry to a low level to force logins
 app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(minutes=15)
 
-# app.secret_key = b"\x00" + secrets.token_bytes(12) + b"\x00"
-app.secret_key = b"AGHsjfh!#%$SNFJqw"
+
+app.secret_key = os.environ.get('AUTHENTICATOR_APP_SECRET_KEY', b"AGHsjfh!#%$SNFJqw")
+
 try:
     full_db_url = f'postgresql://{conf.postgres_user}:{conf.postgres_password}@{conf.sql_db_url}'
 except Exception as e:
