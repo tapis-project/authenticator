@@ -1,36 +1,118 @@
 {% extends 'base.html' %}
+
+{% block assets %}
+{{ block.super }}
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/core-styles.settings.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/settings/color--portal.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/settings/font--portal.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/links.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/sticky-footer.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form--login.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form-page.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-footer.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-footer--thin.css">
+{% endblock %}
+{% block head_extra %}
+<style>
+body {
+  background-color: var(--global-color-primary--light);
+
+  /* So body is as tall as page, thus sticky footer sticks to bottom of page */
+  /* FAQ: Replaces base.html fixed footer because it has a disadvantage—
+          it covers the login form on screens shorter than the form */
+  min-height: 100vh;
+}
+</style>
+{% endblock %}
+
+{# So banner is NOT rendered #}
+{% block banner %}
+{% endblock %}
+
 {% block content %}
 <body>
 
- <div class="container">
-    <h2> Tapis Login - Tenant {{ tenant_id }} </h2>
- </div>
+<main class="s-form-page">
+  <form action="" method="post" class="s-form s-form--login">
+    <h1>
+      <figure>
+        {% include branding.html with tenant_id=tenant_id only %}
+        {% include branding.html with tenant_id="tacc" only %}
+      </figure>
+      <span>Log In</span>
+    </h1>
+    <p>to continue to {{ tenant_id }}</p>
 
- <form action="" method="post">
+    {% if error %}
+    <ul>
+      <li>Error: {{ error }}</li>
+    </ul>
+    {% endif %}
 
-
-     {% if error %}
-   <div class="container">
-      <p>Error: {{ error }}</p>
-   </div>
-     {% endif %}
-
-     <div class="container">
-         <div class="input-group">
-            Username: <input id="username" type="text" class="form-control" name="username" placeholder="Enter Username" required>
-         </div>
-         <div class="input-group">
-            Password: <input id="password" type="password" class="form-control" name="password" placeholder="Enter Password" required>
-            <input type="hidden" name="client_id" value="{{ client_id }}">
-            <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
-            <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
-            <input type="hidden" name="client_state" value="{{ client_state }}">
-         </div>
-        <button type="submit">Login</button>
+    <div class="has-required">
+      <label>Username</label>
+      <input id="username" type="text" name="username" required>
     </div>
-  <div class="container" style="background-color:#f1f1f1">
-    <button type="button" class="cancelbtn">Cancel</button>
-    <span class="psw">Forgot <a href="mailto:CICSupport@tacc.utexas.edu">password?</a></span>
-  </div>
-</form>
+    <div class="has-required">
+      <label>Password</label>
+      <input id="password" type="password" name="password" required>
+    </div>
+    <input type="hidden" name="client_id" value="{{ client_id }}">
+    <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
+    <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
+    <input type="hidden" name="client_state" value="{{ client_state }}">
+    <footer>
+      <a
+        href="https://accounts.tacc.utexas.edu/register"
+        rel="noreferrer"
+        target="_blank"
+      >
+        Create Account
+      </a>
+      <button type="submit">Login</button>
+    </footer>
+    <nav>
+      <p>Having trouble logging in?</p>
+      <a
+        href="https://tacc.utexas.edu/about/help/"
+        rel="noreferrer"
+        target="_blank"
+      >
+        Reset Password
+      </a>
+      <a
+        href="https://accounts.tacc.utexas.edu/forgot_password"
+        rel="noreferrer"
+        target="_blank"
+      >
+        Account Help
+      </a>
+    </nav>
+  </form>
+  <footer>
+    <a href="https://tacc.utexas.edu/about/security-and-compliance/">
+      Security
+    </a>
+    <a href="https://tacc.utexas.edu/use-tacc/user-policies/">
+      Policies
+    </a>
+  </footer>
+</main>
+{% endblock %}
+
+{% block footer %}
+<footer class="s-footer">
+  <p>Tapis project funded by NSF OAC grants
+    <a
+      href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931439"
+      rel="noreferrer"
+      target="_blank">#1931439</a>,
+    <a
+      href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931575"
+      rel="noreferrer"
+      target="_blank">#1931575</a>
+    and #2232259.
+  </p>
+</footer>
 {% endblock %}

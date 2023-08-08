@@ -5,20 +5,24 @@
   <title>Tapis Authentication</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% block assets %}
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css">
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
-</head>
+  {% endblock %}
 
-<style>
-  .footer {
-     position: fixed;
-     left: 0;
-     bottom: 0;
-     width: 100%;
-     text-align: center;
-  }
-  </style>
+  {% block head_extra %}
+  <style>
+    .footer {
+      position: fixed;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      text-align: center;
+    }
+    </style>
+  {% endblock %}
+</head>
 <!--<html>-->
 <!--<head>-->
 <!--<meta name="viewport" content="width=device-width, initial-scale=1">-->
@@ -87,39 +91,17 @@
 <!--</style>-->
 <!--</head>-->
 
-{% if tenant_id == "jupyter-tacc-dev" %}
-<div class="container">
-  <img src="authorize/icicle-logo.png" alt="Icicle" class="img-responsive" style="width:70%; height:70%">
-</div>
-{% elif tenant_id == "designsafe" %}
-<div class="row">
-  <div class = "column">
-    <img src="authorize/designsafe.jpg" alt="DesignSafe" class="img-responsive" style="width:30%; height:30%">
-  </div>
-  <div class = "column">
-    <img src="authorize/tacc.jpg" alt="TACC" class="img-responsive" style="width:30%; height:30%">
-  </div>
-</div>
-{% elif tenant_id == "icicle" %}
-<div class = "container">
-  <img src="authorize/icicle-logo.png" alt="Icicle" class="img-responsive" style="width:70%; height:70%">
-</div>
-{% elif tenant_id == "dev" %}
-<div class = "container">
-  <img src="authorize/dev.jpeg" alt="Dev" class="img-responsive" style="width:70%; height:70%">
-</div>
-{% else %}
-<div class="container">
-    <img src="authorize/tapis.jpg" alt="Tapis" class="img-responsive" style="width:70%; height:70%">
-</div>
-{% endif %}
-
+{% block banner %}
+{% include branding.html with is_banner=true tenant_id=tenant_id only %}
+{% endblock %}
 
 {% block content %}
 {% endblock %}
 
+{% block footer %}
 <footer>
 <div class="footer">
   <p>Tapis project funded by NSF OAC grants #1931439, #1931575 and #2232259. </p>
 </div>
 </footer>
+{% endblock %}

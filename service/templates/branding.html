@@ -1,0 +1,46 @@
+{% if is_banner %}
+
+  {% if tenant_id == "jupyter-tacc-dev" %}
+  <div class="container">
+    <img src="authorize/icicle-logo.png" alt="Icicle" class="img-responsive" style="width:70%; height:70%">
+  </div>
+  {% elif tenant_id == "designsafe" %}
+  <div class="row">
+    <div class = "column">
+      <img src="authorize/designsafe.jpg" alt="DesignSafe" class="img-responsive" style="width:30%; height:30%">
+    </div>
+    <div class = "column">
+      <img src="authorize/tacc.jpg" alt="TACC" class="img-responsive" style="width:30%; height:30%">
+    </div>
+  </div>
+  {% elif tenant_id == "icicle" %}
+  <div class = "container">
+    <img src="authorize/icicle-logo.png" alt="Icicle" class="img-responsive" style="width:70%; height:70%">
+  </div>
+  {% elif tenant_id == "dev" %}
+  <div class = "container">
+    <img src="authorize/dev.jpeg" alt="Dev" class="img-responsive" style="width:70%; height:70%">
+  </div>
+  {% else %}
+  <div class="container">
+      <img src="authorize/tapis.jpg" alt="Tapis" class="img-responsive" style="width:70%; height:70%">
+  </div>
+  {% endif %}
+
+{% else %}
+
+  {% if tenant_id == "jupyter-tacc-dev" %}
+    <img src="authorize/icicle-logo.png" alt="Icicle">
+  {% elif tenant_id == "designsafe" %}
+    <img src="authorize/designsafe.jpg" alt="DesignSafe">
+  {% elif tenant_id == "icicle" %}
+    <img src="authorize/icicle-logo.png" alt="Icicle">
+  {% elif tenant_id == "dev" %}
+    <img src="authorize/dev.jpeg" alt="Dev">
+  {% elif tenant_id == "tacc" %}
+    <img src="authorize/tacc-formal.svg" alt="TACC">
+  {% else %}
+    <img src="authorize/tapis.png" alt="Tapis">
+  {% endif %}
+
+{% endif %}
