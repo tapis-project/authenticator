@@ -19,13 +19,14 @@ body {
   background-color: var(--global-color-primary--light);
 
   /* So body is as tall as page, thus sticky footer sticks to bottom of page */
-  /* FAQ: Replace base.html fixed footer because it has a disadvantage—
+  /* FAQ: Replaces base.html fixed footer because it has a disadvantage—
           it covers the login form on screens shorter than the form */
   min-height: 100vh;
 }
 </style>
 {% endblock %}
 
+{# So banner is NOT rendered #}
 {% block banner %}
 {% endblock %}
 
