@@ -1,4 +1,5 @@
 from flask import request, g, session
+import datetime
 
 # from common import auth
 from tapisservice.tapisflask import auth
@@ -19,6 +20,15 @@ def authn_and_authz():
     Entry point for checking authentication and authorization for all requests to the authenticator.
     :return:
     """
+    # Setting session.permanent = True means that the session will survive even after the user closes their 
+    # browser.
+    # session.permanent = True
+    # session.permanent_session_lifetime = datetime.timedelta(seconds=15)
+    # if we know the tenant_id based on the request base URL then do the following: 
+    #   1. look up the session expiry for the tenant based on the tenant config and set it on the session object
+    #      using 
+    #   2. expire the session (ie., call logout()) if the session is older than the expiry
+    #      * requires that we store the session creation time in the session object
     authentication()
     # when running locally, the g.request_tenant_id will always be 'dev', so we use the session to allow for testing
     # other tenants locally
