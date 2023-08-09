@@ -577,7 +577,7 @@ class LoginResource(Resource):
 class MFAResource(Resource):
     def get(self):
         # a tenant id is required
-        logger.info('Top of GET MFA')
+        logger.info('Top of GET MFA Resource')
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
@@ -592,6 +592,11 @@ class MFAResource(Resource):
             display_name = client.display_name
         except Exception as e:
             logger.debug(f"Error getting client display name. e: {e}")
+
+        logger.info(f"Source: {request.args.get('source', None)}")
+        logger.info(f"User Code: {request.args.get('user_code', None)}")
+        logger.info(f"Device Code: {request.args.get('device_code', None)}")
+
         context = {'error': '',
                    'client_display_name': display_name,
                    'client_id': client_id,
@@ -605,6 +610,7 @@ class MFAResource(Resource):
         return make_response(render_template('mfa.html', **context), 200, headers)
 
     def post(self):
+        logger.info('Top of POST MFA Resource')
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         username = session.get('username')
@@ -638,6 +644,8 @@ class MFAResource(Resource):
             if 'device_login' in session and source != 'authorize':
                 redirect_url = 'deviceflowresource'
                 response_type = 'device_code'
+            if source == 'webapp':
+                redirect_url = 'webapptokenandredirect'
             session['mfa_validated'] = True
             session['mfa_timestamp'] = time.time()
             logger.info(f'redirect url: {redirect_url}')
@@ -1750,7 +1758,8 @@ class WebappTokenAndRedirect(Resource):
                                         client_id=client_id,
                                         redirect_uri=client_redirect_uri,
                                         state=state,
-                                        response_type='code'))
+                                        response_type='code',
+                                        source='webapp'))
                 return make_response(render_template('token-display.html', **context), 200, headers)
         # otherwise, if there is no token in the session, check the type of OAuth configured for this tenant;
         if not tenant_id:
