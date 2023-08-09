@@ -577,6 +577,7 @@ class LoginResource(Resource):
 class MFAResource(Resource):
     def get(self):
         # a tenant id is required
+        logger.info('Top of GET MFA')
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
         tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
@@ -619,6 +620,10 @@ class MFAResource(Resource):
         user_code = request.form.get('user_code', None)
         device_code = request.form.get('device_code', None)
 
+        logger.info(f"Source: {source}")
+        logger.info(f"User Code: {user_code}")
+        logger.info(f"Device Code: {device_code}")
+
         response = "Incorrect MFA token"
         logger.debug("MFA CODE: %s" % mfa_token)
         validated = call_mfa(mfa_token, tenant_id, username)
@@ -635,6 +640,7 @@ class MFAResource(Resource):
                 response_type = 'device_code'
             session['mfa_validated'] = True
             session['mfa_timestamp'] = time.time()
+            logger.info(f'redirect url: {redirect_url}')
             return redirect(url_for(redirect_url,
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
@@ -658,7 +664,7 @@ class DeviceFlowResource(Resource):
         """
         Displays page with box to enter user code
         """
-        logger.debug("GET - Device Flow")
+        logger.info("GET - Device Flow")
         tenant_id = g.request_tenant_id
         headers = {'Content-Type': 'text/html'}
         client_id = request.args.get("client_id")
@@ -806,7 +812,7 @@ class AuthorizeResource(Resource):
     """
 
     def get(self):
-        logger.debug("top of GET /oauth2/authorize")
+        logger.info("top of GET /oauth2/authorize")
         is_device_flow = True if 'device_login' in session else False
         # if we are using the multi_idp custom oa2 extension type it is possible we are being redirected here, not by the 
         # original web client, but by our select_idp page, in which case we need to get the client out of the session.
