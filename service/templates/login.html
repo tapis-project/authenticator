@@ -6,6 +6,7 @@
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/settings/color--portal.css">
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/settings/font--portal.css">
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/links.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/form.css">
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/sticky-footer.css">
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form.css">
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form--login.css">
@@ -55,11 +56,11 @@ body {
     {% endif %}
 
     <div class="has-required">
-      <label>Username</label>
+      <label for="username">Username</label>
       <input id="username" type="text" name="username" required>
     </div>
     <div class="has-required">
-      <label>Password</label>
+      <label for="password">Password</label>
       <input id="password" type="password" name="password" required>
     </div>
     <input type="hidden" name="client_id" value="{{ client_id }}">
