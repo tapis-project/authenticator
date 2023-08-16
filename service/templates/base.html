@@ -92,7 +92,9 @@
 <!--</head>-->
 
 {% block banner %}
-{% include branding.html with is_banner=true tenant_id=tenant_id %}
+  {% with tenant_id=tenant_id, is_banner=true %}
+    {% include branding.html %}
+  {% endwith %}
 {% endblock %}
 
 {% block content %}
