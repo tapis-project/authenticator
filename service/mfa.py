@@ -24,7 +24,7 @@ def needs_mfa(tenant_id, mfa_timestamp=None):
         logger.debug(f"Error parsing mfa config: {e}")
         return False
 
-    return not not mfa_config and expired
+    return not not mfa_config and not expired
 
 def check_mfa_expired(mfa_config, mfa_timestamp=None):
     """
