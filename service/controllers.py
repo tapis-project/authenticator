@@ -364,8 +364,10 @@ def check_client(use_session=False):
     if not tenant_id:
         tenant_id = g.request_tenant_id
     if not tenant_id:
+        logout()
         raise errors.ResourceError("tenant_id missing.")
     if not tenant_id in conf.tenants:
+        logout()
         raise errors.ResourceError(f"This application is not configured to serve the requested tenant {tenant_id}.")
     if use_session:
         client_id = session.get('orig_client_id')
@@ -380,19 +382,24 @@ def check_client(use_session=False):
         # state is optional -
         client_state = request.args.get('state')
     if not client_id:
+        logout()
         raise errors.ResourceError("Required query parameter client_id missing.")
     # make sure the client exists and the redirect_uri matches
     logger.debug(f"checking for client with id: {client_id} in tenant {tenant_id}")
     client = Client.query.filter_by(tenant_id=tenant_id, client_id=client_id).first()
     if not client:
+        logout()
         raise errors.ResourceError("Invalid client.")
     if 'device_login' in session:
         return client_id, None, None, None, None
     if not client_redirect_uri:
+        logout()
         raise errors.ResourceError("Required query parameter redirect_uri missing.")
     if not response_type == 'code' and not response_type == 'token' and not response_type == 'device_code':
+        logout()
         raise errors.ResourceError("Required query parameter response_type missing or not supported.")
     if not client.callback_url == client_redirect_uri:
+        logout()
         raise errors.ResourceError(
             "redirect_uri query parameter does not match the registered callback_url for the client.")
     return client_id, client_redirect_uri, client_state, client, response_type
@@ -595,7 +602,6 @@ class MFAResource(Resource):
 
         logger.info(f"Source: {request.args.get('source', None)}")
         logger.info(f"User Code: {request.args.get('user_code', None)}")
-        logger.info(f"Device Code: {request.args.get('device_code', None)}")
 
         context = {'error': '',
                    'client_display_name': display_name,
@@ -605,7 +611,6 @@ class MFAResource(Resource):
                    'tenant_id': tenant_id,
                    'username': session.get('username'),
                    'user_code': request.args.get('user_code', None),
-                   'device_code': request.args.get('device_code', None),
                    'source': request.args.get('source', None)}
         return make_response(render_template('mfa.html', **context), 200, headers)
 
@@ -624,11 +629,9 @@ class MFAResource(Resource):
         mfa_token = request.form.get('mfa_token')
         source = request.form.get('source', None)
         user_code = request.form.get('user_code', None)
-        device_code = request.form.get('device_code', None)
 
         logger.info(f"Source: {source}")
         logger.info(f"User Code: {user_code}")
-        logger.info(f"Device Code: {device_code}")
 
         response = "Incorrect MFA token"
         logger.debug("MFA CODE: %s" % mfa_token)
@@ -656,7 +659,6 @@ class MFAResource(Resource):
                                     client_display_name=display_name,
                                     response_type=response_type,
                                     user_code=user_code,
-                                    device_code=device_code,
                                     source=source))
         else:
             context = {'error': response,
@@ -680,6 +682,7 @@ class DeviceFlowResource(Resource):
             context = {'error': 'Invalid URL: client_id must be passed.'}
             return make_response(render_template('device-code.html', **context), 200, headers)
         logger.debug(f"Got client id: {client_id}")
+
         session['device_login'] = True
         if not tenant_id:
             tenant_id = session.get('tenant_id')
@@ -739,8 +742,7 @@ class DeviceFlowResource(Resource):
                                         state=None,
                                         client_display_name=client.display_name,
                                         response_type='device_code',
-                                        user_code=user_code,
-                                        device_code=device_code))
+                                        user_code=user_code))
             else:
                 response = "Code not eligible to be entered"
                 context = {'error': response,
@@ -852,7 +854,6 @@ class AuthorizeResource(Resource):
                                             state=client_state,
                                             response_type=response_type,
                                             user_code=request.args.get('user_code', None),
-                                            device_code=request.args.get('device_code', None),
                                             source='authorize'))
 
         if response_type == 'token':
@@ -941,7 +942,6 @@ class AuthorizeResource(Resource):
                    'client_response_type': response_type,
                    'client_state': client_state,
                    'device_login': session.get('device_login', None),
-                   'device_code': request.args.get('device_code', None),
                    'user_code': request.args.get('user_code', None)}
 
         return make_response(render_template('authorize.html', **context), 200, headers)
@@ -999,7 +999,6 @@ class AuthorizeResource(Resource):
                                             state=client_state,
                                             response_type=client_response_type,
                                             user_code=request.args.get('user_code', None),
-                                            device_code=request.args.get('device_code', None),
                                             source='authorize'))
         
         # implicit grant type -------------------------------------------------------
@@ -1097,7 +1096,7 @@ class AuthorizeResource(Resource):
                    'client_redirect_uri': client_redirect_uri,
                    'client_response_type': 'device_code',
                    'client_state': client_state,
-                   'device_code': code,
+                   'user_code': code,
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
 
@@ -1117,7 +1116,6 @@ class AuthorizeResource(Resource):
                    'client_redirect_uri': client_redirect_uri,
                    'client_response_type': 'device_code',
                    'client_state': client_state,
-                   'device_code': device_code,
                    'user_code': code,
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
@@ -1138,7 +1136,7 @@ class AuthorizeResource(Resource):
                    'client_redirect_uri': client_redirect_uri,
                    'client_response_type': 'device_code',
                    'client_state': client_state,
-                   'device_code': code,
+                   'user_code': code,
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
             session.pop('device_login')
