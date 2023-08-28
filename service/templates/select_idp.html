@@ -1,27 +1,104 @@
 {% extends 'base.html' %}
+{% block assets %}
+{{ super() }}
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/core-styles.settings.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/settings/color--portal.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/settings/font--portal.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/links.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/form.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/sticky-footer.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form--login.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form-page.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-footer.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-footer--thin.css">
+{% endblock %}
+{% block head_extra %}
+<style>
+body {
+  background-color: var(--global-color-primary--light);
+
+  /* So body is as tall as page, thus sticky footer sticks to bottom of page */
+  /* FAQ: Replaces base.html fixed footer because it has a disadvantage—
+          it covers the login form on screens shorter than the form */
+  min-height: 100vh;
+}
+</style>
+{% endblock %}
+
+{# So banner is NOT rendered #}
+{% block banner %}
+{% endblock %}
+
+
 {% block content %}
 <body>
 
-<div class="container">
-<h2> Tapis Authentication </h2>
- <p> Select the account type you would like to use to log in.</p>
+<main class="s-form-page">
+ <form action="" method="post" class="s-form s-form--login">   
+   <h1>
+      <figure>
+      {% with tenant_id=tenant_id %}
+        {% include "./branding.html" %}
+      {% endwith %}
+      {% with tenant_id="tacc" %}
+        {% include "./branding.html" %}
+      {% endwith %}
+      </figure>
+      <span>Select Account Type</span>
+    </h1>
+    <p>to continue to login</p>
 
- <form action="" method="post">
-
-     {% if error %}
+   {% if error %}
    <div class="container">
       <p>Error: {{ error }}</p>
    </div>
-     {% endif %}
+   {% endif %}
 
-     <div class="container">
         {% for idp in idps %}
-        <input type="radio", name="idp_id", value="{{ idp.idp_id }}"
-        <label for="{{ idp.idp_id }}">{{ idp.idp_name }}</label><br>
+        <div class="has-required">
+         <input id="{{ idp.idp_id }}" type="radio" name="idp_id" value="{{ idp.idp_id }}"/> <label for="{{ idp.idp_id }}">{{ idp.idp_name }}</label> 
+        </div>
         {% endfor %}
+     <footer>
         <button type="submit">Submit</button>
-     </div>
+      </footer>
+     <nav>
+      <p>Having trouble?</p>
+      <a
+        href="https://tacc.utexas.edu/about/help/"
+        rel="noreferrer"
+        target="_blank"
+      >
+        Account Help
+      </a>
+    </nav>
 
-</form>
-</div>
+ </form>
+ <footer>
+   <a href="https://tacc.utexas.edu/about/security-and-compliance/">
+     Security
+   </a>
+   <a href="https://tacc.utexas.edu/use-tacc/user-policies/">
+     Policies
+   </a>
+ </footer>
+
+</main>
+{% endblock %}
+
+{% block footer %}
+<footer class="s-footer">
+  <p>Tapis project funded by NSF OAC grants
+    <a
+      href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931439"
+      rel="noreferrer"
+      target="_blank">#1931439</a>,
+    <a
+      href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931575"
+      rel="noreferrer"
+      target="_blank">#1931575</a>
+    and #2232259.
+  </p>
+</footer>
 {% endblock %}
