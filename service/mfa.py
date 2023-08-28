@@ -24,7 +24,12 @@ def needs_mfa(tenant_id, mfa_timestamp=None):
         logger.debug(f"Error parsing mfa config: {e}")
         return False
 
-    return not not mfa_config and not expired
+    # mfa_config is a JSON object; if the tenant is not configured for MFA, then 
+    # the mfa_config object will be an empty dict (i.e., {})
+    if mfa_config and not expired:
+        return True
+    return False
+    
 
 def check_mfa_expired(mfa_config, mfa_timestamp=None):
     """

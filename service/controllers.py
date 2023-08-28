@@ -752,6 +752,7 @@ class DeviceFlowResource(Resource):
                    'username': session.get('username')}
             return make_response(render_template('device-code.html', **context), 200, headers)
         
+        
 class DeviceCodeResource(Resource):
     """
     POST request for creating a device code
