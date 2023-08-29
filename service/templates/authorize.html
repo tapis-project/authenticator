@@ -34,9 +34,8 @@ body {
 {% block content %}
 <body>
 
-<div class="container">
 <main class="s-form-page">
-  <form action="" method="post">
+  <form action="" method="post" class="s-form s-form--login">
     <h1> Tapis Authorization - Tenant {{ tenant_id }}</h1>
     <p> You are logged in as user {{ username }}. The client application {{ client_display_name }} is requesting a Tapis
         access token on your behalf.</p>
@@ -67,9 +66,8 @@ body {
      <footer>
         <button type="submit">Submit</button>
      </footer>
-</form>
+  </form>
 </main>
-</div>
 {% endblock %}
 
 {% block footer %}
