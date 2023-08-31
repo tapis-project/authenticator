@@ -25,6 +25,11 @@ body {
           it covers the login form on screens shorter than the form */
   min-height: 100vh;
 }
+
+/* TODO: Integrate into TACC/Core-Styles s-form--login.css */
+.s-form--login :where(.s-form > footer) > :only-child {
+  margin-left: auto;
+}
 </style>
 {% endblock %}
 
@@ -46,7 +51,7 @@ body {
          {% include "./branding.html" %}
          {% endwith %}
          </figure>
-         <span>MFA Token</span>
+         <span>Enter MFA Token</span>
       </h1>
 
       {% if error %}
