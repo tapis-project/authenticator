@@ -1,33 +1,86 @@
 {% extends 'base.html' %}
+
+{% block assets %}
+{{ super() }}
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/core-styles.settings.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/settings/color--portal.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/settings/font--portal.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/links.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/form.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/sticky-footer.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form--login.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form-page.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-footer.css">
+<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-footer--thin.css">
+{% endblock %}
+{% block head_extra %}
+<style>
+body {
+  background-color: var(--global-color-primary--light);
+
+  /* So body is as tall as page, thus sticky footer sticks to bottom of page */
+  /* FAQ: Replaces base.html fixed footer because it has a disadvantage—
+          it covers the login form on screens shorter than the form */
+  min-height: 100vh;
+}
+</style>
+{% endblock %}
+
+{# So banner is NOT rendered #}
+{% block banner %}
+{% endblock %}
+
 {% block content %}
-<body>
+<main class="s-form-page">
+  <form action="" method="post" class="s-form s-form--login">
+    <h1>
+      <figure>
+      {% with tenant_id=tenant_id %}
+      {% include "./branding.html" %}
+      {% endwith %}
+      {% with tenant_id="tacc" %}
+      {% include "./branding.html" %}
+      {% endwith %}
+      </figure>
+      <span>Enter User Code</span>
+    </h1>
 
- <div class="container">
-    <h2> Device Activation </h2>
- </div>
 
- <form action="" method="post">
+    {% if error %}
+      <ul>
+        <li>Error: {{ error }}</li>
+      </ul>
+    {% endif %}
 
-
-     {% if error %}
-   <div class="container">
-      <p>Error: {{ error }}</p>
-   </div>
-     {% endif %}
-
-     <div class="container">
-         <div class="input-group">
-            Enter code displayed on your device: <input id="user_code" type="text" class="form-control" name="user_code" required>
-            <input type="hidden" name="client_id" value="{{ client_id }}">
-            <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
-            <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
-            <input type="hidden" name="client_state" value="{{ client_state }}">
-            <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
-         </div>
-        <button type="submit">Submit</button>
+    <div class="has-required">
+      <label for="user_code">User Code</label>
+      <input id="user_code" type="text" class="form-control" name="user_code" required>
+      <input type="hidden" name="client_id" value="{{ client_id }}">
+      <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
+      <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
+      <input type="hidden" name="client_state" value="{{ client_state }}">
+      <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
     </div>
-  <div class="container" style="background-color:#f1f1f1">
-    <button type="button" class="cancelbtn">Cancel</button>
-  </div>
-</form>
+    <footer>
+      <button type="submit">Submit</button>
+    </footer>
+  </form>
+</main>
+{% endblock %}
+
+{% block footer %}
+<footer class="s-footer">
+  <p>Tapis project funded by NSF OAC grants
+    <a
+      href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931439"
+      rel="noreferrer"
+      target="_blank">#1931439</a>,
+    <a
+      href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931575"
+      rel="noreferrer"
+      target="_blank">#1931575</a>
+    and #2232259.
+  </p>
+</footer>
 {% endblock %}
