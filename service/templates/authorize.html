@@ -1,35 +1,4 @@
-{% extends 'base.html' %}
-
-{% block assets %}
-{{ super() }}
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/core-styles.settings.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/settings/color--portal.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/settings/font--portal.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/links.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/form.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/elements/sticky-footer.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form--login.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-form-page.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-footer.css">
-<link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/trumps/s-footer--thin.css">
-{% endblock %}
-{% block head_extra %}
-<style>
-body {
-  background-color: var(--global-color-primary--light);
-
-  /* So body is as tall as page, thus sticky footer sticks to bottom of page */
-  /* FAQ: Replaces base.html fixed footer because it has a disadvantage—
-          it covers the login form on screens shorter than the form */
-  min-height: 100vh;
-}
-</style>
-{% endblock %}
-
-{# So banner is NOT rendered #}
-{% block banner %}
-{% endblock %}
+{% extends 'base-auth.html' %}
 
 {% block content %}
 <main class="s-form-page">
@@ -66,20 +35,4 @@ body {
      </footer>
   </form>
 </main>
-{% endblock %}
-
-{% block footer %}
-<footer class="s-footer">
-  <p>Tapis project funded by NSF OAC grants
-    <a
-      href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931439"
-      rel="noreferrer"
-      target="_blank">#1931439</a>,
-    <a
-      href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931575"
-      rel="noreferrer"
-      target="_blank">#1931575</a>
-    and #2232259.
-  </p>
-</footer>
 {% endblock %}
