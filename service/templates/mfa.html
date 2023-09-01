@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 
-
 {% block assets %}
 {{ super() }}
 <link rel="stylesheet" href="https://unpkg.com/@tacc/core-styles@2.17.0/dist/core-styles.settings.css">
@@ -44,7 +43,7 @@ body {
          {% include "./branding.html" %}
          {% endwith %}
          </figure>
-         <span>MFA Token</span>
+         <span>Enter MFA Token</span>
       </h1>
 
       {% if error %}
