@@ -3,9 +3,8 @@
 {% block content %}
 <main class="s-form-page">
   <form action="" method="post" class="s-form s-form--login">
-    <h1> Tapis Authorization - Tenant {{ tenant_id }}</h1>
-    <p> You are logged in as user {{ username }}. The client application {{ client_display_name }} is requesting a Tapis
-        access token on your behalf.</p>
+    <h1>Tapis Authorization - Tenant {{ tenant_id }}</h1>
+    <p>You are logged in as user <var>{{ username }}</var>. The client application <var>{{ client_display_name }}</var> requests a Tapis access token on your behalf.</p>
 
     {% if error %}
     <ul>
@@ -13,23 +12,27 @@
     </ul>
     {% endif %}
 
-     <div class="has-required">
-        <label>
-          {% if device_login %}
-          <label for="ttl">Time for token to live in days (default: 30)</label>
-          <input type="text" id="ttl" name="ttl">
-          {% endif %}
-          <input type="checkbox" checked="checked" name="approve"> Approve
-            <input type="hidden" name="client_id" value="{{ client_id }}">
-            <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
-            <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
-            <input type="hidden" name="client_state" value="{{ client_state }}">
-            <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
-            {% if user_code is not none %}
-            <input type="hidden" name="user_code" value="{{ user_code }}">
-            {% endif %}
-        </label>
-     </div>
+    {% if device_login %}
+    <div>
+      <label>
+        Allow this authorization for
+        <input type="text" id="ttl" name="ttl" placeholder="30" value="30" size="3">
+        days.
+      </label>
+    </div>
+    {% endif %}
+    <div class="has-required has-type-check">
+      <input type="checkbox" checked="checked" name="approve" id="approve" required>
+      <label for="approve">Approve</label>
+    </div>
+    <input type="hidden" name="client_id" value="{{ client_id }}">
+    <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
+    <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
+    <input type="hidden" name="client_state" value="{{ client_state }}">
+    <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
+    {% if user_code is not none %}
+    <input type="hidden" name="user_code" value="{{ user_code }}">
+    {% endif %}
      <footer>
         <button type="submit">Submit</button>
      </footer>
