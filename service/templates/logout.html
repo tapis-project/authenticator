@@ -1,23 +1,44 @@
-{% extends 'base.html' %}
+{% extends 'base-auth.html' %}
+
 {% block content %}
- <div class="container">
-    <h2> Tapis Logout </h2>
- </div>
+<main class="s-form-page">
+  <form action="" method="post" class="s-form s-form--login">
+  {% if logout_message %}
+    <style>
+    .s-form p:only-child {
+      text-align: center;
+      margin-block: unset;
+    }
+    </style>
+    <h1>Tapis</h1>
+    <p>
+      {{ logout_message }}
+    </p>
 
-{% if logout_message %}
-<p>{{ logout_message}}</p>
+  {% else %}
 
-{% else %}
- <form action="" method="post">
+    <style>
+    .s-form footer button {
+      margin-right: auto; /* to center the button */
+    }
+    </style>
+    <h1>
+      <figure>
+      {% with tenant_id=tenant_id %}
+      {% include "./branding.html" %}
+      {% endwith %}
+      {% with tenant_id="tacc" %}
+      {% include "./branding.html" %}
+      {% endwith %}
+      </figure>
+    </h1>
+    <p>Are you sure you want to log out?</p>
+    <input type="hidden" checked="checked" name="logout">
+    <footer>
+      <button type="submit">Log out</button>
+    </footer>
 
-
- <div class="container">
-        <label>
-          <input type="checkbox" checked="checked" name="logout"> Logout
-        </label>
-        <button type="submit">Submit</button>
-     </div>
-
-</form>
-{% endif %}
+  {% endif %}
+  </form>
+</main>
 {% endblock %}
