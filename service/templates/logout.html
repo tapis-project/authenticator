@@ -3,25 +3,6 @@
 {% block content %}
 <main class="s-form-page">
   <form action="" method="post" class="s-form s-form--login">
-  {% if logout_message %}
-    <style>
-    .s-form p:only-child {
-      text-align: center;
-      margin-block: unset;
-    }
-    </style>
-    <h1>Tapis</h1>
-    <p>
-      {{ logout_message }}
-    </p>
-
-  {% else %}
-
-    <style>
-    .s-form footer button {
-      margin-right: auto; /* to center the button */
-    }
-    </style>
     <h1>
       <figure>
       {% with tenant_id=tenant_id %}
@@ -32,12 +13,28 @@
       {% endwith %}
       </figure>
     </h1>
+
+    {% if logout_message %}
+    <p>
+      {{ logout_message }}
+    </p>
+    <style>
+    .s-form p:only-child {
+      text-align: center;
+      margin-block: unset;
+    }
+    </style>
+    {% else %}
     <p>Are you sure you want to log out?</p>
     <input type="hidden" checked="checked" name="logout">
     <footer>
       <button type="submit">Log out</button>
     </footer>
-
+    <style>
+    .s-form footer button {
+      margin-right: auto; /* to center the button */
+    }
+    </style>
   {% endif %}
   </form>
 </main>
