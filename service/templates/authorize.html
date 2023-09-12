@@ -14,13 +14,12 @@
 
     {% if device_login %}
     <div>
-      <label aria-describedby="ttl-label ttl-desc">
+      <label aria-labelledby="ttl-label">
         Allow this authorization for
         <input type="text" id="ttl" name="ttl" placeholder="30" size="3">
         days.
       </label>
-      <span hidden id="ttl-label">Allow this authorization for how many days?</small>
-      <span hidden id="ttl-desc">By default, the authorization will last 30 days.</small>
+      <span hidden id="ttl-label">Allow this authorization for how many days? By default, the authorization will last 30 days.</small>
     </div>
     {% endif %}
     <div class="has-required has-type-check">
