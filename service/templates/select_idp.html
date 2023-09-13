@@ -3,19 +3,24 @@
 {% block head_extra %}
 {{ super() }}
 <style>
-  /* To lay out buttons in a flexible centered column */
   .button-list {
+    /* To lay out buttons in a flexible centered column */
     display: flex;
     align-items: center;
     flex-direction: column;
     gap: 0.5em;
   }
   .button-list button {
-    min-width: 300px; /* to limit button width but allow wider */
+    min-width: 40rem; /* to limit button width but allow wider */
 
     /* To position button content */
     text-align: start;
-    padding-left: 3em;
+    padding-left: 1em;
+  }
+  .button-list button img {
+    width: 8rem;
+    height: 4rem;
+    margin-right: 0.5em;
   }
 </style>
 {% endblock %}
@@ -44,6 +49,7 @@
 
         {% for idp in idps %}
         <button name="idp_id" value="{{ idp.idp_id }}" type="submit">
+          <img src="authorize/{{ idp.idp_id }}.svg" alt="{{ idp.idp_name }}" />
           {{ idp.idp_name }}
         </button>
         {% endfor %}
