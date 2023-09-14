@@ -1880,11 +1880,7 @@ class LogoutResource(Resource):
     def post(self):
         headers = {'Content-Type': 'text/html'}
         # process the logout form -
-        if request.form.get("logout"):
-            logout()
-            make_response(render_template('logout.html', logout_message='You have been logged out.'), 200, headers)
-        # if they submitted the logout form but did not check the box then just return them to the logout form -
-        return redirect(url_for('webapptokenandredirect'))
+        make_response(render_template('logout.html', logout_message='You have been logged out.'), 200, headers)
 
 
 class StaticFilesResource(Resource):
