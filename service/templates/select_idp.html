@@ -1,30 +1,5 @@
 {% extends 'base-auth.html' %}
 
-{% block head_extra %}
-{{ super() }}
-<style>
-  .button-list {
-    /* To lay out buttons in a flexible centered column */
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    gap: 0.5em;
-  }
-  .button-list button {
-    min-width: 40rem; /* to limit button width but allow wider */
-
-    /* To position button content */
-    text-align: start;
-    padding-left: 1em;
-  }
-  .button-list button img {
-    width: 8rem;
-    height: 4rem;
-    margin-right: 0.5em;
-  }
-</style>
-{% endblock %}
-
 {% block content %}
 <main class="s-form-page">
  <form action="" method="post" class="s-form s-form--login">   
@@ -75,4 +50,29 @@
  </footer>
 
 </main>
+{% endblock %}
+
+{% block head_extra %}
+{{ super() }}
+<style>
+  .button-list {
+    /* To lay out buttons in a flexible centered column */
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 0.5em;
+  }
+  .button-list button {
+    min-width: 40rem; /* to limit button width but allow wider */
+
+    /* To position button content */
+    text-align: start;
+    padding-left: 1em;
+  }
+  .button-list button img {
+    width: 8rem;
+    height: 4rem;
+    margin-right: 0.5em;
+  }
+</style>
 {% endblock %}
