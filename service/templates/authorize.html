@@ -2,9 +2,27 @@
 
 {% block content %}
 <main class="s-form-page">
-  <form action="" method="post" class="s-form s-form--login">
-    <h1>Tapis Authorization - Tenant {{ tenant_id }}</h1>
-    <p>You are logged in as user <var>{{ username }}</var>. The client application <var>{{ client_display_name }}</var> requests a Tapis access token on your behalf.</p>
+  <form action="" method="post" id="form" class="s-form s-form--login">
+  <h1>
+      <figure>
+      {% with tenant_id=tenant_id %}
+        {% include "./branding.html" %}
+      {% endwith %}
+      {% with tenant_id="tacc" %}
+        {% include "./branding.html" %}
+      {% endwith %}
+      </figure>
+      <span>Authorize Tapis</span>
+    </h1>
+    <p>Tapis wants to access your <var>{{ username }}</var> account.</p>
+    <details hidden>
+      <dl>
+        <dt>client</dt>
+        <dd><var>{{ client_display_name }}</var></dd>
+        <dt>tenant</dt>
+        <dd><var>{{ tenant_id }}</var></dd>
+      </dl>
+    </details>
 
     {% if error %}
     <ul>
@@ -13,7 +31,7 @@
     {% endif %}
 
     {% if device_login %}
-    <div>
+    <div id="ttl-field">
       <label aria-labelledby="ttl-label">
         Allow this authorization for
         <input type="text" id="ttl" name="ttl" value="30" size="3">
@@ -30,9 +48,45 @@
     {% if user_code is not none %}
     <input type="hidden" name="user_code" value="{{ user_code }}">
     {% endif %}
-     <footer>
-        <button type="submit" name="approve" value="true" required>Authorize</button>
-     </footer>
+    <footer id="button-container">
+      <button type="submit" name="approve" value="true" required>Authorize</button>
+    </footer>
   </form>
 </main>
+{% endblock %}
+
+{% block head_extra %}
+{{ super() }}
+<style>
+/* To layout form elements in a way that lets us re-arrange them */
+#form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+/* FAQ: If TTL field is shown, then it should be on same line as button */
+#form > :where(#ttl-field, #ttl-field + #button-container) {
+  width: 50%;
+  margin-block: 0; /* to undo Core-Styles */
+}
+/* FAQ: Other form elements should be full width */
+#form > :not(#ttl-field, #ttl-field + #button-container) {
+  width: 100%;
+}
+/* FAQ: To vertically center TTL field (because button makes the row taller) */
+#ttl-field {
+  justify-content: center;
+}
+#ttl-field label {
+  margin-bottom: 0;
+}
+/* FAQ: If TTL field is hidden, then reduce space between button and desc. */
+:not(#ttl-field) + #button-container {
+  justify-content: center; /* to override Core-Styles */
+  margin-top: 0; /* to override Core-Styles */
+}
+:not(#ttl-field) + #button-container > button {
+  margin-left: unset; /* to undo Core-Styles */
+}
+</style>
 {% endblock %}
