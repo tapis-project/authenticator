@@ -15,26 +15,27 @@
     </h1>
 
     {% if logout_message %}
-    <p>
-      {{ logout_message }}
-    </p>
-    <style>
-    .s-form p:only-child {
-      text-align: center;
-      margin-block: unset;
-    }
-    </style>
+    <p>{{ logout_message }}</p>
     {% else %}
     <p>Are you sure you want to log out?</p>
     <footer>
-      <button type="submit" value="true" name="logout" required>Log out</button>
+      <button id="submit" type="submit" value="true" name="logout" required>
+        Log out
+      </button>
     </footer>
-    <style>
-    .s-form footer button {
-      margin-right: auto; /* to center the button */
-    }
-    </style>
-  {% endif %}
+    {% endif %}
   </form>
 </main>
+{% endblock %}
+
+{% block head_extra %}
+{{ super() }}
+{% if not logout_message %}
+  <style>
+  /* To center the submit button */
+  #submit {
+    margin-right: auto;
+  }
+  </style>
+{% endif %}
 {% endblock %}
