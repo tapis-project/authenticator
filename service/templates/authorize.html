@@ -22,10 +22,6 @@
       <span hidden id="ttl-label">Allow this authorization for how many days? By default, the authorization will last 30 days.</small>
     </div>
     {% endif %}
-    <div class="has-required has-type-check">
-      <input type="checkbox" checked="checked" name="approve" id="approve" required>
-      <label for="approve">Approve</label>
-    </div>
     <input type="hidden" name="client_id" value="{{ client_id }}">
     <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
     <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
@@ -35,7 +31,7 @@
     <input type="hidden" name="user_code" value="{{ user_code }}">
     {% endif %}
      <footer>
-        <button type="submit">Submit</button>
+        <button type="submit" name="approve" value="true" required>Authorize</button>
      </footer>
   </form>
 </main>
