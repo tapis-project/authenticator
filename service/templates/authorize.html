@@ -88,5 +88,10 @@
 :not(#ttl-field) + #button-container > button {
   margin-left: unset; /* to undo Core-Styles */
 }
+/* To remove excess space from margins that are not collapsing */
+/* FAQ: The `#form` has `dispaly: flex` which makes margins NOT collapse */
+#form h1 {
+  margin-bottom: 0; /* override Core-Styles */
+}
 </style>
 {% endblock %}
