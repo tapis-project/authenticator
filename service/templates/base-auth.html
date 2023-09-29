@@ -1,8 +1,9 @@
 {% extends 'base.html' %}
 
-{% with core_styles_cdn_url="https://unpkg.com/@tacc/core-styles@2.17.5" %}
 {% block assets %}
 {{ super() }}
+
+{% with core_styles_cdn_url="https://unpkg.com/@tacc/core-styles@2.17.5" %}
 <style>
   /* base styles */
   @import url('{{ core_styles_cdn_url }}/dist/core-styles.settings.css') layer(base);
@@ -20,8 +21,8 @@
   @import url('{{ core_styles_cdn_url }}/dist/settings/color--portal.css') layer(project);
   @import url('{{ core_styles_cdn_url }}/dist/settings/font--portal.css') layer(project);
 </style>
-{% endblock %}
 {% endwith %}
+{% endblock %}
 
 {% block head_extra %}
 <style>
