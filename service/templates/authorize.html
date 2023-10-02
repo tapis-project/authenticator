@@ -3,7 +3,17 @@
 {% block content %}
 <main class="s-form-page">
   <form action="" method="post" id="form" class="s-form s-form--login">
-    <h1>Connect to Tapis</h1>
+    <h1>
+      <figure>
+      {% with tenant_id=tenant_id %}
+        {% include "./branding.html" %}
+      {% endwith %}
+      {% with tenant_id="tacc" %}
+        {% include "./branding.html" %}
+      {% endwith %}
+      </figure>
+      <span>Connect to Tapis</span>
+    </h1>
     <p>The <var>{{ client_display_name }}</var> wants to use Tapis (TACC APIs) service to enable actions on behalf of <var>{{ username }}</var>.</p>
 
     {% if error %}
