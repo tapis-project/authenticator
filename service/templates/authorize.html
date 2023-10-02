@@ -2,7 +2,7 @@
 
 {% block content %}
 <main class="s-form-page">
-  <form action="" method="post" id="form" class="s-form s-form--login">
+  <form action="" method="post" id="auth-form" class="s-form s-form--login">
     <h1>
       <figure>
       {% with tenant_id=tenant_id %}
@@ -50,23 +50,23 @@
 {% block head_extra %}
 {{ super() }}
 <style>
-#form var {
+#auth-form var {
   font-style: normal; /* overwrite browser */
 }
 
 /* To layout form elements in a way that lets us re-arrange them */
-#form {
+#auth-form {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
 }
 /* FAQ: If TTL field is shown, then it should be on same line as button */
-#form > :where(#ttl-field, #ttl-field + #button-container) {
+#auth-form > :where(#ttl-field, #ttl-field + #button-container) {
   width: 50%;
   margin-block: 0; /* to undo Core-Styles */
 }
 /* FAQ: Other form elements should be full width */
-#form > :not(#ttl-field, #ttl-field + #button-container) {
+#auth-form > :not(#ttl-field, #ttl-field + #button-container) {
   width: 100%;
 }
 /* FAQ: To vertically center TTL field (because button makes the row taller) */
@@ -85,8 +85,8 @@
   margin-left: unset; /* to undo Core-Styles */
 }
 /* To remove excess space from margins that are not collapsing */
-/* FAQ: The `#form` has `dispaly: flex` which makes margins NOT collapse */
-#form h1 {
+/* FAQ: The `#auth-form` has `dispaly: flex` which makes margins NOT collapse */
+#auth-form h1 {
   margin-bottom: 0; /* override Core-Styles */
 }
 </style>
