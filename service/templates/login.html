@@ -14,7 +14,7 @@
       </figure>
       <span>Log In</span>
     </h1>
-    <p>to continue to {{ tenant_id }}</p>
+    <p>to continue to the <var>{{ client_display_name }}</var></p>
 
     {% if error %}
     <ul>
@@ -64,4 +64,13 @@
     </a>
   </footer>
 </main>
+{% endblock %}
+
+{% block head_extra %}
+{{ super() }}
+<style>
+var {
+  font-style: normal; /* to override browser default */
+}
+</style>
 {% endblock %}

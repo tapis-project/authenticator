@@ -3,26 +3,8 @@
 {% block content %}
 <main class="s-form-page">
   <form action="" method="post" id="form" class="s-form s-form--login">
-  <h1>
-      <figure>
-      {% with tenant_id=tenant_id %}
-        {% include "./branding.html" %}
-      {% endwith %}
-      {% with tenant_id="tacc" %}
-        {% include "./branding.html" %}
-      {% endwith %}
-      </figure>
-      <span>Authorize Tapis</span>
-    </h1>
-    <p>Tapis wants to access your <var>{{ username }}</var> account.</p>
-    <details hidden>
-      <dl>
-        <dt>client</dt>
-        <dd><var>{{ client_display_name }}</var></dd>
-        <dt>tenant</dt>
-        <dd><var>{{ tenant_id }}</var></dd>
-      </dl>
-    </details>
+    <h1>Connect to Tapis</h1>
+    <p>The <var>{{ client_display_name }}</var> wants to use Tapis (TACC APIs) service to enable actions on behalf of <var>{{ username }}</var>.</p>
 
     {% if error %}
     <ul>
@@ -49,7 +31,7 @@
     <input type="hidden" name="user_code" value="{{ user_code }}">
     {% endif %}
     <footer id="button-container">
-      <button type="submit" name="approve" value="true" required>Authorize</button>
+      <button type="submit" name="approve" value="true" required>Connect</button>
     </footer>
   </form>
 </main>
