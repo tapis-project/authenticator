@@ -22,12 +22,14 @@
    </ul>
    {% endif %}
 
+     <div class="button-list">
         {% for idp in idps %}
         <button name="idp_id" value="{{ idp.idp_id }}" type="submit">
           <img src="authorize/{{ idp.idp_id }}.svg" alt="{{ idp.idp_name }}" />
           {{ idp.idp_name }}
         </button>
         {% endfor %}
+     </div>
      <nav>
       <p>Having trouble?</p>
       <a
