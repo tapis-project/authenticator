@@ -12,24 +12,22 @@
         {% include "./branding.html" %}
       {% endwith %}
       </figure>
-      <span>Select Account Type</span>
+      <span>Log in to Tapis</span>
     </h1>
-    <p>to continue to login</p>
+    <p>Select an account to continue</p>
 
    {% if error %}
-   <div class="container">
-      <p>Error: {{ error }}</p>
-   </div>
+   <ul>
+      <li>Error: {{ error }}</li>
+   </ul>
    {% endif %}
 
         {% for idp in idps %}
-        <div class="has-required">
-         <input id="{{ idp.idp_id }}" type="radio" name="idp_id" value="{{ idp.idp_id }}"/> <label for="{{ idp.idp_id }}">{{ idp.idp_name }}</label> 
-        </div>
+        <button name="idp_id" value="{{ idp.idp_id }}" type="submit">
+          <img src="authorize/{{ idp.idp_id }}.svg" alt="{{ idp.idp_name }}" />
+          {{ idp.idp_name }}
+        </button>
         {% endfor %}
-     <footer>
-        <button type="submit">Submit</button>
-      </footer>
      <nav>
       <p>Having trouble?</p>
       <a
@@ -52,4 +50,29 @@
  </footer>
 
 </main>
+{% endblock %}
+
+{% block head_extra %}
+{{ super() }}
+<style>
+  .button-list {
+    /* To lay out buttons in a flexible centered column */
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    gap: 0.5em;
+  }
+  .button-list button {
+    min-width: 40rem; /* to limit button width but allow wider */
+
+    /* To position button content */
+    text-align: start;
+    padding-left: 1em;
+  }
+  .button-list button img {
+    width: 8rem;
+    height: 4rem;
+    margin-right: 0.5em;
+  }
+</style>
 {% endblock %}

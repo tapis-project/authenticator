@@ -1,32 +1,57 @@
-{% extends 'base.html' %}
+{% extends 'base-auth.html' %}
+
 {% block content %}
- <div class="container">
-    <h2> Tapis Tenant </h2>
- </div>
- <form action="" method="post">
+<main class="s-form-page">
+   <form action="" method="post" class="s-form s-form--login">
+      <h1>
+         <figure>
+         {% with tenant_id=tenant_id %}
+            {% include "./branding.html" %}
+         {% endwith %}
+         {% with tenant_id="tacc" %}
+            {% include "./branding.html" %}
+         {% endwith %}
+         </figure>
+         <span>Tapis Tenant</span>
+      </h1>
 
-     {% if error %}
-   <div class="container">
-      <p>Error: {{ error }}</p>
-   </div>
-     {% endif %}
+      {% if error %}
+      <ul>
+         <li>Error: {{ error }}</li>
+      </ul>
+      {% endif %}
 
-   <div class="container">
-        <label for="tenant"><b>Select Tenant: </b></label>
-        <select class="input-medium" name="tenant" required>
-            <option value="a2cps">A2CPS Tenant</option>
-            <option value="dev">Dev Tenant</option>
-            <option value="icicle">ICICLE Tenant</option>
-            <option value="cii">CII Tenant</option>
-            <option value="github-demo">Github Demo Tenant</option>
-            <option value="tacc">TACC Tenant</option>
-        </select>
-        <input type="hidden" name="client_id" value="{{ client_id }}">
-        <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
-        <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
-        <input type="hidden" name="client_state" value="{{ client_state }}">
-        <button type="submit" class="btn btn-primary">Submit</button>
-   </div>
+      <div class="has-required">
+         <button name="tenant" value="a2cps">A2CPS</button>
+         <button name="tenant" value="dev">Dev Tenant</button>
+         <button name="tenant" value="icicle">ICICLE Tenant</button>
+         <button name="tenant" value="cii">CII Tenant</button>
+         <button name="tenant" value="github-demo">Github Demo Tenant</button>
+         <button name="tenant" value="tacc">TACC Tenant</button>
+         <button name="tenant" value="tacc">Test TACC</buttong>
+      </div>
+      <input type="hidden" name="client_id" value="{{ client_id }}">
+      <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
+      <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
+      <input type="hidden" name="client_state" value="{{ client_state }}">
+      <!-- <div class="has-required">
+         <label for="tenant"><b>Select Tenant: </b></label>
+         <select class="input-medium" name="tenant" required>
+               <option value="a2cps">A2CPS Tenant</option>
+               <option value="dev">Dev Tenant</option>
+               <option value="icicle">ICICLE Tenant</option>
+               <option value="cii">CII Tenant</option>
+               <option value="github-demo">Github Demo Tenant</option>
+               <option value="tacc">TACC Tenant</option>
+         </select>
+         <input type="hidden" name="client_id" value="{{ client_id }}">
+         <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
+         <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
+         <input type="hidden" name="client_state" value="{{ client_state }}">
+         <button type="submit" class="btn btn-primary">Submit</button>
+      </div> -->
 
-</form>
+   </form>
+</main>
+   
 {% endblock %}
