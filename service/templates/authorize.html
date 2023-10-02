@@ -2,10 +2,19 @@
 
 {% block content %}
 <main class="s-form-page">
-  <form action="" method="post" class="s-form s-form--login">
-    <h1> Tapis Authorization - Tenant {{ tenant_id }}</h1>
-    <p> You are logged in as user {{ username }}. The client application {{ client_display_name }} is requesting a Tapis
-        access token on your behalf.</p>
+  <form action="" method="post" id="auth-form" class="s-form s-form--login">
+    <h1>
+      <figure>
+      {% with tenant_id=tenant_id %}
+        {% include "./branding.html" %}
+      {% endwith %}
+      {% with tenant_id="tacc" %}
+        {% include "./branding.html" %}
+      {% endwith %}
+      </figure>
+      <span>Connect to Tapis</span>
+    </h1>
+    <p>The <var>{{ client_display_name }}</var> wants to use Tapis (TACC APIs) service to enable actions on behalf of <var>{{ username }}</var>.</p>
 
     {% if error %}
     <ul>
@@ -13,26 +22,72 @@
     </ul>
     {% endif %}
 
-     <div class="has-required">
-        <label>
-          {% if device_login %}
-          <label for="ttl">Time for token to live in days (default: 30)</label>
-          <input type="text" id="ttl" name="ttl">
-          {% endif %}
-          <input type="checkbox" checked="checked" name="approve"> Approve
-            <input type="hidden" name="client_id" value="{{ client_id }}">
-            <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
-            <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
-            <input type="hidden" name="client_state" value="{{ client_state }}">
-            <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
-            {% if user_code is not none %}
-            <input type="hidden" name="user_code" value="{{ user_code }}">
-            {% endif %}
-        </label>
-     </div>
-     <footer>
-        <button type="submit">Submit</button>
-     </footer>
+    {% if device_login %}
+    <div id="ttl-field">
+      <label aria-labelledby="ttl-label">
+        Allow this authorization for
+        <input type="text" id="ttl" name="ttl" value="30" size="3">
+        days.
+      </label>
+      <span hidden id="ttl-label">Allow this authorization for how many days? By default, the authorization will last 30 days.</small>
+    </div>
+    {% endif %}
+    <input type="hidden" name="client_id" value="{{ client_id }}">
+    <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
+    <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
+    <input type="hidden" name="client_state" value="{{ client_state }}">
+    <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
+    {% if user_code is not none %}
+    <input type="hidden" name="user_code" value="{{ user_code }}">
+    {% endif %}
+    <footer id="button-container">
+      <button type="submit" name="approve" value="true" required>Connect</button>
+    </footer>
   </form>
 </main>
+{% endblock %}
+
+{% block head_extra %}
+{{ super() }}
+<style>
+#auth-form var {
+  font-style: normal; /* overwrite browser */
+}
+
+/* To layout form elements in a way that lets us re-arrange them */
+#auth-form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+/* FAQ: If TTL field is shown, then it should be on same line as button */
+#auth-form > :where(#ttl-field, #ttl-field + #button-container) {
+  width: 50%;
+  margin-block: 0; /* to undo Core-Styles */
+}
+/* FAQ: Other form elements should be full width */
+#auth-form > :not(#ttl-field, #ttl-field + #button-container) {
+  width: 100%;
+}
+/* FAQ: To vertically center TTL field (because button makes the row taller) */
+#ttl-field {
+  justify-content: center;
+}
+#ttl-field label {
+  margin-bottom: 0;
+}
+/* FAQ: If TTL field is hidden, then reduce space between button and desc. */
+:not(#ttl-field) + #button-container {
+  justify-content: center; /* to override Core-Styles */
+  margin-top: 0; /* to override Core-Styles */
+}
+:not(#ttl-field) + #button-container > button {
+  margin-left: unset; /* to undo Core-Styles */
+}
+/* To remove excess space from margins that are not collapsing */
+/* FAQ: The `#auth-form` has `dispaly: flex` which makes margins NOT collapse */
+#auth-form h1 {
+  margin-bottom: 0; /* override Core-Styles */
+}
+</style>
 {% endblock %}
