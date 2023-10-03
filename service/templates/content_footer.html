@@ -11,3 +11,13 @@
       alt="Tapis logo" title="Tapis (TACC APIs)" height="50px">
   </a>
 </footer>
+
+{% block head_extra %}
+{{ super() }}
+<style>
+  /* To move non-image links to the left */
+  .powered_by {
+    margin-left: auto;
+  }
+</style>
+{% endblock %}
