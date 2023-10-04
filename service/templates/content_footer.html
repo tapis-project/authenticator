@@ -1,0 +1,23 @@
+<footer>
+  <a href="https://tacc.utexas.edu/about/security-and-compliance/">
+    Security
+  </a>
+  <a href="https://tacc.utexas.edu/use-tacc/user-policies/">
+    Policies
+  </a>
+  <a href="https://tapis-project.org" target="_blank" class="powered_by">
+    Powered by:
+    <img src="https://dev.develop.tapis.io/v3/oauth2/authorize/tapis.png"
+      alt="Tapis logo" title="Tapis (TACC APIs)" height="50px">
+  </a>
+</footer>
+
+{% block head_extra %}
+{{ super() }}
+<style>
+  /* To move non-image links to the left */
+  .powered_by {
+    margin-left: auto;
+  }
+</style>
+{% endblock %}
