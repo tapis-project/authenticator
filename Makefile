@@ -10,7 +10,7 @@
 ifndef API_NAME
 -include .env
 endif
-api := $(API_NAME)
+api=$(API_NAME)
 
 cwd=$(shell pwd)
 
