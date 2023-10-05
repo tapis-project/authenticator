@@ -7,7 +7,10 @@
 
 
 # it is required that the operator export API_NAME=<name_of_the_api> before using this makefile/
-api=${API_NAME}
+-include .env
+ifdef API_NAME
+	api := $(API_NAME)
+endif
 
 cwd=$(shell pwd)
 
