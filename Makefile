@@ -49,7 +49,7 @@ connect_db:
 init_dbs: run_dbs
 	echo "wait for db to start up..."
 	sleep 8
-	docker cp new_db.sql $(api)_postgres_1:/db.sql
+	docker cp new_db.sql $(api)-postgres-1:/db.sql
 	docker-compose exec -T postgres psql -Upostgres -f /db.sql
 
 # ----- wipe database and associated data
