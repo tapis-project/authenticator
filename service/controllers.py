@@ -390,14 +390,16 @@ def check_client(use_session=False):
     if not client:
         logout()
         raise errors.ResourceError("Invalid client.")
+    
+    # Device Code logins do not require the client to have even registered a redirect uri and the flow does not set a response_type
     if 'device_login' in session:
-        return client_id, None, None, None, None
-    if not client_redirect_uri:
-        logout()
-        raise errors.ResourceError("Required query parameter redirect_uri missing.")
+        return client_id, None, client_state, client, response_type
     if not response_type == 'code' and not response_type == 'token' and not response_type == 'device_code':
         logout()
         raise errors.ResourceError("Required query parameter response_type missing or not supported.")
+    if not client_redirect_uri:
+        logout()
+        raise errors.ResourceError("Required query parameter redirect_uri missing.")
     if not client.callback_url == client_redirect_uri:
         logout()
         raise errors.ResourceError(
@@ -574,6 +576,8 @@ class LoginResource(Resource):
             session['mfa_required'] = True
         if session.get('device_login'):
             response_type = 'device_code'
+            if not mfa_required:
+                redirect_url = 'deviceflowresource'
         return redirect(url_for(redirect_url,
                                 client_id=client_id,
                                 redirect_uri=client_redirect_uri,

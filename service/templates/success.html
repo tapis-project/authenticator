@@ -1,7 +1,26 @@
-{% extends 'base.html' %}
-{% block content %}
-<div class="container">
-<h2> Congrats! Device Code entered successfully. Please return to your application</h2>
+{% extends 'base-auth.html' %}
 
-</div>
+{% block content %}
+<main class="s-form-page">
+    <form action="" method="post" class="s-form s-form--login">
+      <h1>
+        <figure>
+        {% with tenant_id=tenant_id %}
+        {% include "./branding.html" %}
+        {% endwith %}
+        {% with tenant_id="tacc" %}
+        {% include "./branding.html" %}
+        {% endwith %}
+        </figure>
+        <span>Congrats! Device Code entered successfully. Please return to your application</span>
+      </h1>
+  
+  
+      {% if error %}
+        <ul>
+          <li>Error: {{ error }}</li>
+        </ul>
+      {% endif %}
+    </form>
+  </main>
 {% endblock %}
