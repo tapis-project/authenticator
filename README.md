@@ -42,6 +42,8 @@ be sure to run:
 $ export API_NAME=authenticator
 ```
 
+Alternatively, create a `.env` file with the content `API_NAME=authenticator`.
+
 The `API_NAME` variable is used to let the `make` system know which Tapis service to work with.
 
 
