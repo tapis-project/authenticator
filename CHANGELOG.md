@@ -2,7 +2,11 @@
 All notable changes to this project will be documented in this file.
 
 
-## 1.5.0 - 2023-10-17 (target)
+## 1.5.0 - 2023-10-17
+
+### Breaking Changes:
+- None
+
 ### New features:
 - Tenants are now able to determine how long the MFA authentication should last before the user has to re-enter their MFA
 - Updated HTML - all of the different pages of the authentication workflow now have updated design layouts
@@ -10,6 +14,20 @@ All notable changes to this project will be documented in this file.
 ### Bug Fixes:
 - The device code flow, starting with GET /v3/device?client_id=<client_id>, is now working for all login methods
 - The language for the user code form of the device flow is now more clear
+
+
+## 1.4.0 - 2023-07-17
+There were no major updates in this release.
+
+### Breaking Changes:
+- None
+
+### New features:
+- None
+
+### Bug fixes:
+- None
+
 
 ## 1.3.5 - 2023-06-27 (target)
 ### Breaking Changes:
