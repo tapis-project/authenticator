@@ -370,12 +370,10 @@ def check_client(use_session=False):
         logout()
         raise errors.ResourceError(f"This application is not configured to serve the requested tenant {tenant_id}.")
     if use_session:
-        logger.info('Using session')
         client_id = session.get('orig_client_id')
         client_redirect_uri = session.get('orig_client_redirect_uri')
         response_type = session.get('orig_client_response_type')
         client_state = session.get('orig_client_state')
-        logger.info(f"client_id: {client_id}, client_redirect_uri: {client_redirect_uri}, response_type: {response_type}, client_state: {client_state}")
     else:
         # required query parameters:
         client_id = request.args.get('client_id')
@@ -657,7 +655,6 @@ class MFAResource(Resource):
                 redirect_url = 'webapptokenandredirect'
             session['mfa_validated'] = True
             session['mfa_timestamp'] = time.time()
-            logger.info(f'redirect url: {redirect_url}')
             return redirect(url_for(redirect_url,
                                     client_id=client_id,
                                     redirect_uri=client_redirect_uri,
@@ -833,8 +830,6 @@ class AuthorizeResource(Resource):
         is_device_flow = True if 'device_login' in session else False
         # if we are using the multi_idp custom oa2 extension type it is possible we are being redirected here, not by the 
         # original web client, but by our select_idp page, in which case we need to get the client out of the session.
-        for key, value in session.items():
-            logger.info(f'{key} => {value}')
         if session.get('idp_id'):
             client_id, client_redirect_uri, client_state, client, response_type = check_client(use_session=True)
         else:    
@@ -883,7 +878,6 @@ class AuthorizeResource(Resource):
             # Device login should already be in the session
             # User would have to navigate directly to authorize and put device_code response type as parameter
             if response_type == 'device_code':
-                logger.info('setting device_login')
                 session['device_login'] = True
             # if the tenant is configured with a custom oa2 extension, start the redirect for that --
             if tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id):
@@ -1156,7 +1150,6 @@ class AuthorizeResource(Resource):
             session.pop('device_login')
             if session.get('idp_id'):
                 clear_orig_client_data()
-            logger.info("Finished device flow and popped device_login variable")
             return make_response(render_template("success.html"), 200, headers)
 
 
