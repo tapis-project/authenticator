@@ -1051,6 +1051,8 @@ class AuthorizeResource(Resource):
                 raise errors.ResourceError("Failure to generate an access token; please try again later.")
             url = f'{client.callback_url}?access_token={access_token}&state={state}&expires_in={expires_in}&token_type=Bearer'
             logger.debug(f"issuing redirect to {client.callback_url}")
+            if session.get('idp_id'):
+                clear_orig_client_data()
             return redirect(url)
 
         # authorization_code grant type ---------------------------------------------
@@ -1078,6 +1080,8 @@ class AuthorizeResource(Resource):
             # issue redirect to client callback_url with authorization code:
             url = f'{client.callback_url}?code={authz_code}&state={state}'
             logger.debug(f"issuing redirect to {client.callback_url}")
+            if session.get('idp_id'):
+                clear_orig_client_data()
             return redirect(url)
 
         elif client_response_type == 'device_code':
@@ -1150,6 +1154,8 @@ class AuthorizeResource(Resource):
                    'device_login': session.get('device_login', '')}
                 return make_response(render_template("authorize.html", **context), 200, headers)
             session.pop('device_login')
+            if session.get('idp_id'):
+                clear_orig_client_data()
             logger.info("Finished device flow and popped device_login variable")
             return make_response(render_template("success.html"), 200, headers)
 
@@ -1694,6 +1700,12 @@ def logout():
     session.pop('mfa_validated', None)
     session.pop('state', None)
     session.pop('idp_id', None)
+    session.pop('orig_client_id', None)
+    session.pop('orig_client_redirect_uri', None)
+    session.pop('orig_client_response_type', None)
+    session.pop('orig_client_state', None)
+
+def clear_orig_client_data():
     session.pop('orig_client_id', None)
     session.pop('orig_client_redirect_uri', None)
     session.pop('orig_client_response_type', None)
