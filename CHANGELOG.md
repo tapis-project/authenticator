@@ -2,6 +2,21 @@
 All notable changes to this project will be documented in this file.
 
 
+## 1.5.1 - 2023-10-27
+
+### Breaking Changes:
+- None
+
+### New features:
+- None
+
+### Bug Fixes:
+- Fix bug where, for tenants configured with custom OA2 IdPs, a second attempt to authenticate a user via an OAuth2 flow
+  after a user had already authenticated with a previous client (and had established a session) would fail. The issue is 
+  that, in 1.5.0, we remove the orig_client_* attributes from the session on successful login; however, for custom OA2
+  IdPs, we expect to get the client_id out of the session. This will fail on the first call to /authorize in such cases.
+
+
 ## 1.5.0 - 2023-10-17
 
 ### Breaking Changes:
