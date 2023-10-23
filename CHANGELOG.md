@@ -8,7 +8,9 @@ All notable changes to this project will be documented in this file.
 - None
 
 ### New features:
-- None
+- Added a new /v3/oauth2/webapp/logout endpoint for testing with the Token Webapp; it removes only the token from the 
+  session, while keeping the authorization server's session in tact. This allows for using the Token Webapp to test 
+  repeated logins within the same authorization server session. 
 
 ### Bug Fixes:
 - Fix bug where, for tenants configured with custom OA2 IdPs, a second attempt to authenticate a user via an OAuth2 flow

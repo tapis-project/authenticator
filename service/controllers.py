@@ -1727,6 +1727,12 @@ def clear_orig_client_data():
     session.pop('orig_client_response_type', None)
     session.pop('orig_client_state', None)
 
+def logout_from_webapp():
+    """
+    Helper function that just removes the Token Webapp's attributes from the session.
+    """
+    session.pop('access_token', None)
+
 
 class WebappTokenAndRedirect(Resource):
     """
@@ -1765,7 +1771,7 @@ class WebappTokenAndRedirect(Resource):
                 # and start the OAuth flow over again.
                 msg = f'Got exception trying to call userinfo endpoint. Will log out user. Details: {e}'
                 has_valid_session = False
-                logout()
+                logout_from_webapp()
                 logger.error(msg)
             if has_valid_session:
                 try:
@@ -1774,7 +1780,7 @@ class WebappTokenAndRedirect(Resource):
                     msg = f'Could not get JSON result from userinfo endpoint. Will log out user. Details: rsp: {rsp}'
                     logger.error(msg)
                     has_valid_session = False
-                    logout()
+                    logout_from_webapp()
             if has_valid_session:
                 try:
                     username = user_info['username']
@@ -1898,6 +1904,17 @@ class WebappTokenGen(Resource):
         #  Redirect to oauth2/webapp/token-display
         return redirect(url_for('webapptokenandredirect'))
 
+
+class WebappLogout(Resource):
+    """
+    Implements a logout function for just the Token Webapp; i.e., this endpoint removes only the 
+    webapp attributes from the user's session.
+    """
+
+    def get(self):
+        logger.debug("top of GET /v3/oauth2/webapp/logout")
+        logout_from_webapp()
+        logger.debug(f"User has been logged out of webapp; remaining session keys: {session.keys()}")
 
 class LogoutResource(Resource):
 
