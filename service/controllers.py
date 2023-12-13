@@ -1757,7 +1757,6 @@ class WebappTokenAndRedirect(Resource):
             has_valid_session = True
             context = {'error': None,
                        'token': token}
-            headers = {'Content-Type': 'text/html'}
             # call the userinfo endpoint
             url = f'{base_redirect_url}/v3/oauth2/userinfo'
             headers = {'X-Tapis-Token': token}

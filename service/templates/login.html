@@ -5,12 +5,12 @@
   <form action="" method="post" class="s-form s-form--login">
     <h1>
       <figure>
-      {% with tenant_id=tenant_id %}
+        {% with tenant_id=tenant_id %}
         {% include "./branding.html" %}
-      {% endwith %}
-      {% with tenant_id="tacc" %}
+        {% endwith %}
+        {% with tenant_id="tacc" %}
         {% include "./branding.html" %}
-      {% endwith %}
+        {% endwith %}
       </figure>
       <span>Log In</span>
     </h1>
@@ -34,23 +34,16 @@
     <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
     <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
     <input type="hidden" name="client_state" value="{{ client_state }}">
+    <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
     <footer>
-      <a
-        href="https://accounts.tacc.utexas.edu/register"
-        rel="noreferrer"
-        target="_blank"
-      >
+      <a href="https://accounts.tacc.utexas.edu/register" rel="noreferrer" target="_blank">
         Create Account
       </a>
       <button type="submit">Login</button>
     </footer>
     <nav>
       <p>Having trouble?</p>
-      <a
-        href="https://tacc.utexas.edu/about/help/"
-        rel="noreferrer"
-        target="_blank"
-      >
+      <a href="https://tacc.utexas.edu/about/help/" rel="noreferrer" target="_blank">
         Account Help
       </a>
     </nav>
@@ -69,8 +62,9 @@
 {% block head_extra %}
 {{ super() }}
 <style>
-var {
-  font-style: normal; /* to override browser default */
-}
+  var {
+    font-style: normal;
+    /* to override browser default */
+  }
 </style>
 {% endblock %}
