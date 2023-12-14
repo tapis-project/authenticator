@@ -499,6 +499,7 @@ class LoginResource(Resource):
         logger.debug("Logging in")
         logger.debug(f"Session: {session}")
         client_id, client_redirect_uri, client_state, client, response_type = check_client()
+        logger.debug(f"client_response_type: {response_type}")
         # selecting a tenant id is required before logging in -
         tenant_id = g.request_tenant_id
         if not tenant_id:
@@ -522,7 +523,8 @@ class LoginResource(Resource):
                    'client_id': client_id,
                    'client_redirect_uri': client_redirect_uri,
                    'client_state': client_state,
-                   'tenant_id': tenant_id}
+                   'tenant_id': tenant_id,
+                   'client_response_type': response_type}
         return make_response(render_template('login.html', **context), 200, headers)
 
     def post(self):
@@ -545,7 +547,8 @@ class LoginResource(Resource):
                    'client_id': client_id,
                    'client_redirect_uri': client_redirect_uri,
                    'client_state': client_state,
-                   'tenant_id': tenant_id}
+                   'tenant_id': tenant_id,
+                   }
         username = request.form.get("username")
         if not username:
             context['error'] = 'Username is required.'
@@ -580,7 +583,10 @@ class LoginResource(Resource):
             if append_idp_to_username:
                 username = f"{username}@{idp_id}"
 
-        response_type = 'code'
+        # response_type = 'code'
+        response_type = request.form.get('client_response_type')
+        if not response_type:
+            response_type = 'code'
         session['username'] = username
         mfa_timestamp = session.get('mfa_timestamp', None)
         mfa_required = needs_mfa(tenant_id, mfa_timestamp)
