@@ -2,6 +2,18 @@
 All notable changes to this project will be documented in this file.
 
 
+## 1.6.0 - 2024-02-06 (estimated)
+
+### Breaking Changes:
+- None
+
+### New features:
+- None 
+
+### Bug Fixes:
+- Fix issue impacting the implicit grant type from working in cases where the tenants
+  has configured an LDAP authentication due to response_type being dropped from the login UI. See issue #66 for more details. 
+
 ## 1.5.1 - 2023-10-27
 
 ### Breaking Changes:
