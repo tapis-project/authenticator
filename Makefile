@@ -18,42 +18,56 @@ cwd=$(shell pwd)
 # ----- build images
 
 build.api:
-	cd $(cwd); touch service.log; chmod a+w service.log; docker build -t tapis/$(api) .;
+	# cd $(cwd); touch service.log; chmod a+w service.log; docker build -t tapis/$(api) .;
+	cd $(cwd); touch service.log; chmod a+w service.log; docker-compose -f docker-compose-kprice.yml build authenticator-api; docker tag authenticator_authenticator-api:latest tapis/authenticator-api; echo 'Finished building tapis/authenticator-api:latest'; echo;
+
+build.ldap:
+	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-ldap; docker tag authenticator-authenticator-ldap:latest tapis/authenticator-ldap;
 
 build.migrations:
-	cd $(cwd); docker build -f Dockerfile-migrations -t tapis/$(api)-migrations .
+	# cd $(cwd); docker build -f Dockerfile-migrations -t tapis/$(api)-migrations .
+	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-migrations; docker tag authenticator-authenticator-migrations:latest tapis/authenticator-migrations; echo 'Finished building tapis/authenticator-migrations:latest'; echo;
 
 build.test:
-	cd $(cwd); docker build -t tapis/$(api)-tests -f Dockerfile-tests .;
+	# cd $(cwd); docker build -t tapis/$(api)-tests -f Dockerfile-tests .;
+	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-tests; docker tag authenticator-authenticator-tests:latest tapis/authenticator-tests; echo 'Finished building tapis/authenticator-tests:latest'; echo;
 
 build: build.api build.migrations build.test
 
 # ----- run tests
 test: build.test
-	cd $(cwd); touch service.log; chmod a+w service.log; docker-compose run $(api)-tests;
+	cd $(cwd); touch service.log; chmod a+w service.log; docker compose -f docker-compose-kprice.yml build $(api)-tests; docker compose -f docker-compose-kprice.yml run $(api)-tests;
 
 # ----- shutdown the currently running services
 down:
-	docker-compose down
+	docker-compose -f docker-compose-kprice.yml down
 
 # ----- wipe the local environment by removing all data and containers
 clean: down
 	- docker volume rm $(api)_pgdata
+	- docker volume rm $(api)_pgadmindata
 
 # ----- start databases
-run_dbs: build.api down
-	cd $(cwd); docker-compose --compatibility up -d postgres; docker-compose up -d authenticator-ldap
+run.dbs: build.api 
+	# cd $(cwd); docker-compose --compatibility up -d postgres; docker-compose up -d authenticator-ldap
+	cd $(cwd); docker compose --compatibility -f docker-compose-kprice.yml up -d authenticator-postgres; docker compose -f docker-compose-kprice.yml up -d authenticator-ldap;
+
+run.api: build.api
+	cd $(cwd); docker compose -f docker-compose-kprice.yml --compatibility up -d authenticator-api
+
+run: down
+	run.dbs run.api
 
 # ----- connect to db as root
 connect_db:
-	docker-compose exec postgres psql -Upostgres
+	docker-compose exec authenticator-postgres psql -U postgres
 
 # ----- initialize databases; run this target once per database installation
-init_dbs: run_dbs
+init_dbs: run.dbs
 	echo "wait for db to start up..."
 	sleep 8
-	docker cp new_db.sql $(api)_postgres_1:/db.sql
-	docker-compose exec -T postgres psql -Upostgres -f /db.sql
+	docker cp new_db.sql $(api)-postgres:/db.sql
+	docker compose -f docker-compose-kprice.yml exec -T $(api)-postgres psql -U postgres -f /db.sql
 
 # ----- wipe database and associated data
 #wipe: clean
@@ -61,4 +75,4 @@ init_dbs: run_dbs
 
 # ----- run migrations
 migrate.upgrade: build.migrations
-	docker-compose run --rm migrations upgrade
+	docker compose -f docker-compose-kprice.yml run --rm authenticator-migrations upgrade
