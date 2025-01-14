@@ -19,18 +19,18 @@ cwd=$(shell pwd)
 
 build.api:
 	# cd $(cwd); touch service.log; chmod a+w service.log; docker build -t tapis/$(api) .;
-	cd $(cwd); touch service.log; chmod a+w service.log; docker-compose -f docker-compose-kprice.yml build authenticator-api; docker tag authenticator_authenticator-api:latest tapis/authenticator-api; echo 'Finished building tapis/authenticator-api:latest'; echo;
+	cd $(cwd); touch service.log; chmod a+w service.log; docker-compose -f docker-compose-kprice.yml build authenticator-api; docker tag authenticator_authenticator-api tapis/authenticator-api:latest;  echo 'Finished building tapis/authenticator-api:latest'; echo;
 
 build.ldap:
-	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-ldap; docker tag authenticator-authenticator-ldap:latest tapis/authenticator-ldap;
+	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-ldap; echo 'Finished building tapis/authenticator-ldap:latest'; echo;
 
 build.migrations:
 	# cd $(cwd); docker build -f Dockerfile-migrations -t tapis/$(api)-migrations .
-	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-migrations; docker tag authenticator-authenticator-migrations:latest tapis/authenticator-migrations; echo 'Finished building tapis/authenticator-migrations:latest'; echo;
+	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-migrations; docker tag authenticator-authenticator-migrations tapis/authenticator-migrations:latest; echo 'Finished building tapis/authenticator-migrations:latest'; echo;
 
 build.test:
 	# cd $(cwd); docker build -t tapis/$(api)-tests -f Dockerfile-tests .;
-	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-tests; docker tag authenticator-authenticator-tests:latest tapis/authenticator-tests; echo 'Finished building tapis/authenticator-tests:latest'; echo;
+	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-tests; echo 'Finished building tapis/authenticator-tests:latest'; echo;
 
 build: build.api build.migrations build.test
 
