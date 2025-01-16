@@ -19,14 +19,14 @@ cwd=$(shell pwd)
 
 build.api:
 	# cd $(cwd); touch service.log; chmod a+w service.log; docker build -t tapis/$(api) .;
-	cd $(cwd); touch service.log; chmod a+w service.log; docker-compose -f docker-compose-kprice.yml build authenticator-api; docker tag authenticator_authenticator-api tapis/authenticator-api:latest;  echo 'Finished building tapis/authenticator-api:latest'; echo;
+	cd $(cwd); touch service.log; chmod a+w service.log; docker-compose -f docker-compose-kprice.yml build authenticator-api; echo 'Finished building tapis/authenticator-api:latest'; echo;
 
 build.ldap:
 	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-ldap; echo 'Finished building tapis/authenticator-ldap:latest'; echo;
 
 build.migrations:
 	# cd $(cwd); docker build -f Dockerfile-migrations -t tapis/$(api)-migrations .
-	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-migrations; docker tag authenticator-authenticator-migrations tapis/authenticator-migrations:latest; echo 'Finished building tapis/authenticator-migrations:latest'; echo;
+	cd $(cwd); docker compose -f docker-compose-kprice.yml build authenticator-migrations; echo 'Finished building tapis/authenticator-migrations:latest'; echo;
 
 build.test:
 	# cd $(cwd); docker build -t tapis/$(api)-tests -f Dockerfile-tests .;
@@ -46,6 +46,7 @@ down:
 clean: down
 	- docker volume rm $(api)_pgdata
 	- docker volume rm $(api)_pgadmindata
+	- docker volume rm $(api)_ldapdata
 
 # ----- start databases
 run.dbs: build.api 
@@ -60,14 +61,14 @@ run: down
 
 # ----- connect to db as root
 connect_db:
-	docker-compose exec authenticator-postgres psql -U postgres
+	docker-compose exec authenticator-postgres psql -U authenticator
 
 # ----- initialize databases; run this target once per database installation
 init_dbs: run.dbs
 	echo "wait for db to start up..."
 	sleep 8
 	docker cp new_db.sql $(api)-postgres:/db.sql
-	docker compose -f docker-compose-kprice.yml exec -T $(api)-postgres psql -U postgres -f /db.sql
+	docker compose -f docker-compose-kprice.yml exec -T $(api)-postgres psql -U authenticator -f /db.sql
 
 # ----- wipe database and associated data
 #wipe: clean

@@ -9,7 +9,7 @@ RUN pip install -r /home/tapis/requirements.txt
 RUN chmod -R a+w /usr/local/lib/python3.7/site-packages/tapipy/
 
 COPY configschema.json /home/tapis/configschema.json
-COPY config-local.json /home/tapis/config.json
+COPY config-local-kprice.json /home/tapis/config.json
 
 COPY service /home/tapis/service
 

@@ -1,0 +1,120 @@
+---
+
+version: "3.5"
+
+networks:
+    tapis:
+        name: tapis
+        external: true
+
+volumes:
+    authenticator_pgdata:
+        name: "authenticator_pgdata"
+    authenticator_pgadmindata:
+        name: "authenticator_pgadmindata"
+    authenticator_ldapdata:
+        name: "authenticator_ldapdata"
+
+services:
+    authenticator-api: 
+        container_name: authenticator-api
+        image: tapis/authenticator:latest
+        build:
+            context: .
+        networks:
+            - tapis 
+        env_file:
+            - ~/tmp/tapis/.kprice01-data/authenticator/env
+        volumes:
+            - ./config-local-kprice.json:/home/tapis/config.json
+        depends_on: 
+            - authenticator-postgres
+            - authenticator-ldap
+            # - authenticator-migrations
+
+    authenticator-postgres:
+        container_name: authenticator-postgres
+        image: postgres:11.4
+        networks:
+            - tapis
+        environment:
+            - PGDATA=/pgdata/data
+            - POSTGRES_USER=authenticator
+            - POSTGRES_DB=authenticator
+            - POSTGRES_HOST_AUTH_METHOD=trust
+        env_file:
+            - ~/tmp/tapis/.kprice01-data/authenticator/env
+        volumes:
+            - authenticator_pgdata:/pgdata/data
+        healthcheck:
+            test: pg_isready -U authenticator
+
+
+    authenticator-migrations:
+        container_name: authenticator-migrations
+        image: tapis/authenticator-migrations:latest
+        build:
+            context: .
+            dockerfile: Dockerfile-migrations
+        networks:
+            - tapis
+        env_file:
+            - ~/tmp/tapis/.kprice01-data/authenticator/env
+        depends_on:
+            - authenticator-postgres
+            - authenticator-ldap
+        command: ['upgrade']
+        # entrypoint: sleep infinity
+        volumes:
+            - ./config-local-kprice.json:/home/tapis/config.json
+
+
+    authenticator-ldap:
+        container_name: authenticator-ldap
+        image: tacc/slapd:1
+        networks:
+            - tapis
+        environment:
+            - LDAP_DOMAIN=tapis
+            - LDAP_ORGANISATION=Tapis
+        env_file:
+            - ~/tmp/tapis/.kprice01-data/authenticator/env
+        volumes:
+            - authenticator_ldapdata:/data/ldap
+        depends_on:
+            - authenticator-postgres
+        ulimits:
+            nofile:
+                soft: 1024
+                hard: 4096
+        healthcheck:
+            test: slapcat
+
+    authenticator-tests:
+        container_name: authenticator-tests
+        image: tapis/authenticator-tests:latest
+        build:
+            context: .
+            dockerfile: Dockerfile-tests
+        networks:
+            - tapis
+        volumes:
+            - ./config-local-kprice.json:/home/tapis/config.json
+            - ./service.log:/home/tapis/service.log
+        depends_on:
+            - authenticator-api
+
+    authenticator-pgadmin:
+        container_name: authenticator-pgadmin
+        image: dpage/pgadmin4
+        environment:
+            PGADMIN_DEFAULT_EMAIL: "admin@test.com"
+            PGADMIN_DEFAULT_PASSWORD: "password"
+        ports:
+            - "8000:80"
+        networks:
+            - tapis
+        depends_on:
+            - authenticator-postgres
+        volumes:
+            - authenticator_pgadmindata:/var/lib/pgadmin
