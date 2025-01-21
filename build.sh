@@ -8,9 +8,10 @@
 # 3. run this script
 # addl. note: admin/verification/authenticator-test won't work unless you run the burnup for authenticator & have the env file in the data dir.
 
+export API_NAME=authenticator
 make clean
 make build
 make init_dbs
 make migrate.upgrade
-# make run.api
-# make test
+make run.api
+make test

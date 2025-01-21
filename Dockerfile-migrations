@@ -2,7 +2,7 @@
 from tapis/authenticator
 
 RUN pip install --upgrade alembic==1.10.4
-RUN pip install --upgrade Flask-Migrate
+RUN pip install --upgrade Flask-Migrate==4.0.7
 
 COPY migrations /home/tapis/migrations
 
