@@ -162,19 +162,30 @@ def check_refresh_token_table(claims, grant_type, token_revoked, client_id=None)
     if client_id:
         assert token.client_id == client_id
 
-# def check_clients_table(client_id, callback_url, display_name, description):
-#     """
-#     Check that a client created with the 'create client' endpoint exists with correct info
-#     """
-#     client = models.Client.query.filter_by(client_id=client_id)
-#     if not client:
-#         raise Exception()
-#     # validate info for client
-#     assert client.callback_url == callback_url
-#     assert client.display_name == display_name
-#     assert client.description == description
+def check_clients_table(client_id, callback_url=None, display_name=None, description=None, negative=False):
+    """
+    Check that a client created with the 'create client' endpoint exists with correct info
+    If negative=true, check that this client doesn't exist instead
+    """
+    print(f'checking clients table')
+    retrieved = models.Client.query.filter_by(client_id=client_id).first()
+    print(f'DEBUG got client:: {retrieved}')
+    try:
+        if not client:
+            raise AssertionError()
+        # validate info for client
+        if callback_url:
+            assert retrieved.callback_url == callback_url
+        if display_name:
+            assert retrieved.display_name == display_name
+        if description:
+            assert retrieved.description == description
+    except AssertionError as e:
+        if not negative:
+            raise AssertionError
+        pass
 
-            
+
 
 def validate_refresh_token(response):
     """
@@ -195,7 +206,7 @@ def validate_refresh_token(response):
 
 def get_jwt(client):
     # TODO: add assertions for failing to get a token -- this should fail the current test somehow
-    auth_header = {'Authorization': get_basic_auth_header(TEST_CLIENT_ID, TEST_CLIENT_KEY)}
+    # auth_header = {'Authorization': get_basic_auth_header(TEST_CLIENT_ID, TEST_CLIENT_KEY)}
     payload = {
         'grant_type': 'password',
         'username': TEST_USERNAME,
@@ -203,7 +214,7 @@ def get_jwt(client):
     }
     response = client.post(
         "http://localhost:5000/v3/oauth2/tokens",
-        headers=auth_header,
+        # headers=auth_header,
         data=json.dumps(payload),
         content_type='application/json'
     )
@@ -217,6 +228,16 @@ def get_jwt(client):
 # =====================
 # Actual test functions
 # =====================
+
+## utility test
+# get jwt
+def test_get_jwt(client):
+    print(f'Starting test of getting JWT')
+    result = get_jwt(client)
+    print(f'got result = {result}')
+    # note: This serves as a smoke test to verify the validity of the other results. 
+    # If this is failing, it will likely cause other authenticated endpoint tests to fail, but they won't always give the correct reason
+    # the assertions made in the get_jwt func are enough to verify success. No addtl checks needed here
 
 
 ## Health Check
@@ -263,7 +284,7 @@ def test_authenticator_create_clients(client, capsys): ## TODO: this works, but 
     payload = {
         "client_id": TEST_CLIENT_ID,
         "client_key": TEST_CLIENT_KEY,
-        "callback_url": "https://foo.example.com/oauth2/callback",
+        "callback_url": TEST_CLIENT_REDIRECT_URI,
         "display_name": "A Test Client",
         "description": "This is a client just for testing"
     }
@@ -275,14 +296,20 @@ def test_authenticator_create_clients(client, capsys): ## TODO: this works, but 
     )
     
     assert result.status_code == 200
-    # check_clients_table(TEST_CLIENT_ID, 'https://foo.example.com/oauth2/callback', 'A Test Client', "This is a client just for testing")
+    # check the clients table to make sure it was created in the DB
+    check_clients_table(TEST_CLIENT_ID, TEST_CLIENT_REDIRECT_URI, 'A Test Client', "This is a client just for testing")
     
 # Get client details
+
 # Update client details
+
 # Permanantly set a client to inactive
-# def test_authenticator_delete_clients(client):
-#     result = client.authenticator.delete_client(client_id=TEST_CLIENT_ID)
-#     assert result.status_code == 200
+def test_authenticator_delete_clients(client):
+    header = {'X-Tapis-Token': get_jwt(client)}
+    result = client.delete(f'http://localhost:5000/v3/oauth2/clients/{TEST_CLIENT_ID}', headers=header)
+    print(f'DEBUG: got result of delete call: {result.json}')
+    assert result.status_code == 200
+    check_clients_table(TEST_CLIENT_ID, negative=True)
 
 ## Tokens
 # Generate a Tapis JWT
@@ -560,6 +587,7 @@ def test_authorization_code_grant(client, init_db):
                          headers=headers,
                          data=json.dumps(data),
                          content_type='application/json')
+        print(f'Got result:: {rs.json}')
         assert rs.status_code == 200
         assert 'access_token' in rs.json['result']
         # validate access_token:

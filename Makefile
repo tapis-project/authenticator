@@ -35,6 +35,8 @@ build.test:
 build: build.api build.migrations build.test
 
 # ----- run tests
+# TODO: this can't be run on its own, since there are some tests that require the DBs to be empty.
+# either make setup/teardown modules for these tests or edit the tests so that it's not required anymore
 test: build.test
 	cd $(cwd); touch service.log; chmod a+w service.log; docker compose -f docker-compose-kprice.yml build $(api)-tests; docker compose -f docker-compose-kprice.yml run $(api)-tests;
 
