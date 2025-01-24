@@ -4,8 +4,9 @@ import pytest
 import json
 
 from tapisservice.auth import validate_token
+from service.models import tenant_configs_cache, DeviceCode
 from service.api import app
-from service import models
+from service import models, mfa
 
 
 # These tests are intended to be run locally.
@@ -62,7 +63,7 @@ def init_db():
             # 2 years
             "max_refresh_token_ttl":63072000,
             "custom_idp_configuration":json.dumps({}),
-            "token_url": "",
+            "token_url": "https://admin.kprice01.tacc.utexas.edu/v3/token",
             "impers_oauth_client_id": "",
             "impers_oauth_client_secret": "",
             "impersadmin_username": "",
@@ -101,7 +102,6 @@ def get_basic_auth_header(username, password):
     user_pass = bytes(f"{username}:{password}", 'utf-8')
     return 'Basic {}'.format(b64encode(user_pass).decode())
 
-
 def validate_access_token(response):
     """
     Validate the a response has an access token and it is properly formatted.
@@ -116,7 +116,6 @@ def validate_access_token(response):
     assert claims['sub'] == f'{TEST_USERNAME}@{TEST_TENANT_ID}'
     return claims
     
-
 def check_access_token_table(claims, grant_type, token_revoked, client_id=None):
     """
     Check that a token with `claims` generated using `grant_type` with `token_revoked` status 
@@ -139,7 +138,6 @@ def check_access_token_table(claims, grant_type, token_revoked, client_id=None):
     if client_id:
         assert token.client_id == client_id
     
-
 def check_refresh_token_table(claims, grant_type, token_revoked, client_id=None):
     """
     Check that a token with `claims` generated using `grant_type` with `token_revoked` status 
@@ -185,7 +183,23 @@ def check_clients_table(client_id, callback_url=None, display_name=None, descrip
             raise AssertionError
         pass
 
-
+def check_device_code_table(client_id, user_code, device_code, verification_url, status, negative=False):
+    """
+    Check that a device code created with the device code endpoint exists with correct info
+    """
+    print('Checking device_codes table')
+    retrieved = models.DeviceCode.query.filter_by(user_code=user_code).first()
+    print(f'DEBUG: got device code object:: {retrieved}')
+    if negative:
+        assert retrieved == None
+        return
+    assert retrieved.code == device_code
+    assert retrieved.user_code == user_code
+    assert retrieved.tenant_id == TEST_TENANT_ID
+    assert retrieved.client_id == client_id
+    assert retrieved.client_key ==  TEST_CLIENT_KEY
+    assert retrieved.status == status
+    assert retrieved.verification_uri == verification_url
 
 def validate_refresh_token(response):
     """
@@ -224,21 +238,53 @@ def get_jwt(client):
     access_token_str = response.json['result']['access_token']['access_token']
     return access_token_str
 
+def gen_mfa_token(username, tokencode=None):
+    """
+    Generate a OTP mfa code using pyotp given a username and token code.
+    If a token code is not provided, a random one will be used.
+    """
+    pass
 
 # =====================
 # Actual test functions
 # =====================
 
-## utility test
+## utility tests
 # get jwt
 def test_get_jwt(client):
-    print(f'Starting test of getting JWT')
-    result = get_jwt(client)
-    print(f'got result = {result}')
     # note: This serves as a smoke test to verify the validity of the other results. 
     # If this is failing, it will likely cause other authenticated endpoint tests to fail, but they won't always give the correct reason
     # the assertions made in the get_jwt func are enough to verify success. No addtl checks needed here
+    print(f'Starting test of getting JWT')
+    result = get_jwt(client)
+    print(f'got result = {result}')
 
+# get mfa config
+def test_get_mfa_config(client):
+    print('top of get mfa config')
+    try:
+        print(f'what the heck is going on here')
+        tenant_config = tenant_configs_cache.get_config(TEST_TENANT_ID)
+        print(f'after tenant config get:: {tenant_config}')
+        mfa_config = json.loads(tenant_config.mfa_config)
+        if not mfa_config:
+            print(f'No mfa config found in tenant_config. Creating... ')
+            mfa_config = json.dumps({
+                "tacc": {
+                    "privacy_idea_url": "https://pidea01.tacc.utexas.edu",
+                    "privacy_idea_client_id": "p_client",
+                    "privacy_idea_client_key": "p_key",
+                    "grant_types": [
+                        "authorization_code",
+                        "implicit"
+                    ]
+                }
+            })
+            tenant_config.mfa_config = mfa_config
+        print(f'Got mfa config:: {mfa_config}')
+    except Exception as e:
+        print(f'got {e} while trying to get mfa config for tenant {TEST_TENANT_ID}')
+        raise Exception()
 
 ## Health Check
 # hello
@@ -514,17 +560,6 @@ def test_revoke_token(client, init_db):
 
         check_refresh_token_table(refresh_token_claims, "password", True, TEST_CLIENT_ID)
 
-# Generate a device code
-def test_device_code(client, init_db):
-    with client:
-        data={'client_id': TEST_CLIENT_ID}
-        
-        response = client.post('http://localhost:5000/v3/oauth2/device/code',
-                                data=json.dumps(data),
-                                content_type='application/json')
-        print(response.data)
-        assert response.status_code == 200
-
 ## Profiles
 # get_userinfo
 # list_profiles
@@ -697,6 +732,86 @@ def test_implicit_grant(client, init_db):
         assert claims['sub'] == f'{TEST_USERNAME}@{TEST_TENANT_ID}'
         # TODO -- validate that the token returned has the correct claims.. to do this, will need to parse the token
         # from out of the raw string.
+
+## Device code checks
+def test_get_device_code(client):
+    # TODO: get a device code, then use it to get a token
+    # verify that we get a access token using it
+    # verify that the code can't be used a second time to get another token
+    # verify that the device code is tied to the user in the db
+    with client:
+        # get device code url
+        data={'client_id': TEST_CLIENT_ID}
+        
+        response = client.post('http://localhost:5000/v3/oauth2/device/code',
+                                data=json.dumps(data),
+                                content_type='application/json')
+        # print(response.json)
+        assert response.status_code == 200
+        device_code = response.json["result"]["device_code"]
+        user_code = response.json["result"]["user_code"]
+        verification_url = response.json["result"]["verification_uri"]
+        assert device_code is not None
+        assert user_code is not None
+        assert verification_url is not None
+
+        # verify data is correct in table
+        check_device_code_table(TEST_CLIENT_ID, user_code, device_code, verification_url, "Created")
+
+def test_authorize_device_code(client):
+    pass
+
+def test_exchange_device_code(client):
+    # directly create the device code in the DB
+    device_code = None
+    code=models.DeviceCode.generate_code()
+    user_code=models.DeviceCode.generate_user_code()
+    verification_url=models.DeviceCode.generate_verification_uri(TEST_TENANT_ID, TEST_CLIENT_ID, BASE_URL='https://localhost:5000'),
+    try:
+        device_code = models.DeviceCode(tenant_id=TEST_TENANT_ID,
+                                    username=TEST_USERNAME,
+                                    client_id=TEST_CLIENT_ID,
+                                    client_key=TEST_CLIENT_KEY,
+                                    code=code,
+                                    user_code=user_code,
+                                    status="Entered",
+                                    verification_uri=verification_url,
+                                    expiry_time=models.DeviceCode.compute_expiry(),
+                                    access_token_ttl=models.DeviceCode.set_ttl())
+    except Exception as e:
+        print(f'ERROR: exception while generating device code object:: {e}')
+    assert device_code != None
+    print(f'DEBUG: have device code object: {device_code}')
+    try:
+        models.db.session.add(device_code)
+        models.db.session.commit()
+        print(f'DEBUG: committed device code object to DB')
+    except Exception as e:
+            print(f"Got exception trying to add and commit the device code. e: {e}; type(e): {type(e)}")
+            raise Exception("Internal error saving device code. Please try again later.")
+    # verify that it was added to the db correctly
+    check_device_code_table(TEST_CLIENT_ID, user_code, code, verification_url, "Entered")
+
+    # call the tokens url with the device code
+    body = {
+        "client_id": TEST_CLIENT_ID,
+        "device_code": code,
+        "grant_type": "device_code"
+    }
+    header = {
+        "X-Tapis-Local-Tenant": "dev",
+        "content-type": "application/json"
+    }
+    response = client.post(
+        'http://localhost:5000/v3/oauth2/tokens',
+        data=json.dumps(body),
+        headers=header
+    )
+    
+    print(f'DEBUG: got response requesting token w/ device code:: {response.json}')
+    assert response.status_code == 200
+
+    # verify token in response
 
 ## MFA tests
 
