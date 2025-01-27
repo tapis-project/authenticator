@@ -759,6 +759,9 @@ def test_get_device_code(client):
         check_device_code_table(TEST_CLIENT_ID, user_code, device_code, verification_url, "Created")
 
 def test_authorize_device_code(client):
+    # TODO: not sure how to do this one yet, since it tyically requires manually going to the verification url and signing in.
+    # the test_exchange_device_code func directly inserts the "Entered" status in the device_codes table to simulate this.
+    # Skipping this one for now
     pass
 
 def test_exchange_device_code(client):
@@ -809,9 +812,10 @@ def test_exchange_device_code(client):
     )
     
     print(f'DEBUG: got response requesting token w/ device code:: {response.json}')
-    assert response.status_code == 200
 
     # verify token in response
+    assert response.status_code == 200
+    validate_access_token(response)
 
 ## MFA tests
 
