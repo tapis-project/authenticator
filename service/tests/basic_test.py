@@ -4,6 +4,7 @@ import pytest
 import json
 
 from tapisservice.auth import validate_token
+from tapisservice.config import conf as tapisconf
 from service.models import tenant_configs_cache, DeviceCode
 from service.api import app
 from service import models, mfa
@@ -39,6 +40,7 @@ def init_db():
                 'active': True
                 }
         models.delete_tenant_from_db(TEST_TENANT_ID)
+        print(f'got tapisconf:: {tapisconf}')
         config = {
             "tenant_id":TEST_TENANT_ID,
             "allowable_grant_types":json.dumps(["password", "implicit", "authorization_code", "refresh_token", "device_code"]),
@@ -63,7 +65,7 @@ def init_db():
             # 2 years
             "max_refresh_token_ttl":63072000,
             "custom_idp_configuration":json.dumps({}),
-            "token_url": "https://admin.kprice01.tacc.utexas.edu/v3/token",
+            "token_url": 'http://localhost:5000/v3/tokens',
             "impers_oauth_client_id": "",
             "impers_oauth_client_secret": "",
             "impersadmin_username": "",
