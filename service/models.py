@@ -34,7 +34,6 @@ try:
 except Exception as e:
     logger.error(f"Got exception trying to build full_db_ulr; e: {e}")
     raise e
-logger.debug(f'FQ DB URL:: {full_db_url}')
 app.config['SQLALCHEMY_DATABASE_URI'] = full_db_url
 db = SQLAlchemy(app, session_options={"expire_on_commit": False})
 migrate = Migrate(app, db)
