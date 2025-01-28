@@ -1490,6 +1490,7 @@ class TokensResource(Resource):
             raise errors.ResourceError("Failure to generate an access token; please try again later.")
         try:
             result = {'access_token': {'access_token': tokens.access_token.access_token,
+                                       'id_token': tokens.access_token.access_token,
                                        'expires_at': tokens.access_token.expires_at,
                                        'expires_in': tokens.access_token.expires_in,
                                        'jti': tokens.access_token.jti

@@ -707,6 +707,9 @@ components:
             access_token:
               type: string
               description: The actual access token as a JWT
+            id_token:
+              type: string
+              description: The actual access token as a JWT
             expires_at:
               type: string
               description: The time, as a string in UTC, when the token expires.
