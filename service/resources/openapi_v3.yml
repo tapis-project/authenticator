@@ -619,6 +619,9 @@ components:
         client_id:
           type: string
           description: The client_id being authenticated (for device_code grant).
+        client_key:
+          type: string
+          description: The client_key being authenticated (optional for authorization_code grant).
         grant_type:
           type: string
           description: The OAuth2 grant type being used; either password, authorization_code or refresh_token.

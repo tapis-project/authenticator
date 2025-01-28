@@ -1,12 +1,12 @@
 # image: tapis/authenticator
-FROM tapis/flaskbase:1.6.0
+FROM tapis/flaskbase:1.7.0
 
 COPY requirements.txt /home/tapis/requirements.txt
 RUN pip install -r /home/tapis/requirements.txt
 
 # give tapis permissions to write to tapipy -- this is important if you want tapipy to download more
 # recent specs.
-RUN chmod -R a+w /usr/local/lib/python3.7/site-packages/tapipy/
+RUN chmod -R a+w /usr/local/lib/python3.8/site-packages/tapipy/
 
 COPY configschema.json /home/tapis/configschema.json
 COPY config-local-kprice.json /home/tapis/config.json

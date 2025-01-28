@@ -68,7 +68,7 @@ def authentication():
     # only the authenticator's own service token and tenant admins for the tenant can retrieve or modify the tenant
     # config
     if '/v3/oauth2/admin' in request.url_rule.rule:
-        logger.debug("admin endpoint; checking for authentictor service token or tenant admin role...")
+        logger.debug("admin endpoint; checking for authenticator service token or tenant admin role...")
         # admin endpoints always require tapis token auth
         auth.authentication()
         # we'll need to use the request's tenant_id, so make sure it is resolved now
@@ -173,9 +173,17 @@ def authentication():
             check_username_password(parts['tenant_id'], parts['username'], parts['password'])
             return True
         else:
+
             logger.debug("oauth2 clients page, no basic auth header.")
             # check for a Tapis token
             auth.authentication()
+
+            # g.username is JWT claim username
+            # g.request_username, defaults to g.username unless service specifies _x_tapis_user
+            # We require that request_username must be JWT username or _tapis_{JWT username}.
+            if g.username != g.request_username and g.request_username != f"_tapis_{g.username}":
+                raise common_errors.AuthenticationError(f"Client requests requires jwt username (g.username: {g.username}) match request username (g.request_username: {g.request_username}) or request username to match _tapis_{{jwt username}}.")
+
             # always resolve the request tenant id based on the URL:
             auth.resolve_tenant_id_for_request()
             try:

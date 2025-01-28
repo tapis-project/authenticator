@@ -7,9 +7,8 @@
 
 
 # it is required that the operator export API_NAME=<name_of_the_api> before using this makefile/
-ifndef API_NAME
--include .env
-endif
+# default to authenticator
+API_NAME ?=authenticator
 api=${API_NAME}
 
 cwd=$(shell pwd)

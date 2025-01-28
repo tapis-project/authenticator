@@ -7,9 +7,6 @@ import json
 import time
 from flask import g, request, Response, render_template, redirect, make_response, send_from_directory, session, url_for
 from flask_restful import Resource
-# TODO: tapipy-1.4.0
-# from openapi_core.shortcuts import RequestValidator
-# from openapi_core.wrappers.flask import FlaskOpenAPIRequest
 from openapi_core import openapi_request_validator
 from openapi_core.contrib.flask import FlaskOpenAPIRequest
 import sqlalchemy
@@ -69,25 +66,31 @@ class ClientsResource(Resource):
     """
 
     def get(self):
+        logger.debug("top of GET /clients")
         show_inactive = request.args.get('show_inactive', False)
         if show_inactive:
-            clients = Client.query.filter_by(tenant_id=g.tenant_id, username=g.username)
+            clients = Client.query.filter_by(tenant_id=g.request_tenant_id, username=g.request_username)
         else: 
-            clients = Client.query.filter_by(tenant_id=g.tenant_id, username=g.username, active=True)
+            clients = Client.query.filter_by(tenant_id=g.request_tenant_id, username=g.request_username, active=True)
         return utils.ok(result=[cl.serialize for cl in clients], msg="Clients retrieved successfully.")
 
     def post(self):
-        # TODO: tapipy-1.4.0
-        # validator = RequestValidator(utils.spec)
-        # result = validator.validate(FlaskOpenAPIRequest(request))
+        logger.debug("top of POST /clients")
         result = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
         if result.errors:
             raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
         validated_body = result.body
         data = Client.get_derived_values(validated_body)
+        data.update({'tenant_id': g.request_tenant_id, 'username': g.request_username})
+        g.tenant_id = g.request_tenant_id
+        g.username = g.request_username
         client = Client(**data)
         logger.debug(f"creating new client; data: {data}; "
-                     f"client: {client}")
+                     f"client: {client}; "
+                     f"g.request_tenant_id: {g.request_tenant_id}; "
+                     f"g.tenant_id: {g.tenant_id}; "
+                     f"g.request_username: {g.request_username}; "
+                     f"g.username: {g.username}")
         try:
             db.session.add(client)
             db.session.commit()
@@ -110,7 +113,10 @@ class ClientResource(Resource):
     """
 
     def get(self, client_id):
-        client = Client.query.filter_by(tenant_id=g.tenant_id, client_id=client_id).first()
+        logger.debug("top of GET /clients/{client_id}")
+        g.tenant_id = g.request_tenant_id
+        g.username = g.request_username
+        client = Client.query.filter_by(tenant_id=g.request_tenant_id, client_id=client_id).first()
         if not client:
             raise errors.ResourceError(msg=f'No client found with id {client_id}.')
         if not client.username == g.username:
@@ -125,15 +131,16 @@ class ClientResource(Resource):
             raise errors.ResourceError("Changing client_key not currently supported.")
         if 'description' in request.json:
             raise errors.ResourceError("Changing description not currently supported.")
-        logger.debug("got past checks for unsupported fields.")
-        client = Client.query.filter_by(tenant_id=g.tenant_id, client_id=client_id).first()
+        logger.debug(f"got past checks for unsupported fields. using tenant_id: {g.request_tenant_id}; client_id: {client_id}")
+        g.tenant_id = g.request_tenant_id
+        g.username = g.request_username
+        clients = Client.query.filter_by(tenant_id=g.request_tenant_id, client_id=client_id)
+        client = clients.first()
+        logger.debug(f"clients: {clients}; client: {client}")
         if not client:
             raise errors.ResourceError(msg=f'No client found with id {client_id}.')
         if not client.username == g.username:
             raise errors.PermissionsError("Not authorized for this client.")
-        # TODO: for tapipy-1.4.0
-        # validator = RequestValidator(utils.spec)
-        # result = validator.validate(FlaskOpenAPIRequest(request))
         result = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
         if result.errors:
             print(f"openapi_core validation failed. errors: {result.errors}")
@@ -144,10 +151,12 @@ class ClientResource(Resource):
         client.callback_url = new_callback_url
         client.display_name = new_display_name
         db.session.commit()
+        logger.debug(f"client updated; client: {client}")
         return utils.ok(result=client.serialize, msg="Client updated successfully")
 
     def delete(self, client_id):
-        client = Client.query.filter_by(tenant_id=g.tenant_id, client_id=client_id).first()
+        logger.debug("top of DELETE /clients/{client_id}")
+        client = Client.query.filter_by(tenant_id=g.request_tenant_id, client_id=client_id).first()
         if not client:
             raise errors.ResourceError(msg=f'No client found with id {client_id}.')
         if not client.username == g.username:
@@ -229,8 +238,8 @@ class TenantConfigResource(Resource):
     def get(self):
         logger.debug('top of GET /v3/oauth2/admin/config')
         # we always use the request tenant id because this should either be the same as g.tenant_id (in the case of a
-        # user account) or the token was the authenticator's OWN service token, in whcih case we use the x-tapis-tenant
-        # header set in the reqest (authenticator itself can update all tenants).
+        # user account) or the token was the authenticator's OWN service token, in which case we use the x-tapis-tenant
+        # header set in the request (authenticator itself can update all tenants).
         tenant_id = g.request_tenant_id
         config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
         return utils.ok(result=config.serialize, msg="Tenant config object retrieved successfully.")
@@ -242,9 +251,6 @@ class TenantConfigResource(Resource):
         if not config:
             raise errors.ResourceError(f"Config for tenant {tenant_id} does not exist. Contact system administrators.")
         logger.debug(f"update request for tenant {tenant_id}; config: {config.serialize}")
-        # TODO: for tapipy-1.4.0
-        # validator = RequestValidator(utils.spec)
-        # result = validator.validate(FlaskOpenAPIRequest(request))
         result = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
         if result.errors:
             logger.debug(f"openapi_core validation failed. errors: {result.errors}")
@@ -808,9 +814,6 @@ class DeviceCodeResource(Resource):
         logger.debug("In device code resource")
         # support content-type www-form by setting the body on the request eqaul to the JSON
 
-        # TODO: tapipy-1.4.0        
-        # validator = RequestValidator(utils.spec)        
-        # result = validator.validate(FlaskOpenAPIRequest(request))
         result = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
         if result.errors:
             raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
@@ -1272,9 +1275,6 @@ class TokensResource(Resource):
             logger.debug(f"handling x-www-form data")
             validated_body = TokenRequestBody(form=request.form)
         else:
-            # TODO: tapipy-1.4.0
-            # validator = RequestValidator(utils.spec)        
-            # result = validator.validate(FlaskOpenAPIRequest(request))
             result = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
             if result.errors:
                 raise errors.ResourceError(msg=f'Invalid POST data: {result.errors}.')
@@ -1310,8 +1310,9 @@ class TokensResource(Resource):
         # client id and client key are optional on the password grant type to allow new users to generate tokens
         # right away before they create a client
         if not auth:
-            client_id = None
-            client_key = None
+            # kprice 1/27/2025 optionally can include client credentials in post body
+            client_id = data.get('client_id')
+            client_key = data.get('client_key')
         else:
             try:
                 client_id = auth.username
@@ -1622,9 +1623,6 @@ class RevokeTokensResource(Resource):
     """
     def post(self):
         logger.debug("top of POST /v3/oauth2/tokens/revoke")
-        # TODO: tapipy-1.4.0
-        # validator = RequestValidator(utils.spec)
-        # validated = validator.validate(FlaskOpenAPIRequest(request))
         validated = openapi_request_validator.validate(utils.spec, FlaskOpenAPIRequest(request))
         if validated.errors:
             raise errors.ResourceError(msg=f'Invalid POST data: {validated.errors}.')

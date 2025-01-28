@@ -1,5 +1,5 @@
 # Image: tapis/authenticator-tests
-from tapis/authenticator
+FROM tapis/authenticator
 
 USER root
 ADD tests-requirements.txt /home/tapis/tests-requirements.txt

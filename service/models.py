@@ -904,6 +904,7 @@ class Token(object):
         result['code'] = getattr(data, 'code', None)
         # device code grant:
         result['client_id'] = getattr(data, 'client_id', None)
+        result['client_key'] = getattr(data, 'client_key', None)
         result['device_code'] = getattr(data, 'device_code', None)
         # refresh token:
         result['refresh_token'] = getattr(data, 'refresh_token', None)
