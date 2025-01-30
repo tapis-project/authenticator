@@ -1,0 +1,24 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: check-yaml
+-   repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 25.1.0
+    hooks:
+    -   id: black
+        exclude: ^migrations/
+        language_version: python3.11
+        args: ["--line-length=79"]
+-   repo: https://github.com/pycqa/isort
+    rev: 6.0.0
+    hooks:
+    -   id: isort
+        exclude: ^migrations/
+-   repo: https://github.com/pycqa/flake8
+    rev: 7.1.1
+    hooks:
+    -   id: flake8
+        exclude: ^migrations/
