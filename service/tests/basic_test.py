@@ -65,7 +65,7 @@ def init_db():
             # 2 years
             "max_refresh_token_ttl":63072000,
             "custom_idp_configuration":json.dumps({}),
-            "token_url": 'http://localhost:5000/v3/tokens',
+            "token_url": 'http://localhost:5000/v3/oauth2/tokens',
             "impers_oauth_client_id": "",
             "impers_oauth_client_secret": "",
             "impersadmin_username": "",
