@@ -256,6 +256,7 @@ def mfa_token(tokencode=None):
     """
     if tokencode is None:
         tokencode = MFA_GEN_CODE
+    print(f'DEBUG:: generating MFA token with tokencode: {tokencode}')
     totp = pyotp.TOTP(tokencode)
     return totp.now()
 

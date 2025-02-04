@@ -98,6 +98,8 @@ services:
             dockerfile: Dockerfile-tests
         networks:
             - tapis
+        env_file:
+            - ~/tmp/tapis/.kprice01-data/authenticator/env
         volumes:
             - ./config-local-kprice.json:/home/tapis/config.json
             - ./service.log:/home/tapis/service.log
