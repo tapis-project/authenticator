@@ -15,6 +15,9 @@
       <span>Log In</span>
     </h1>
     <p>to continue to the <var>{{ client_display_name }}</var></p>
+    {% if client_display_name == 'DesignSafe JupyterHub' %}
+      <p>Warning: Files saved in the top most directory will be wiped on server restart. Please save files to MyData or to a Project.</p>
+    {% endif %}
 
     {% if error %}
     <ul>

@@ -198,15 +198,16 @@ def check_device_code_table(client_id, user_code, device_code, verification_url,
     retrieved = models.DeviceCode.query.filter_by(user_code=user_code).first()
     print(f'DEBUG: got device code object:: {retrieved}')
     if negative:
-        assert retrieved == None
+        assert retrieved is None
         return
     assert retrieved.code == device_code
     assert retrieved.user_code == user_code
     assert retrieved.tenant_id == TEST_TENANT_ID
     assert retrieved.client_id == client_id
-    assert retrieved.client_key ==  TEST_CLIENT_KEY
+    assert retrieved.client_key == TEST_CLIENT_KEY
     assert retrieved.status == status
     assert retrieved.verification_uri == verification_url
+
 
 def validate_refresh_token(response):
     """
@@ -224,6 +225,7 @@ def validate_refresh_token(response):
     print(claims['tapis/access_token'])
     assert claims['tapis/access_token']['sub'] == f'{TEST_USERNAME}@{TEST_TENANT_ID}'
     return claims
+
 
 def get_jwt(client):
     # TODO: add assertions for failing to get a token -- this should fail the current test somehow
@@ -245,21 +247,22 @@ def get_jwt(client):
     access_token_str = response.json['result']['access_token']['access_token']
     return access_token_str
 
+
 @pytest.fixture
 def mfa_token(tokencode=None):
     """
-    Generate a OTP mfa code using pyotp given a username and token generation code.
-    If a token code is not provided, defaults to global MFA_GEN_CODE
+    Generate a OTP mfa code using pyotp given a username and token code.
+    If a token code is not provided, a random one will be used.
     """
     if tokencode is None:
         tokencode = MFA_GEN_CODE
     totp = pyotp.TOTP(tokencode)
     return totp.now()
 
-
 # =====================
 # Actual test functions
 # =====================
+
 
 ## utility tests
 # get jwt
@@ -270,6 +273,7 @@ def test_get_jwt(client):
     print(f'Starting test of getting JWT')
     result = get_jwt(client)
     print(f'got result = {result}')
+
 
 # get mfa config
 def test_get_mfa_config(client):
@@ -313,11 +317,13 @@ def test_authenticator_ready(client):
     result = client.get('http://localhost:5000/v3/oauth2/ready')
     assert result.status_code == 200
 
+
 ## Metadata
 # get_server_metadata
 def test_get_metadata(client):
     result = client.get("http://localhost:5000/v3/oauth2/.well-known/oauth-authorization-server")
     assert result.status_code == 200
+
 
 ## Admin
 # get_config
@@ -327,10 +333,12 @@ def test_get_metadata(client):
      
 ## Clients
 
+
 def test_invalid_post(client):
     with client:
         response = client.post("http://localhost:5000/v3/oauth2/clients")
         assert response.status_code == 400
+
 
 # list_clients
 def test_authenticator_list_clients(client, capsys):
@@ -339,6 +347,7 @@ def test_authenticator_list_clients(client, capsys):
         header = {'X-Tapis-Token': get_jwt(client)}
         result = client.get('http://localhost:5000/v3/oauth2/clients', headers=header)
         assert result.status_code == 200
+
 
 # create_client
 def test_authenticator_create_clients(client, capsys): ## TODO: this works, but doing it twice violates uniqueness constraint. Need to find a way to reliably erase it without using another endpoint
@@ -538,7 +547,7 @@ def test_password_grant_no_client(client, init_db):
     assert 'access_token' in response.json['result']
     # validate access_token:
     claims = validate_access_token(response)
-    assert claims['tapis/client_id'] == None
+    assert claims['tapis/client_id'] is None
     assert claims['tapis/grant_type'] == 'password'
     # when not using an oauth client, refresh tokens are not returned:
     assert 'refresh_token' not in response.json['result']
@@ -583,7 +592,7 @@ def test_revoke_token(client, init_db):
             data=json.dumps(payload),
             content_type='application/json'
         )
-        assert response.status_code == 200        
+        assert response.status_code == 200 
         check_access_token_table(access_token_claims, "password", True, TEST_CLIENT_ID)
 
         # then the refresh token
@@ -593,7 +602,7 @@ def test_revoke_token(client, init_db):
             data=json.dumps(payload),
             content_type='application/json'
         )
-        assert response.status_code == 200        
+        assert response.status_code == 200       
 
         check_refresh_token_table(refresh_token_claims, "password", True, TEST_CLIENT_ID)
 
@@ -822,12 +831,12 @@ def test_exchange_device_code(client):
                                     access_token_ttl=models.DeviceCode.set_ttl())
     except Exception as e:
         print(f'ERROR: exception while generating device code object:: {e}')
-    assert device_code != None
+    assert device_code is not None
     print(f'DEBUG: have device code object: {device_code}')
     try:
         models.db.session.add(device_code)
         models.db.session.commit()
-        print(f'DEBUG: committed device code object to DB')
+        print('DEBUG: committed device code object to DB')
     except Exception as e:
             print(f"Got exception trying to add and commit the device code. e: {e}; type(e): {type(e)}")
             raise Exception("Internal error saving device code. Please try again later.")

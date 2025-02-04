@@ -106,3 +106,6 @@ venv.bak/
 
 # defualt config
 config-local.json
+
+# MacOS
+*.DS_Store
