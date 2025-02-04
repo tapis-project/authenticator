@@ -2,6 +2,7 @@ from base64 import b64encode
 import datetime
 import pytest
 import json
+import pyotp
 
 from tapisservice.auth import validate_token
 from tapisservice.config import conf as tapisconf
@@ -241,12 +242,19 @@ def get_jwt(client):
     access_token_str = response.json['result']['access_token']['access_token']
     return access_token_str
 
-def gen_mfa_token(username, tokencode=None):
+@pytest.fixture
+def mfa_token(tokencode=None):
     """
     Generate a OTP mfa code using pyotp given a username and token code.
     If a token code is not provided, a random one will be used.
     """
-    pass
+    # TODO: using a random code won't work if we're checking against TACC's p_idea instance. 
+    # can either use cicsvc (creds in stache) or figure out some other way to fake it
+    if tokencode is None:
+        tokencode = pyotp.random_base32()
+    totp = pyotp.TOTP(tokencode)
+    return totp.now()
+
 
 # =====================
 # Actual test functions
@@ -266,7 +274,6 @@ def test_get_jwt(client):
 def test_get_mfa_config(client):
     print('top of get mfa config')
     try:
-        print(f'what the heck is going on here')
         tenant_config = tenant_configs_cache.get_config(TEST_TENANT_ID)
         print(f'after tenant config get:: {tenant_config}')
         mfa_config = json.loads(tenant_config.mfa_config)
@@ -289,6 +296,10 @@ def test_get_mfa_config(client):
         print(f'got {e} while trying to get mfa config for tenant {TEST_TENANT_ID}')
         raise Exception()
 
+def test_get_mfa_code(client, mfa_token):
+    print(f'got mfa tken:: {mfa_token}')
+    assert mfa_token is not None
+
 ## Health Check
 # hello
 def test_authenticator_hello(client):
@@ -309,7 +320,9 @@ def test_get_metadata(client):
 
 ## Admin
 # get_config
+# TODO
 # update_config
+# TODO
      
 ## Clients
 
@@ -349,8 +362,10 @@ def test_authenticator_create_clients(client, capsys): ## TODO: this works, but 
     check_clients_table(TEST_CLIENT_ID, TEST_CLIENT_REDIRECT_URI, 'A Test Client', "This is a client just for testing")
     
 # Get client details
+# TODO
 
 # Update client details
+# TODO
 
 # Permanantly set a client to inactive
 def test_authenticator_delete_clients(client):
@@ -528,6 +543,8 @@ def test_password_grant_no_client(client, init_db):
     assert 'refresh_token' not in response.json['result']
 
 # Create a v2 bearer token from a Tapis v3 JWT
+# TODO
+
 # Revoke a token 
 def test_revoke_token(client, init_db):
     """
@@ -579,10 +596,15 @@ def test_revoke_token(client, init_db):
 
         check_refresh_token_table(refresh_token_claims, "password", True, TEST_CLIENT_ID)
 
+# Note: Device code checks are below
+
 ## Profiles
 # get_userinfo
+# TODO
 # list_profiles
+# TODO
 # get_profile
+# TODO
 
 ## grant type tests
 
@@ -834,7 +856,14 @@ def test_exchange_device_code(client):
     validate_access_token(response)
 
 ## MFA tests
+# TODO
+def test_mfa_valid(mfa_token):
+    response = mfa.call_mfa(mfa_token, TEST_TENANT_ID, TEST_USERNAME)
+    print(f'DEBUG:: mfa response: {response}')
+    raise Exception()
+
 
 ## OAuth2ProviderExtCallback tests
+# TODO
 
 
