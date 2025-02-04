@@ -3,6 +3,7 @@ import datetime
 import pytest
 import json
 import pyotp
+import os
 
 from tapisservice.auth import validate_token
 from tapisservice.config import conf as tapisconf
@@ -20,6 +21,8 @@ TEST_CLIENT_KEY = 'Dkrio2odj2AbvR'
 TEST_CLIENT_REDIRECT_URI = 'http://localhost:5000/testsuite'
 TEST_USERNAME = 'testuser1'
 TEST_PASSWORD = 'testuser1'
+MFA_USERNAME = 'cicsvc'
+MFA_GEN_CODE = os.environ.get('MFA_GEN_CODE')
 
 @pytest.fixture
 def client():
@@ -245,13 +248,11 @@ def get_jwt(client):
 @pytest.fixture
 def mfa_token(tokencode=None):
     """
-    Generate a OTP mfa code using pyotp given a username and token code.
-    If a token code is not provided, a random one will be used.
+    Generate a OTP mfa code using pyotp given a username and token generation code.
+    If a token code is not provided, defaults to global MFA_GEN_CODE
     """
-    # TODO: using a random code won't work if we're checking against TACC's p_idea instance. 
-    # can either use cicsvc (creds in stache) or figure out some other way to fake it
     if tokencode is None:
-        tokencode = pyotp.random_base32()
+        tokencode = MFA_GEN_CODE
     totp = pyotp.TOTP(tokencode)
     return totp.now()
 
@@ -857,11 +858,16 @@ def test_exchange_device_code(client):
 
 ## MFA tests
 # TODO
-def test_mfa_valid(mfa_token):
-    response = mfa.call_mfa(mfa_token, TEST_TENANT_ID, TEST_USERNAME)
+def test_mfa_valid_code(mfa_token):
+    # uses the cicsvc creds to auth. 
+    response = mfa.call_mfa(mfa_token, TEST_TENANT_ID, MFA_USERNAME)
     print(f'DEBUG:: mfa response: {response}')
-    raise Exception()
+    assert response is True
 
+def test_mfa_invalid_code(mfa_token):
+    response = mfa.call_mfa('123456', TEST_TENANT_ID, MFA_USERNAME)
+    print(f'DEBUG:: mfa response: {response}')
+    assert response is False
 
 ## OAuth2ProviderExtCallback tests
 # TODO
