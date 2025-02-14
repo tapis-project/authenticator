@@ -234,7 +234,7 @@ def get_jwt(client):
         'username': TEST_USERNAME,
         'password': TEST_PASSWORD
     }
-    print(f'DEBUG:: about to get token with payload: {json.dumps(payload, indent=4)}')
+    # print(f'DEBUG:: about to get token with payload: {json.dumps(payload, indent=4)}')
     response = client.post(
         "http://localhost:5000/v3/oauth2/tokens",
         # headers=auth_header,
@@ -244,7 +244,7 @@ def get_jwt(client):
     assert response.status_code == 200
     assert 'access_token' in response.json['result']
     # access_token:
-    print(f'DEBUG:: Successfully got access token for {TEST_USERNAME}')
+    # print(f'DEBUG:: Successfully got access token for {TEST_USERNAME}')
     access_token_str = response.json['result']['access_token']['access_token']
     return access_token_str
 
@@ -644,7 +644,26 @@ def test_password_grant_no_client(client, init_db):
     assert 'refresh_token' not in response.json['result']
 
 # Create a v2 bearer token from a Tapis v3 JWT
-# TODO
+# def test_get_v2_bearer_token(client, tapis_jwt):
+#     with client:
+#         payload = json.dumps(
+#             {
+#                 "access_token": tapis_jwt
+#             }
+#         )
+#         header = ({
+#             "X-Tapis-Token": tapis_jwt
+#         })
+#         result = client.post(
+#             'http://localhost:5000/v3/oauth2/v2/token',
+#             data=payload,
+#             headers=header,
+#             content_type='application/json'
+#         )
+#         print(f'DEBUG:: got result generating v2 token: {result.json}')
+#         assert result.status_code == 200
+#         raise Exception()
+## TODO!!! this is likely deprecated now that v2 is down...
 
 # Revoke a token 
 def test_revoke_token(client, init_db):
@@ -697,15 +716,43 @@ def test_revoke_token(client, init_db):
 
         check_refresh_token_table(refresh_token_claims, "password", True, TEST_CLIENT_ID)
 
+## Device Code
 # Note: Device code checks are below
 
 ## Profiles
 # get_userinfo
-# TODO
+def test_get_userinfo(client, tapis_jwt):
+    with client:
+        header = {
+            "X-Tapis-Token": tapis_jwt
+        }
+        result = client.get(
+            'http://localhost:5000/v3/oauth2/userinfo',
+            headers=header
+        )
+        assert result.status_code == 200
 # list_profiles
-# TODO
+def test_list_profiles(client, tapis_jwt):
+    with client:
+        header = {
+            "X-Tapis-Token": tapis_jwt
+        }
+        result = client.get(
+            'http://localhost:5000/v3/oauth2/profiles',
+            headers=header
+        )
+        assert result.status_code == 200
 # get_profile
-# TODO
+def test_get_profile(client, tapis_jwt):
+    with client:
+        header = {
+            "X-Tapis-Token": tapis_jwt
+        }
+        result = client.get(
+            f'http://localhost:5000/v3/oauth2/profiles/{TEST_USERNAME}',
+            headers=header
+        )
+        assert result.status_code == 200
 
 ## grant type tests
 
