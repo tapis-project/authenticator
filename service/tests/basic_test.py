@@ -95,6 +95,7 @@ def init_db():
         if not client:
             assert False
 
+@pytset.fixture()
 def teardown_module():
     # clean up all the mess we made
     with app.app_context():
@@ -303,7 +304,6 @@ def test_get_jwt(client):
     result = get_jwt(client)
     print(f'got result = {result}')
 
-
 # get mfa config
 def test_get_mfa_config(client):
     print('top of get mfa config')
@@ -410,7 +410,7 @@ def test_invalid_post(client):
 
 
 # list_clients
-def test_authenticator_list_clients(client, capsys):
+def test_authenticator_list_clients(client):
     # result = client.authenticator.list_clients()
     with client:
         header = {'X-Tapis-Token': get_jwt(client)}
@@ -419,7 +419,7 @@ def test_authenticator_list_clients(client, capsys):
 
 
 # create_client
-def test_authenticator_create_clients(client): ## TODO: this works, but doing it twice violates uniqueness constraint. Need to find a way to reliably erase it without using another endpoint
+def test_authenticator_create_clients(client, init_db): ## TODO: this works, but doing it twice violates uniqueness constraint. Need to find a way to reliably erase it without using another endpoint
     # result = client.authenticator.create_client(client_id=TEST_CLIENT_ID, callback_url='https://foo.example.com/oauth2/callback')
     header = {'X-Tapis-Token': get_jwt(client)}
     payload = {
@@ -450,7 +450,6 @@ def test_authenticator_get_client(client, tapis_jwt):
         check_clients_table(TEST_CLIENT_ID)
 
 # Update client details
-# TODO
 def test_authenticator_update_client(client, tapis_jwt):
     header = {'X-Tapis-Token': tapis_jwt}
     payload = json.dumps({
@@ -921,10 +920,6 @@ def test_implicit_grant(client, init_db):
 
 ## Device code checks
 def test_get_device_code(client):
-    # TODO: get a device code, then use it to get a token
-    # verify that we get a access token using it
-    # verify that the code can't be used a second time to get another token
-    # verify that the device code is tied to the user in the db
     with client:
         # get device code url
         data={'client_id': TEST_CLIENT_ID}
