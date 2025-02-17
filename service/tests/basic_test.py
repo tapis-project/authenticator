@@ -95,7 +95,7 @@ def init_db():
         if not client:
             assert False
 
-@pytset.fixture()
+@pytest.fixture()
 def teardown_module():
     # clean up all the mess we made
     with app.app_context():
@@ -419,9 +419,9 @@ def test_authenticator_list_clients(client):
 
 
 # create_client
-def test_authenticator_create_clients(client, init_db): ## TODO: this works, but doing it twice violates uniqueness constraint. Need to find a way to reliably erase it without using another endpoint
+def test_authenticator_create_clients(client, tapis_jwt): ## TODO: this works, but doing it twice violates uniqueness constraint. Need to find a way to reliably erase it without using another endpoint
     # result = client.authenticator.create_client(client_id=TEST_CLIENT_ID, callback_url='https://foo.example.com/oauth2/callback')
-    header = {'X-Tapis-Token': get_jwt(client)}
+    header = {'X-Tapis-Token': tapis_jwt}
     payload = {
         "client_id": TEST_CLIENT_ID,
         "client_key": TEST_CLIENT_KEY,
@@ -464,7 +464,17 @@ def test_authenticator_update_client(client, tapis_jwt):
     print(f'DEBUG: got result of update client:: {result}')
     assert result.status_code == 200
     check_clients_table(TEST_CLIENT_ID)
-    # TODO: will need to put it back, or do the teardown?
+    # TODO: we should create a better setup / teardown for these tests
+    payload = json.dumps({
+        "callback_url": TEST_CLIENT_REDIRECT_URI
+    })
+    result = client.put(
+        f'http://localhost:5000/v3/oauth2/clients/{TEST_CLIENT_ID}', 
+        headers=header, 
+        data=payload,
+        content_type='application/json'
+    )
+    assert result.status_code == 200 # fail if we can't put it back correctly
     
 
 # Permanantly set a client to inactive
@@ -790,7 +800,7 @@ def test_authorization_code(client, init_db):
         assert f'code={auth_code.code}' in response_str
 
 
-def test_authorization_code_grant(client, init_db):
+def test_authorization_code_grant(client):
     with client:
         # look up the authorization_code from the previous test:
         auth_code = models.AuthorizationCode.query.filter_by(tenant_id=TEST_TENANT_ID,
