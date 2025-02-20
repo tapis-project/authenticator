@@ -113,7 +113,7 @@ class ClientResource(Resource):
     """
 
     def get(self, client_id):
-        logger.debug("top of GET /clients/{client_id}")
+        logger.debug(f"top of GET /clients/{client_id}")
         g.tenant_id = g.request_tenant_id
         g.username = g.request_username
         client = Client.query.filter_by(tenant_id=g.request_tenant_id, client_id=client_id).first()
