@@ -373,11 +373,12 @@ def test_get_metadata(client):
 #         print(f'checking against cached config: {tenant_config}')
 #         assert retrieved_config == tenant_config
 
-# # update_config
+# # # update_config
 # def test_update_admin_config(client, tapis_service_jwt):
 #     with client:
 #         # get the config first, so we can compare after the change
 #         current_config = tenant_configs_cache.get_config(TEST_TENANT_ID).serialize
+#         print(f'DEBUG:: got current config {current_config}')
 #         # just change one thing
 #         payload = {
 #             "impers_oauth_client_id": "TEST"
@@ -394,8 +395,24 @@ def test_get_metadata(client):
 #             headers=header, 
 #             content_type="application/json"
 #         )
-#         print(f'DEBUG: got response:: {response}')
 #         assert response.status_code == 200
+#         # TODO: compare the change to the original
+#         new_config = response.json['result']
+#         print(f'DEBUG:: Comparing \n\t{new_config}\n\t against \n\t{current_config}')
+#         assert response.json['result'] != current_config
+
+#         # put it back
+#         payload = {
+#             "impers_oauth_client_id": current_config['impers_oauth_client_id']
+#         }
+#         response = client.put(
+#             'http://localhost:5000/v3/oauth2/admin/config', 
+#             data=json.dumps(payload), 
+#             headers=header, 
+#             content_type="application/json"
+#         )
+#         assert response.status_code == 200
+        
 
      
 ## Clients
