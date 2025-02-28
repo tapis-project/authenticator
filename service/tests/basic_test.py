@@ -356,63 +356,64 @@ def test_get_metadata(client):
 
 ## Admin
 # get_config
-# def test_get_admin_config(client, tapis_service_jwt):
-#     with client:
-#         header = {
-#             'X-Tapis-Token': tapis_service_jwt,
-#             'X-Tapis-Tenant': TEST_TENANT_ID,
-#             'X-Tapis-User': 'authenticator'
-#         }
-#         response = client.get('http://localhost:5000/v3/oauth2/admin/config', headers=header)
-#         print(f'got response:: {response.json}')
-#         assert response.status_code == 200
-#         # TODO: this doesn't seem to work.
-#         retrieved_config = response.json['result']
-#         tenant_config = tenant_configs_cache.get_config(TEST_TENANT_ID).serialize
-#         print(f'got config:: {retrieved_config}')
-#         print(f'checking against cached config: {tenant_config}')
-#         assert retrieved_config == tenant_config
+def test_get_admin_config(client, tapis_service_jwt, init_db):
+    with client:
+        header = {
+            'X-Tapis-Token': tapis_service_jwt,
+            'X-Tapis-Tenant': TEST_TENANT_ID,
+            'X-Tapis-User': 'authenticator'
+        }
+        response = client.get('http://localhost:5000/v3/oauth2/admin/config', headers=header)
+        print(f'got response:: {response.json}')
+        assert response.status_code == 200
+        # TODO: this doesn't seem to work.
+        retrieved_config = response.json['result']
+        print(f'got config:: {retrieved_config}')
+        # tenant_config = tenant_configs_cache.get_config(TEST_TENANT_ID)
+        tenant_configs = tenant_configs_cache.load_tenant_config_cache()
+        tenant_config = [conf for conf in tenant_configs if conf.tenant_id == TEST_TENANT_ID][0]
+        tenant_config_data = tenant_config.serialize
+        assert retrieved_config == tenant_config_data
 
 # # # update_config
-# def test_update_admin_config(client, tapis_service_jwt):
-#     with client:
-#         # get the config first, so we can compare after the change
-#         current_config = tenant_configs_cache.get_config(TEST_TENANT_ID).serialize
-#         print(f'DEBUG:: got current config {current_config}')
-#         # just change one thing
-#         payload = {
-#             "impers_oauth_client_id": "TEST"
-#         }
-#         # make request
-#         header = {
-#             'X-Tapis-Token': tapis_service_jwt,
-#             'X-Tapis-Tenant': TEST_TENANT_ID,
-#             'X-Tapis-User': 'authenticator'
-#         }
-#         response = client.put(
-#             'http://localhost:5000/v3/oauth2/admin/config', 
-#             data=json.dumps(payload), 
-#             headers=header, 
-#             content_type="application/json"
-#         )
-#         assert response.status_code == 200
-#         # TODO: compare the change to the original
-#         new_config = response.json['result']
-#         print(f'DEBUG:: Comparing \n\t{new_config}\n\t against \n\t{current_config}')
-#         assert response.json['result'] != current_config
+def test_update_admin_config(client, tapis_service_jwt):
+    with client:
+        # get current config
+        current_config = [d for d in tenant_configs_cache.load_tenant_config_cache() if d.tenant_id == TEST_TENANT_ID][0].serialize
 
-#         # put it back
-#         payload = {
-#             "impers_oauth_client_id": current_config['impers_oauth_client_id']
-#         }
-#         response = client.put(
-#             'http://localhost:5000/v3/oauth2/admin/config', 
-#             data=json.dumps(payload), 
-#             headers=header, 
-#             content_type="application/json"
-#         )
-#         assert response.status_code == 200
-        
+        # just change one thing
+        payload = {
+            "impers_oauth_client_id": "TEST"
+        }
+        # make request
+        header = {
+            'X-Tapis-Token': tapis_service_jwt,
+            'X-Tapis-Tenant': TEST_TENANT_ID,
+            'X-Tapis-User': 'authenticator'
+        }
+        response = client.put(
+            'http://localhost:5000/v3/oauth2/admin/config', 
+            data=json.dumps(payload), 
+            headers=header, 
+            content_type="application/json"
+        )
+        print(f'got response:: {response.json}')
+        assert response.status_code == 200
+        # TODO: compare the change to the original
+        updated_config = response.json['result']
+        print(f'DEBUG:: Comparing \n\t{updated_config}\n\t against \n\t{current_config}')
+        assert response.json['result'] != current_config
+
+        # change it back
+        payload = {"impers_oauth_client_id": current_config["impers_oauth_client_id"]}
+        response = client.put(
+            'http://localhost:5000/v3/oauth2/admin/config', 
+            data=json.dumps(payload), 
+            headers=header, 
+            content_type="application/json"
+        )
+        print(f'got response:: {response.json}')
+        assert response.status_code == 200
 
      
 ## Clients
