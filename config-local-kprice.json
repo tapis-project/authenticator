@@ -1,7 +1,7 @@
 {
   "service_name": "authenticator",
-  "service_password": "qMKZEHESIBvWM0ejQVXBmg",
-  "postgres_password": "75EMh9BDiIGL9BAMnuemzsCg",
+  "service_password": "C833KvLyyAcViGBnA9BtVZA",
+  "postgres_password": "9CkPF19AMcsS9A7ECF4WlD4UQ",
   "primary_site_admin_tenant_base_url": "https://admin.kprice01.tacc.utexas.edu",
   "service_tenant_id": "admin",
   "service_site_id": "kprice01",

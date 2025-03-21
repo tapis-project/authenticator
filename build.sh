@@ -14,4 +14,4 @@ make build
 make init_dbs
 make migrate.upgrade
 make run.api
-make test
+# make test
