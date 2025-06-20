@@ -27,14 +27,20 @@ def get_ldap_connection(ldap_server, ldap_port, bind_dn, bind_password, use_ssl=
     :param use_ssl: Whether to use SSL when connecting to the LDAP server.
     :return:
     """
+    logger.debug(f"Attempting LDAP connection with: server='{ldap_server}', port='{ldap_port}', bind_dn='{bind_dn}', use_ssl='{use_ssl}'")
     tls_config = None
     if use_ssl:
-        validate_cert_env = os.environ.get("LDAP_VALIDATE_CERT")
-        ssl_cert_path_env = os.environ.get("LDAP_SSL_CERT_PATH")
-        if validate_cert_env == "false":
+        validate_cert_conf = conf.ldap_validate_cert
+        ssl_cert_path_conf = conf.ldap_ssl_cert_path
+        if validate_cert_conf == "false":
             tls_config = Tls(validate=ssl.CERT_NONE)
-        elif ssl_cert_path_env:
-            tls_config = Tls(validate=ssl.CERT_REQUIRED, ca_certs_file=ssl_cert_path_env if ssl_cert_path_env else None)
+        elif ssl_cert_path_conf:
+            tls_config = Tls(validate=ssl.CERT_REQUIRED, ca_certs_file=ssl_cert_path_conf if ssl_cert_path_conf else None)
+
+    if tls_config:
+        logger.debug(f"Using TLS configuration: {tls_config}")
+    else:
+        logger.debug("Not using custom TLS configuration.")
 
     if use_ssl and tls_config:
         server = Server(ldap_server, port=ldap_port, use_ssl=use_ssl, tls=tls_config)
@@ -61,7 +67,7 @@ def get_tapis_ldap_server_info():
             msg = f"Could not get the dev LDAP config for tenant dev.. It is probably because this authenticator doesn't serve the dev tenant..."
             logger.error(msg)
             raise BaseTapisError(msg)
-        return {
+        result = {
             "server": dev_tenant.get('ldap_url'),
             "port": dev_tenant.get('ldap_port'),
             "bind_dn": dev_tenant.get('ldap_bind_dn'),
@@ -69,8 +75,10 @@ def get_tapis_ldap_server_info():
             "base_dn": dev_tenant.get('dev_ldap_tenants_base_dn'),
             "use_ssl": dev_tenant.get('ldap_use_ssl')
         }
+        logger.debug(f"LDAP server info: server='{result['server']}', port='{result['port']}', bind_dn='{result['bind_dn']}', base_dn='{result['base_dn']}', use_ssl='{result['use_ssl']}'")
+        return result
     else:
-        return {
+        result = {
             "server": conf.dev_ldap_url,
             "port": conf.dev_ldap_port,
             "bind_dn": conf.dev_ldap_bind_dn,
@@ -78,6 +86,8 @@ def get_tapis_ldap_server_info():
             "base_dn": conf.dev_ldap_tenants_base_dn,
             "use_ssl": conf.dev_ldap_use_ssl
         }
+        logger.debug(f"LDAP server info: server='{result['server']}', port='{result['port']}', bind_dn='{result['bind_dn']}', base_dn='{result['base_dn']}', use_ssl='{result['use_ssl']}'")
+        return result
 
 
 tapis_ldap = get_tapis_ldap_server_info()
