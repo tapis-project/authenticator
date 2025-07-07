@@ -1,4 +1,6 @@
 # Tapis Authenticator
+[![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/tapis-project/authenticator?label=git%20tag)](https://github.com/tapis-project/authenticator/tags)
+[![Docker Image](https://img.shields.io/docker/v/tapis/authenticator?label=img&sort=semver)](https://hub.docker.com/r/tapis/authenticator)
 
 REST API and web server providing authentication for a Tapis v3 instance.
 

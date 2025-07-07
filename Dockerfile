@@ -1,5 +1,5 @@
 # image: tapis/authenticator
-FROM tapis/flaskbase:1.8.4
+FROM tapis/flaskbase:1.9.0
 
 COPY requirements.txt /home/tapis/requirements.txt
 RUN pip install -r /home/tapis/requirements.txt
