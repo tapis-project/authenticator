@@ -892,6 +892,10 @@ class LoginResource(Resource):
             response_type = "device_code"
             if not mfa_required:
                 redirect_url = "deviceflowresource"
+        # iframe auth allows postMessage to break out of iframe. If requested, we send postMessage and then redirect.
+        use_iframe_redirect = request.args.get("use_iframe_redirect", "false")
+        use_iframe_redirect = str(use_iframe_redirect).lower() == "true"
+
         return redirect(
             url_for(
                 redirect_url,
@@ -900,6 +904,7 @@ class LoginResource(Resource):
                 state=client_state,
                 client_display_name=client_display_name,
                 response_type=response_type,
+                use_iframe_redirect="true" if use_iframe_redirect else "false"
             )
         )
 
@@ -976,6 +981,10 @@ class MFAResource(Resource):
         except Exception as e:
             logger.debug(f"Error getting client display name. e: {e}")
         if validated:
+            # iframe auth allows postMessage to break out of iframe. If requested, we send postMessage and then redirect.
+            use_iframe_redirect = request.args.get("use_iframe_redirect", "false")
+            use_iframe_redirect = str(use_iframe_redirect).lower() == "true"
+
             # response_type = 'code'
             if "device_login" in session and source != "authorize":
                 redirect_url = "deviceflowresource"
@@ -994,6 +1003,7 @@ class MFAResource(Resource):
                     response_type=response_type,
                     user_code=user_code,
                     source=source,
+                    use_iframe_redirect="true" if use_iframe_redirect else "false"
                 )
             )
         else:
@@ -1229,6 +1239,10 @@ class AuthorizeResource(Resource):
         if not tenant_id:
             tenant_id = g.request_tenant_id
             session["tenant_id"] = tenant_id
+        # iframe auth allows postMessage to break out of iframe. If requested, we send postMessage and then redirect.
+        use_iframe_redirect = request.args.get("use_iframe_redirect", "false")
+        use_iframe_redirect = str(use_iframe_redirect).lower() == "true"
+
         # check if the grant type is supported by this tenant
         config = tenant_configs_cache.get_config(tenant_id)
         allowable_grant_types = json.loads(config.allowable_grant_types)
@@ -1249,6 +1263,7 @@ class AuthorizeResource(Resource):
                             response_type=response_type,
                             user_code=request.args.get("user_code", None),
                             source="authorize",
+                            use_iframe_redirect="true" if use_iframe_redirect else "false"
                         )
                     )
 
@@ -1333,6 +1348,7 @@ class AuthorizeResource(Resource):
                     redirect_uri=client_redirect_uri,
                     state=client_state,
                     response_type=response_type,
+                    use_iframe_redirect="true" if use_iframe_redirect else "false"
                 )
             )
         tenant_id = g.request_tenant_id
@@ -1410,13 +1426,16 @@ class AuthorizeResource(Resource):
         config = tenant_configs_cache.get_config(tenant_id)
         allowable_grant_types = json.loads(config.allowable_grant_types)
         mfa_config = json.loads(config.mfa_config)
+        # iframe auth allows postMessage to break out of iframe. If requested, we send postMessage and then redirect.
+        use_iframe_redirect = request.args.get("use_iframe_redirect", "false")
+        use_iframe_redirect = str(use_iframe_redirect).lower() == "true"
 
         if mfa_config:
             if session.get("mfa_required") == True:
                 if check_mfa_expired(mfa_config, session.get("mfa_timestamp", None)):
                     session["mfa_validated"] = False
                 if session.get("mfa_validated") == False:
-                    logger.debug("Authorize Resource: Redirecting to MFA")
+                    logger.debug('Authorize Resource: Redirecting to MFA - use_iframe_redirect: %s', use_iframe_redirect)
                     return redirect(
                         url_for(
                             "mfaresource",
@@ -1426,6 +1445,7 @@ class AuthorizeResource(Resource):
                             response_type=client_response_type,
                             user_code=request.args.get("user_code", None),
                             source="authorize",
+                            use_iframe_redirect="true" if use_iframe_redirect else "false"
                         )
                     )
 
@@ -1480,10 +1500,20 @@ class AuthorizeResource(Resource):
                     "Failure to generate an access token; please try again later."
                 )
             url = f"{client.callback_url}?access_token={access_token}&state={state}&expires_in={expires_in}&token_type=Bearer"
-            logger.debug(f"issuing redirect to {client.callback_url}")
+            logger.debug(f"issuing redirect to client.callback_url: {client.callback_url}; final url: {url}")
             if session.get("idp_id"):
                 clear_orig_client_data()
-            return redirect(url)
+            # if we are using an iframe redirect, we need to return a special HTML page that will postMessage
+            if use_iframe_redirect:
+                return make_response(render_template(
+                    "auth-redirect.html",
+                    redirect_url=url,
+                    access_token=access_token,
+                    expires_in=expires_in,
+                    expires_at=getattr(tokens.access_token, "expires_at", None)
+                ), 200)
+            else:
+                return redirect(url)
 
         # authorization_code grant type ---------------------------------------------
         elif client_response_type == "code":
@@ -1517,7 +1547,7 @@ class AuthorizeResource(Resource):
                 )
             # issue redirect to client callback_url with authorization code:
             url = f"{client.callback_url}?code={authz_code}&state={state}"
-            logger.debug(f"issuing redirect to {client.callback_url}")
+            logger.debug(f"issuing redirect to client.callback_url: {client.callback_url}; final url: {url}")
             if session.get("idp_id"):
                 clear_orig_client_data()
             return redirect(url)

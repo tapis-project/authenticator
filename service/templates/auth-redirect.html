@@ -1,0 +1,25 @@
+<!-- auth-redirect.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Authorizing...</title>
+    <script type="text/javascript">
+        window.onload = function() {
+            // Send token data to parent
+            window.parent.postMessage({
+                type: 'tapis-auth-success',
+                access_token: "{{ access_token }}",
+                expires_in: "{{ expires_in }}",
+                expires_at: "{{ expires_at }}"
+            }, '*'); // postMessage should only apply to redirect_url.base_path
+
+            setTimeout(function() {
+                window.location.href = "{{ redirect_url }}";
+            }, 20000); // huge delay, parent should redirect immediately, loading is for backup
+        };
+    </script>
+</head>
+<body>
+    <p>Authorization successful. Redirecting...</p>
+</body>
+</html>
