@@ -3,25 +3,38 @@ from tapisservice.config import conf
 from tapisservice.errors import BaseTapisError
 from tapisservice.logs import get_logger
 from tapisservice.tapisflask.resources import HelloResource, ReadyResource
-from tapisservice.tapisflask.utils import (TapisApi, flask_errors_dict,
-                                           handle_error)
+from tapisservice.tapisflask.utils import TapisApi, flask_errors_dict, handle_error
 
 from service import MIGRATIONS_RUNNING
 from service.auth import authn_and_authz
-from service.controllers import (AuthorizeResource,  # , OIDCMetadataResource
-                                 ClientResource, ClientsResource,
-                                 DeviceCodeResource, DeviceFlowResource,
-                                 LoginResource, LogoutResource, MFAResource,
-                                 OAuth2ProviderExtCallback,
-                                 OAuthMetadataResource, OIDCjwksResource,
-                                 OIDCTokensResource, OIDCUserInfoResource,
-                                 ProfileResource, ProfilesResource,
-                                 RevokeTokensResource, SetIdentityProvider,
-                                 SetTenantResource, StaticFilesResource,
-                                 TenantConfigResource, TokensResource,
-                                 UserInfoResource, V2TokenResource,
-                                 WebappLogout, WebappTokenAndRedirect,
-                                 WebappTokenGen)
+from service.controllers import (  # OIDCMetadataResource,
+    AuthorizeResource,
+    ClientResource,
+    ClientsResource,
+    DeviceCodeResource,
+    DeviceFlowResource,
+    LoginResource,
+    LogoutResource,
+    MFAResource,
+    OAuth2ProviderExtCallback,
+    OAuthMetadataResource,
+    OIDCjwksResource,
+    OIDCTokensResource,
+    OIDCUserInfoResource,
+    ProfileResource,
+    ProfilesResource,
+    RevokeTokensResource,
+    SetIdentityProvider,
+    SetTenantResource,
+    StaticFilesResource,
+    TenantConfigResource,
+    TokensResource,
+    UserInfoResource,
+    V2TokenResource,
+    WebappLogout,
+    WebappTokenAndRedirect,
+    WebappTokenGen,
+)
 from service.ldap import populate_test_ldap
 from service.models import app, db, initialize_tenant_configs
 
@@ -39,7 +52,8 @@ db.init_app(app)
 migrate = Migrate(app, db)
 
 
-# create the initial tenantconfig objects for all tenants assigned to this authenticator if they do not exist
+# create the initial tenantconfig objects for all tenants
+# assigned to this authenticator if they do not exist
 # don't run this during migrations
 if not MIGRATIONS_RUNNING:
     logger.info("running initialization code.")
@@ -55,7 +69,10 @@ if not MIGRATIONS_RUNNING:
     if result and conf.populate_dev_ldap:
         # check that a tenant id was configure:
         if not conf.dev_ldap_tenant_id:
-            msg = "Set populate_dev_ldap but did not set the dev_ldap_tenant_id. Quitting now..."
+            msg = (
+                "Set populate_dev_ldap but did not set the dev_ldap_tenant_id. "
+                "Quitting now..."
+            )
             logger.error(msg)
             BaseTapisError(msg)
         populate_test_ldap(tenant_id=conf.dev_ldap_tenant_id)
