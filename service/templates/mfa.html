@@ -1,56 +1,65 @@
 {% extends 'base-auth.html' %}
-
 {% block content %}
-<main class="s-form-page">
-   <form action="" method="post" class="s-form s-form--login">
-      <h1>
-         <figure>
-         {% with tenant_id=tenant_id %}
-         {% include "./branding.html" %}
-         {% endwith %}
-         {% with tenant_id="tacc" %}
-         {% include "./branding.html" %}
-         {% endwith %}
-         </figure>
-         <span>Enter MFA Token</span>
-      </h1>
-
-      <p>
-         Multi-Factor Authentication (MFA) is now required. <br /><small><a href="https://docs.tacc.utexas.edu/basics/mfa/" target="_blank">Set up MFA</a> via the <span>TACC&nbsp;User&nbsp;Portal</span>.</small>
-      <p>
-
-      {% if error %}
-         <ul>
-            <li>Error: {{ error }}</li>
-         </ul>
-      {% endif %}
-
-      <div>
-         <label for="user_name">Username</label>
-         <input type="text" name="user_name" value="{{ username }}" readonly disabled>
-      </div>
-      <div class="has-required">
-         <label for="mfa_token">Token</label>
-         <input id="mfa_token" type="text" name="{{ mfa_token_name }}" placeholder="Enter MFA Token" autofocus required autocomplete="one-time-pass">
-         <input type="hidden" name="mfa_token_name" value="{{ mfa_token_name }}">
-         <input type="hidden" name="client_id" value="{{ client_id }}">
-         <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
-         <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
-         <input type="hidden" name="client_state" value="{{ client_state }}">
-         <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
-         <input type="hidden" name="source" value="{{ source }}">
-         <input type="hidden" name="user_code" value="{{ user_code }}">
-      </div>
-      <footer>
-         <button type="submit">Submit</button>
-      </footer>
-   </form>
-</main>
-{% endblock %}
-
-{% block head_extra %}
-{{ super() }}
-<style>
+    <main class="s-form-page">
+        <form action="" method="post" class="s-form s-form--login">
+            <h1>
+                <figure>
+                    {% with tenant_id=tenant_id %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                    {% with tenant_id="tacc" %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                </figure>
+                <span>Enter MFA Token</span>
+            </h1>
+            <p>
+                Multi-Factor Authentication (MFA) is now required.
+                <br />
+                <small><a href="https://docs.tacc.utexas.edu/basics/mfa/" target="_blank">Set up MFA</a> via the <span>TACC&nbsp;User&nbsp;Portal</span>.</small>
+                <p>
+                    {% if error %}
+                        <ul>
+                            <li>Error: {{ error }}</li>
+                        </ul>
+                    {% endif %}
+                    <div>
+                        <label for="user_name">Username</label>
+                        <input type="text" name="user_name" value="{{ username }}" readonly disabled>
+                    </div>
+                    <div class="has-required">
+                        <label for="mfa_token">Token</label>
+                        <input id="mfa_token"
+                               type="text"
+                               name="{{ mfa_token_name }}"
+                               placeholder="Enter MFA Token"
+                               autofocus
+                               required
+                               autocomplete="one-time-pass">
+                        <input type="hidden" name="mfa_token_name" value="{{ mfa_token_name }}">
+                        <input type="hidden" name="client_id" value="{{ client_id }}">
+                        <input type="hidden"
+                               name="client_redirect_uri"
+                               value="{{ client_redirect_uri }}">
+                        <input type="hidden"
+                               name="client_display_name"
+                               value="{{ client_display_name }}">
+                        <input type="hidden" name="client_state" value="{{ client_state }}">
+                        <input type="hidden"
+                               name="client_response_type"
+                               value="{{ client_response_type }}">
+                        <input type="hidden" name="source" value="{{ source }}">
+                        <input type="hidden" name="user_code" value="{{ user_code }}">
+                    </div>
+                    <footer>
+                        <button type="submit">Submit</button>
+                    </footer>
+                </form>
+            </main>
+        {% endblock %}
+        {% block head_extra %}
+            {{ super() }}
+            <style>
    /* To not let certain words break when paragraph is wrapped */
    /* FAQ: This seemed more robust for other editors than `&nbsp;` */
   .s-form > p :is(a, span) {
@@ -62,5 +71,5 @@
     font-size: inherit;
     font-weight: var(--regular);
   }
-</style>
-{% endblock %}
+            </style>
+        {% endblock %}

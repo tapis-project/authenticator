@@ -10,7 +10,7 @@ All notable changes to this project will be documented in this file.
 - Users with SMS configured for MFA will now be able to use SMS via a Tapis OAuth flow.
 
 ### Bug Fixes:
-- None 
+- None
 
 
 ## 1.8.3 - 2025-04-14
@@ -18,7 +18,7 @@ All notable changes to this project will be documented in this file.
 - None
 
 ### New features:
-- None 
+- None
 
 ### Bug Fixes:
 - Fix to user info endpoint.
@@ -66,7 +66,7 @@ All notable changes to this project will be documented in this file.
 - None
 
 ### New features:
-- This release makes some minor updates to the TACC MFA login page.  
+- This release makes some minor updates to the TACC MFA login page.
 - Add SMS support to MFA authentication workflow (need to update tenant config with JWT for PIdea).
 
 ### Bug Fixes:
@@ -78,10 +78,10 @@ All notable changes to this project will be documented in this file.
 - None
 
 ### New features:
-- None 
+- None
 
 ### Bug Fixes:
-- This minor release updates Authenticator to the latest tapisservice Python package, 1.6.0 
+- This minor release updates Authenticator to the latest tapisservice Python package, 1.6.0
   (previously it was 1.4.0). See issue #70.
 
 
@@ -90,19 +90,19 @@ All notable changes to this project will be documented in this file.
 - None
 
 ### New features:
-- None 
+- None
 
 ### Bug Fixes:
-- This release changes the behavior of the limit and offset paging query parameters in the Profiles API so that, 
-  whenever an offset value is sent that is larger that the size of the collection, no records are returned. 
-  Prior to this release, whenever an offset larger than the collection was sent, the query would "wrap" around 
+- This release changes the behavior of the limit and offset paging query parameters in the Profiles API so that,
+  whenever an offset value is sent that is larger that the size of the collection, no records are returned.
+  Prior to this release, whenever an offset larger than the collection was sent, the query would "wrap" around
   and send results from the start of the collection.
-- Since LDAP DNs are almost always case insensitive, usernames that are the same up to case are equivalent 
-  for binding. This change updates the check of a username/password combination to reject any username that 
-  contains uppercase letters. This prevents an issue where users could authenticate with different usernames 
+- Since LDAP DNs are almost always case insensitive, usernames that are the same up to case are equivalent
+  for binding. This change updates the check of a username/password combination to reject any username that
+  contains uppercase letters. This prevents an issue where users could authenticate with different usernames
   that are the same up to case and retrieve JWTs with different subjects. (See issue #69).
 
-  
+
 
 ## 1.6.0 - 2024-02-06
 
@@ -110,11 +110,11 @@ All notable changes to this project will be documented in this file.
 - None
 
 ### New features:
-- None 
+- None
 
 ### Bug Fixes:
 - Fix issue impacting the implicit grant type from working in cases where the tenants
-  has configured an LDAP authentication due to response_type being dropped from the login UI. See issue #66 for more details. 
+  has configured an LDAP authentication due to response_type being dropped from the login UI. See issue #66 for more details.
 
 ## 1.5.1 - 2023-10-27
 
@@ -122,13 +122,13 @@ All notable changes to this project will be documented in this file.
 - None
 
 ### New features:
-- Added a new /v3/oauth2/webapp/logout endpoint for testing with the Token Webapp; it removes only the token from the 
-  session, while keeping the authorization server's session in tact. This allows for using the Token Webapp to test 
-  repeated logins within the same authorization server session. 
+- Added a new /v3/oauth2/webapp/logout endpoint for testing with the Token Webapp; it removes only the token from the
+  session, while keeping the authorization server's session in tact. This allows for using the Token Webapp to test
+  repeated logins within the same authorization server session.
 
 ### Bug Fixes:
 - Fix bug where, for tenants configured with custom OA2 IdPs, a second attempt to authenticate a user via an OAuth2 flow
-  after a user had already authenticated with a previous client (and had established a session) would fail. The issue is 
+  after a user had already authenticated with a previous client (and had established a session) would fail. The issue is
   that, in 1.5.0, we remove the orig_client_* attributes from the session on successful login; however, for custom OA2
   IdPs, we expect to get the client_id out of the session. This will fail on the first call to /authorize in such cases.
 
@@ -183,8 +183,8 @@ an empty HTTP response. Applications that use this endpoint should be updated to
 - None
 
 ### Bug fixes:
-- This release fixes some issues with the device code flow, including when generating a device code and 
-  when using device codes with non-ldap identity providers. 
+- This release fixes some issues with the device code flow, including when generating a device code and
+  when using device codes with non-ldap identity providers.
 - This release also fixes a bug in the OAuth2ProviderExtCallback controller where the append_idp_to_username was not defined if the ext type was not "multi_idps". This bug impacted tenants such as CII with a different custom IdP type.
 
 
@@ -207,7 +207,7 @@ an empty HTTP response. Applications that use this endpoint should be updated to
 - None
 
 ### Bug fixes:
-- Fix an issue where the tenant_config_cache was leaving an access share relation (table) lock on the table indefinitely, preventing alter table commands from completing. 
+- Fix an issue where the tenant_config_cache was leaving an access share relation (table) lock on the table indefinitely, preventing alter table commands from completing.
 
 
 ## 1.3.1 - 2023-05-02
@@ -219,7 +219,7 @@ an empty HTTP response. Applications that use this endpoint should be updated to
 - Add support for "multi_keycloak" OAuth extension type, allowing tenants to configure arbitrary KeyCloak
   instances.
 - Add support for "globus" OAuth extension type, enabling use of Globus Auth/CILogon without KeyCloak.
-- Add support for "multi_idps" extension type, enabling tenants to configure multiple identity provider 
+- Add support for "multi_idps" extension type, enabling tenants to configure multiple identity provider
   backends including: GitHub, KeyCloak, Globus, LDAP, etc.
 - Updates to the HTML in the example token web app.
 
@@ -228,10 +228,10 @@ an empty HTTP response. Applications that use this endpoint should be updated to
 
 
 ## 1.3.0 - 2023-03-12
-This production point release adds support for TACC MFA, token revocation, token tracking 
-for usage analytics and a number of bug fixes. 
+This production point release adds support for TACC MFA, token revocation, token tracking
+for usage analytics and a number of bug fixes.
 NOTE: This version of Authenticator depends on the Site Router API for Token revocation, not
-previously released. 
+previously released.
 
 ### Breaking Changes:
 - None; Site Router is now required for revocation endpoints to function.
@@ -239,7 +239,7 @@ previously released.
 ### New features:
 - Suport for TACC MFA
 - Support for Token revocation.
-- Support for usage analytics via token tracking. 
+- Support for usage analytics via token tracking.
 - Add support for configuring Tokens to serve all tenants at a site via the `tenants: ["*"]` configuration.
 
 ### Bug fixes:
@@ -255,7 +255,7 @@ each tenant.
 - None.
 
 ### New features:
-- Adds new SQL tables for tracking access tokens and refresh tokens generated by authenticator (#22). 
+- Adds new SQL tables for tracking access tokens and refresh tokens generated by authenticator (#22).
 - Add additional indexes to the Clients and TenantConfigs table; (this update provided as a separate migration).
 
 ### Bug fixes:
@@ -290,9 +290,9 @@ This is a bug fix release that corrects a small issue with the MFA feature.
 
 
 ## 1.2.2 - 2022-07-29
-This preview release adds support for the TACC MFA solution, which can be configured for tenants using the 
-TACC identity provider (TACC LDAP) on a tenant by tenant basis. It also adds a new endpoint for exchanging 
-a v3 access token for a Tapis v2 token. This feature is also only available for certain tenants. 
+This preview release adds support for the TACC MFA solution, which can be configured for tenants using the
+TACC identity provider (TACC LDAP) on a tenant by tenant basis. It also adds a new endpoint for exchanging
+a v3 access token for a Tapis v2 token. This feature is also only available for certain tenants.
 
 ### Breaking Changes:
 - None.
@@ -335,11 +335,11 @@ mechanism is used when a tenant configures a custom idp configuration of type `t
 - Adds health check and ready endpoints.
 
 ### Bug fixes:
-- Fix a bug in the way authenticator computed the `default_user_filter_prefix` that was causing two equals signs (`=`) to get inserted into the filter. 
+- Fix a bug in the way authenticator computed the `default_user_filter_prefix` that was causing two equals signs (`=`) to get inserted into the filter.
 
 
 ## 1.1.0 - 2022-03-01
-This release converts the Authenticator to using the new `tapipy-tapisservice` plugin-based 
+This release converts the Authenticator to using the new `tapipy-tapisservice` plugin-based
 Tapis Python SDK and makes updates necessary for supporting deployment automation provided
 by the Tapis Deployer project.
 
@@ -348,7 +348,7 @@ by the Tapis Deployer project.
 
 ### New features:
 - Convert Authenticator to using the new `tapis/flaskbase-plugins` image.
-- Support the initial version of the Tapis Deployer deployment automation. 
+- Support the initial version of the Tapis Deployer deployment automation.
 - Add support for utilizing the `dev` ldap (with test accounts) on an arbitrary tenant, not
   just the `dev` tenant, so that it can be utilized by different sites.
 
@@ -363,7 +363,7 @@ by the Tapis Deployer project.
 
 ### New features:
 - Added support for the implict grant type (https://github.com/tapis-project/authenticator/issues/5). This feature is in "preview".
-- Added support for sending www-form encoded requests to the tokens endpoint (https://github.com/tapis-project/authenticator/issues/10). 
+- Added support for sending www-form encoded requests to the tokens endpoint (https://github.com/tapis-project/authenticator/issues/10).
 - Added support for OAuth metadata discovery endpoint. (https://github.com/tapis-project/authenticator/issues/11)
 
 ### Bug fixes:
@@ -382,7 +382,7 @@ by the Tapis Deployer project.
 
 
 ## 1.0.0 - 2021-07-16
-Initial production release of Tapis Authenticator with support for OAuth2 password 
+Initial production release of Tapis Authenticator with support for OAuth2 password
 and authorization code grant types and authentication with LDAP servers.
 
 For more details, please see the documentations: https://tapis.readthedocs.io/en/latest/technical/authentication.html

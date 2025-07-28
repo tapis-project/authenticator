@@ -175,7 +175,7 @@
         "description": "Whether Authenticator should append the idp_id to the username for this idp. Default is false."
       }
     }
-    
+
   },
 
   "ciiObject": {

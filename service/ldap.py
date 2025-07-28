@@ -1,16 +1,16 @@
-from ldap3 import Server, Connection
-from ldap3.core.exceptions import LDAPBindError
 import json
 
-from service import tenants, MIGRATIONS_RUNNING
+from ldap3 import Connection, Server
+from ldap3.core.exceptions import LDAPBindError
+from tapisservice.config import conf
+from tapisservice.errors import BaseTapisError, DAOError
+# get the logger instance -
+from tapisservice.logs import get_logger
+
+from service import MIGRATIONS_RUNNING, tenants
 from service.errors import InvalidPasswordError, InvalidTenantUserError
 from service.models import LdapOU, LdapUser, tenant_configs_cache
 
-from tapisservice.config import conf
-from tapisservice.errors import DAOError, BaseTapisError
-
-# get the logger instance -
-from tapisservice.logs import get_logger
 logger = get_logger(__name__)
 
 
@@ -40,19 +40,19 @@ def get_tapis_ldap_server_info():
             logger.error(msg)
             raise BaseTapisError(msg)
         dev_tenant = tenants.get_tenant_config(tenant_id=conf.dev_ldap_tenant_id)
-        # check to see if we have basic LDAP attributes; it is possible we do not in which case we need to 
+        # check to see if we have basic LDAP attributes; it is possible we do not in which case we need to
         # exit out immediately.
-        if not dev_tenant.get('ldap_url'):
+        if not dev_tenant.get("ldap_url"):
             msg = f"Could not get the dev LDAP config for tenant dev.. It is probably because this authenticator doesn't serve the dev tenant..."
             logger.error(msg)
             raise BaseTapisError(msg)
         return {
-            "server": dev_tenant.get('ldap_url'),
-            "port": dev_tenant.get('ldap_port'),
-            "bind_dn": dev_tenant.get('ldap_bind_dn'),
-            "bind_password": dev_tenant.get('ldap_bind_credential'),
-            "base_dn": dev_tenant.get('dev_ldap_tenants_base_dn'),
-            "use_ssl": dev_tenant.get('ldap_use_ssl')
+            "server": dev_tenant.get("ldap_url"),
+            "port": dev_tenant.get("ldap_port"),
+            "bind_dn": dev_tenant.get("ldap_bind_dn"),
+            "bind_password": dev_tenant.get("ldap_bind_credential"),
+            "base_dn": dev_tenant.get("dev_ldap_tenants_base_dn"),
+            "use_ssl": dev_tenant.get("ldap_use_ssl"),
         }
     else:
         return {
@@ -61,7 +61,7 @@ def get_tapis_ldap_server_info():
             "bind_dn": conf.dev_ldap_bind_dn,
             "bind_password": conf.dev_ldap_bind_credential,
             "base_dn": conf.dev_ldap_tenants_base_dn,
-            "use_ssl": conf.dev_ldap_use_ssl
+            "use_ssl": conf.dev_ldap_use_ssl,
         }
 
 
@@ -73,15 +73,19 @@ def get_tapis_ldap_connection():
     Convenience wrapper function to get an ldap connection to the Tapis dev ldap server.
     :return:
     """
-    logger.debug(f"get_tapis_ldap_connection for: {tapis_ldap['server']}:{tapis_ldap['port']}")
+    logger.debug(
+        f"get_tapis_ldap_connection for: {tapis_ldap['server']}:{tapis_ldap['port']}"
+    )
     try:
-        return get_ldap_connection(ldap_server = tapis_ldap['server'],
-                                   ldap_port = tapis_ldap['port'],
-                                   bind_dn = tapis_ldap['bind_dn'],
-                                   bind_password = tapis_ldap['bind_password'],
-                                   use_ssl = tapis_ldap['use_ssl'])
+        return get_ldap_connection(
+            ldap_server=tapis_ldap["server"],
+            ldap_port=tapis_ldap["port"],
+            bind_dn=tapis_ldap["bind_dn"],
+            bind_password=tapis_ldap["bind_password"],
+            use_ssl=tapis_ldap["use_ssl"],
+        )
     except LDAPBindError as e:
-        logger.debug(f'Invalid Tapis bind credential: {e}')
+        logger.debug(f"Invalid Tapis bind credential: {e}")
         raise InvalidPasswordError("Invalid username/password combination.")
     except Exception as e:
         msg = f"Got exception trying to create connection object to Tapis LDAP. e: {e}"
@@ -99,13 +103,15 @@ def add_tapis_ou(ou):
     try:
         result = conn.add(ou.dn, ou.object_class)
     except Exception as e:
-        msg = f'got an error trying to add an ou. Exception: {e}; ou.dn: {ou.dn}; ou.object_class: {ou.object_class}'
+        msg = f"got an error trying to add an ou. Exception: {e}; ou.dn: {ou.dn}; ou.object_class: {ou.object_class}"
         logger.error(msg)
     if not result:
-        msg = f'Got False result trying to add OU to LDAP; error data: {conn.result}'
+        msg = f"Got False result trying to add OU to LDAP; error data: {conn.result}"
         logger.error(msg)
-        raise DAOError("Unable to add OU to LDAP database; "
-                       "Required fields could be missing or improperly formatted.")
+        raise DAOError(
+            "Unable to add OU to LDAP database; "
+            "Required fields could be missing or improperly formatted."
+        )
     return True
 
 
@@ -117,13 +123,13 @@ def list_tapis_ous():
     conn = get_tapis_ldap_connection()
     try:
         # search for all cn's under the tapis tenants base_dn and pull back all attributes
-        result = conn.search(conf.dev_ldap_tenants_base_dn, '(ou=*)', attributes=['*'])
+        result = conn.search(conf.dev_ldap_tenants_base_dn, "(ou=*)", attributes=["*"])
     except Exception as e:
-        msg = f'Got an exception trying to list Tapis OUs. Exception: {e}'
+        msg = f"Got an exception trying to list Tapis OUs. Exception: {e}"
         logger.error(msg)
         raise DAOError(msg)
     if not result:
-        msg = f'Got an error trying to list Tapis OUs. message: {conn.result}'
+        msg = f"Got an error trying to list Tapis OUs. message: {conn.result}"
         logger.info(msg)
     # return the results -
     result = []
@@ -138,8 +144,8 @@ def create_tapis_ldap_tenant_ou(tenant_id):
     :param tenant_id:
     :return:
     """
-    base_dn = tapis_ldap['base_dn']
-    ou = LdapOU(dn=f'ou=tenants.{tenant_id},{base_dn}')
+    base_dn = tapis_ldap["base_dn"]
+    ou = LdapOU(dn=f"ou=tenants.{tenant_id},{base_dn}")
     return add_tapis_ou(ou)
 
 
@@ -149,23 +155,28 @@ def get_tenant_ldap_connection(tenant_id, bind_dn=None, bind_password=None):
     :param tenant_id: (str) The id of the tenant.
     :param bind_dn: (str) Optional dn to use to bind. Pass this to check validity of a username/password.
     :param bind_password (str) Optional password to use to bind. Pass this to check validity of a username/password.
-    :return: 
+    :return:
     """
     tenant = tenants.get_tenant_config(tenant_id)
     logger.debug(f"getting ldap connection for tenant {tenant_id}")
     # if we are passed specific bind credentials, use those:
     if not bind_dn is None:
-        return get_ldap_connection(ldap_server=tenant.ldap_url,
-                                   ldap_port=tenant.ldap_port,
-                                   bind_dn=bind_dn,
-                                   bind_password=bind_password,
-                                   use_ssl=tenant.ldap_use_ssl)
+        return get_ldap_connection(
+            ldap_server=tenant.ldap_url,
+            ldap_port=tenant.ldap_port,
+            bind_dn=bind_dn,
+            bind_password=bind_password,
+            use_ssl=tenant.ldap_use_ssl,
+        )
     # otherwise, return the connection associated with the tenant's bind credentials -
-    return get_ldap_connection(ldap_server=tenant.ldap_url,
-                               ldap_port=tenant.ldap_port,
-                               bind_dn=tenant.ldap_bind_dn,
-                               bind_password=tenant.ldap_bind_credential,
-                               use_ssl=tenant.ldap_use_ssl)
+    return get_ldap_connection(
+        ldap_server=tenant.ldap_url,
+        ldap_port=tenant.ldap_port,
+        bind_dn=tenant.ldap_bind_dn,
+        bind_password=tenant.ldap_bind_credential,
+        use_ssl=tenant.ldap_use_ssl,
+    )
+
 
 def get_custom_ldap_config(tenant_id):
     """
@@ -179,9 +190,11 @@ def get_custom_ldap_config(tenant_id):
         return {}
     # this is the authenticator configuration for the tenant --
     authenticator_tenant_config = tenant_configs_cache.get_config(tenant_id)
-    custom_idp_configuration = json.loads(authenticator_tenant_config.custom_idp_configuration)
+    custom_idp_configuration = json.loads(
+        authenticator_tenant_config.custom_idp_configuration
+    )
     try:
-        return custom_idp_configuration['ldap']
+        return custom_idp_configuration["ldap"]
     except KeyError:
         return {}
 
@@ -194,37 +207,49 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
     :param offset (int): A position to start the paged search.
     :return:
     """
-    logger.debug(f'top of list_tenant_users; tenant_id: {tenant_id}; limit: {limit}; offset: {offset}')
+    logger.debug(
+        f"top of list_tenant_users; tenant_id: {tenant_id}; limit: {limit}; offset: {offset}"
+    )
     # this gets the tenant object from the Tenants API cache --
     tenant = tenants.get_tenant_config(tenant_id)
-    if hasattr(tenant, 'ldap_bind_db') and hasattr(tenant, 'ldap_bind_credential'):
+    if hasattr(tenant, "ldap_bind_db") and hasattr(tenant, "ldap_bind_credential"):
         logger.debug(f"tenant {tenant} had ldap bind credentials; using those")
-        conn = get_tenant_ldap_connection(tenant_id,
-                                          bind_dn=tenant.ldap_bind_dn,
-                                          bind_password=tenant.ldap_bind_credential)
+        conn = get_tenant_ldap_connection(
+            tenant_id,
+            bind_dn=tenant.ldap_bind_dn,
+            bind_password=tenant.ldap_bind_credential,
+        )
     else:
         conn = get_tenant_ldap_connection(tenant_id)
     # this gets the custom authenticator config for the ldap --
     custom_ldap_config = get_custom_ldap_config(tenant_id)
     if not limit:
-        limit = custom_ldap_config.get('default_page_limit')
+        limit = custom_ldap_config.get("default_page_limit")
     if not limit:
         limit = conf.default_page_limit
 
     cookie = None
     # there are multiple ways to modify the ldap search using the custom_ldap_config. If user_search_filter is provided,
     # that one is always used.
-    user_search_filter = custom_ldap_config.get('user_search_filter')
+    user_search_filter = custom_ldap_config.get("user_search_filter")
     logger.debug(f"user_search_filter from custom ldap config: {user_search_filter}")
     # if user_search_filter is not specified, look for a user_search_prefix and/or user_search_supplemental_filter
     if not user_search_filter:
         # if user_search_prefix is not set, we default to using '(cn=*)'
-        user_search_prefix = custom_ldap_config.get('user_search_prefix', '(cn=*)')
-        logger.debug(f"user_search_prefix from custom ldap config: {user_search_prefix}")
-        user_search_supplemental_filter = custom_ldap_config.get('user_search_supplemental_filter')
-        logger.debug(f"user_search_supplemental_filter from custom ldap config: {user_search_supplemental_filter}")
+        user_search_prefix = custom_ldap_config.get("user_search_prefix", "(cn=*)")
+        logger.debug(
+            f"user_search_prefix from custom ldap config: {user_search_prefix}"
+        )
+        user_search_supplemental_filter = custom_ldap_config.get(
+            "user_search_supplemental_filter"
+        )
+        logger.debug(
+            f"user_search_supplemental_filter from custom ldap config: {user_search_supplemental_filter}"
+        )
         if user_search_supplemental_filter:
-            user_search_filter = f'(&{user_search_prefix}{user_search_supplemental_filter})'
+            user_search_filter = (
+                f"(&{user_search_prefix}{user_search_supplemental_filter})"
+            )
         else:
             user_search_filter = user_search_prefix
         logger.debug(f"final custom user_search_filter: {user_search_filter}")
@@ -235,144 +260,177 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
     user_dn = tenant.ldap_user_dn
     # if the tenant's user_dn config includes the template variable ${username}, we need to strip it out here and
     # pull out the user search prefix.
-    if '${username},' in tenant.ldap_user_dn:
-        parts = tenant.ldap_user_dn.split('${username},')
+    if "${username}," in tenant.ldap_user_dn:
+        parts = tenant.ldap_user_dn.split("${username},")
         if not len(parts) == 2:
             raise DAOError("Unable to compute LDAP user search DN.")
         # parts will be split into 'uid=' and 'ou=foo, o=bar, ..."
         # the user search prefix should therefore be of the form: '(<parts[0])*)'
         # we only use this for the user_search_filter if the user_search_filter was NOT set above (i.e., if it is still
         # just the default, (cn=*):
-        if user_search_filter == '(cn=*)':
-            user_search_filter = f'({parts[0]}*)'
+        if user_search_filter == "(cn=*)":
+            user_search_filter = f"({parts[0]}*)"
         # regardless of the user_search_filter though, we need to strip out the ${username}, from the user_dn, so
         # override that now:
         user_dn = parts[1]
-    logger.debug(f'using user_dn: {user_dn} and user_search_filter: {user_search_filter}')
+    logger.debug(
+        f"using user_dn: {user_dn} and user_search_filter: {user_search_filter}"
+    )
     # As per RFC2696, the page cookie for paging can only be used by the same connection; we take the following
     # approach:
     # if the offset is not 0, we first pull the first <offset> entries to get the cookie, then we get use the returned
     # cookie to get the actual page of results that we want.
     if offset > 0:
         # we only need really need the cookie so we just get the cn attribute
-        result = conn.search(user_dn, user_search_filter, attributes=['cn'], paged_size=offset)
+        result = conn.search(
+            user_dn, user_search_filter, attributes=["cn"], paged_size=offset
+        )
         if not result:
             # it is possible to get a "success" result when there are no users in the OU -
-            if hasattr(conn.result, 'get') and conn.result.get('description') == 'success':
+            if (
+                hasattr(conn.result, "get")
+                and conn.result.get("description") == "success"
+            ):
                 return [], None
-            msg = f'Error retrieving users; debug information: {conn.result}'
+            msg = f"Error retrieving users; debug information: {conn.result}"
             logger.error(msg)
             raise DAOError(msg)
-        cookie = conn.result['controls']['1.2.840.113556.1.4.319']['value']['cookie']
-    result = conn.search(user_dn, user_search_filter, attributes=['*'], paged_size=limit, paged_cookie=cookie)
+        cookie = conn.result["controls"]["1.2.840.113556.1.4.319"]["value"]["cookie"]
+    result = conn.search(
+        user_dn,
+        user_search_filter,
+        attributes=["*"],
+        paged_size=limit,
+        paged_cookie=cookie,
+    )
     if not result:
         # it is possible to get a "success" result when there are no users in the OU -
-        if hasattr(conn.result, 'get') and conn.result.get('description') == 'success':
+        if hasattr(conn.result, "get") and conn.result.get("description") == "success":
             return [], None
-        msg = f'Error retrieving users; debug information: {conn.result}'
+        msg = f"Error retrieving users; debug information: {conn.result}"
         logger.error(msg)
         raise DAOError(msg)
     result = []
-    # Update: 5/2024 JFS. we check if the cookie is not None before proceeding to prevent looping 
-    #         around and returning additional records. A None value for cookie indicates that all 
-    #         records were consumed in the first pass above. 
-    if offset == 0 or cookie: 
+    # Update: 5/2024 JFS. we check if the cookie is not None before proceeding to prevent looping
+    #         around and returning additional records. A None value for cookie indicates that all
+    #         records were consumed in the first pass above.
+    if offset == 0 or cookie:
         for ent in conn.entries:
             # create LdapUser objects for each entry:
             user = LdapUser.from_ldap3_entry(tenant_id, ent.entry_attributes_as_dict)
             result.append(user)
-    return result, offset+len(result)
+    return result, offset + len(result)
 
 
 def get_tenant_user(tenant_id, username):
     """
     Get the profile of a specific user in a tenant. In particular, this function checks that
     `username` is a valid user within the `tenant_id` tenant.
-    
+
     :param tenant_id:
     :param username:
     :return:
     """
-    logger.debug(f"top of get_tenant_user; tenant_id: {tenant_id}; username: {username}")
+    logger.debug(
+        f"top of get_tenant_user; tenant_id: {tenant_id}; username: {username}"
+    )
     tenant = tenants.get_tenant_config(tenant_id)
-    if hasattr(tenant, 'ldap_bind_dn') and hasattr(tenant, 'ldap_bind_credential'):
+    if hasattr(tenant, "ldap_bind_dn") and hasattr(tenant, "ldap_bind_credential"):
         logger.debug(f"tenant {tenant} had ldap bind credentials; using those")
-        conn = get_tenant_ldap_connection(tenant_id,
-                                          bind_dn=tenant.ldap_bind_dn,
-                                          bind_password=tenant.ldap_bind_credential)
+        conn = get_tenant_ldap_connection(
+            tenant_id,
+            bind_dn=tenant.ldap_bind_dn,
+            bind_password=tenant.ldap_bind_credential,
+        )
     else:
         logger.debug(f"tenant {tenant} did NOT have ldap bind credentials...")
         conn = get_tenant_ldap_connection(tenant_id)
     tenant_base_dn = tenant.ldap_user_dn
-    logger.debug(f"ldap_user_dn on tenant record: {tenant_base_dn}. Checking if we need to replace the "
-                 f"$username token...")
+    logger.debug(
+        f"ldap_user_dn on tenant record: {tenant_base_dn}. Checking if we need to replace the "
+        f"$username token..."
+    )
     # check if the ldap_user_dn on the tenant record has a ${username} token in it -- if so, this is providing
     # the default user filter prefix and we need to remove it to form the tenant_base_dn.
-    default_user_filter_prefix = '(cn=*)'
-    if '${username},' in tenant.ldap_user_dn:
-        parts = tenant.ldap_user_dn.split('${username},')
+    default_user_filter_prefix = "(cn=*)"
+    if "${username}," in tenant.ldap_user_dn:
+        parts = tenant.ldap_user_dn.split("${username},")
         if not len(parts) == 2:
             raise DAOError("Unable to calculate search DN.")
         tenant_base_dn = parts[1]
-        default_user_filter_prefix = f'({parts[0]}*)'
+        default_user_filter_prefix = f"({parts[0]}*)"
     logger.debug(f"default_user_filter_prefix: {default_user_filter_prefix}")
 
     # this gets the custom authenticator config for the ldap --
     custom_ldap_config = get_custom_ldap_config(tenant_id)
-    user_search_filter = custom_ldap_config.get('user_search_filter')
+    user_search_filter = custom_ldap_config.get("user_search_filter")
     logger.debug(f"user_search_filter from custom ldap config: {user_search_filter}")
     # if user_search_filter is not specified, look for a user_search_prefix and/or user_search_supplemental_filter
     if not user_search_filter:
         # if user_search_prefix is not set, we default to using '(cn=*)'
-        user_search_prefix = custom_ldap_config.get('user_search_prefix', default_user_filter_prefix)
-        logger.debug(f"user_search_prefix from custom ldap config: {user_search_prefix}")
-        user_search_supplemental_filter = custom_ldap_config.get('user_search_supplemental_filter')
-        logger.debug(f"user_search_supplemental_filter from custom ldap config: {user_search_supplemental_filter}")
+        user_search_prefix = custom_ldap_config.get(
+            "user_search_prefix", default_user_filter_prefix
+        )
+        logger.debug(
+            f"user_search_prefix from custom ldap config: {user_search_prefix}"
+        )
+        user_search_supplemental_filter = custom_ldap_config.get(
+            "user_search_supplemental_filter"
+        )
+        logger.debug(
+            f"user_search_supplemental_filter from custom ldap config: {user_search_supplemental_filter}"
+        )
         if user_search_supplemental_filter:
-            user_search_filter = f'(&{user_search_prefix}{user_search_supplemental_filter})'
+            user_search_filter = (
+                f"(&{user_search_prefix}{user_search_supplemental_filter})"
+            )
         else:
             user_search_filter = user_search_prefix
     # the user_search_filter is formatted with a wildcard ( star (*) character) for retrieving all profiles, but
     # here we only want to retrieve a single profile, so we need to replace it with the username:
-    user_search_filter = user_search_filter.replace('*', username)
+    user_search_filter = user_search_filter.replace("*", username)
     logger.debug(f"final custom user_search_filter: {user_search_filter}")
 
-    logger.debug(f'searching with params: {tenant_base_dn}; user_filter: {user_search_filter}')
-    result = conn.search(f'{tenant_base_dn}', user_search_filter, attributes=['*'])
+    logger.debug(
+        f"searching with params: {tenant_base_dn}; user_filter: {user_search_filter}"
+    )
+    result = conn.search(f"{tenant_base_dn}", user_search_filter, attributes=["*"])
     if not result:
         # it is possible to get a "success" result when there are no users in the OU -
-        if hasattr(conn.result, 'description') and conn.result.description == 'success':
+        if hasattr(conn.result, "description") and conn.result.description == "success":
             return [], None
-        msg = f'Error retrieving user; debug information: {conn.result}'
+        msg = f"Error retrieving user; debug information: {conn.result}"
         logger.error(msg)
         raise DAOError(msg)
     result = []
-    logger.debug(f'conn.entries: {conn.entries}')
-    user = LdapUser.from_ldap3_entry(tenant_id, conn.entries[0].entry_attributes_as_dict)
+    logger.debug(f"conn.entries: {conn.entries}")
+    user = LdapUser.from_ldap3_entry(
+        tenant_id, conn.entries[0].entry_attributes_as_dict
+    )
     return user
 
 
 def get_dn(tenant_id, username):
     """
     Get the DN for a specific username within a tenant.
-    :param tenant_id: 
-    :param username: 
-    :return: 
+    :param tenant_id:
+    :param username:
+    :return:
     """
     tenant = tenants.get_tenant_config(tenant_id)
     ldap_user_dn = tenant.ldap_user_dn
-    if '${username},' in tenant.ldap_user_dn:
-        parts = tenant.ldap_user_dn.split('${username},')
+    if "${username}," in tenant.ldap_user_dn:
+        parts = tenant.ldap_user_dn.split("${username},")
         if not len(parts) == 2:
             raise DAOError("Unable to calculate search DN.")
         ldap_user_dn = parts[1]
-        return f'{parts[0]}{username},{ldap_user_dn}'
+        return f"{parts[0]}{username},{ldap_user_dn}"
     # needed for test ldap:
-    if tenant.ldap_bind_dn.startswith('cn'):
-        return f'cn={username},{ldap_user_dn}'
+    if tenant.ldap_bind_dn.startswith("cn"):
+        return f"cn={username},{ldap_user_dn}"
     # needed for tacc:
     else:
-        return f'uid={username},{ldap_user_dn}'
+        return f"uid={username},{ldap_user_dn}"
 
 
 def check_username_password(tenant_id, username, password):
@@ -380,32 +438,38 @@ def check_username_password(tenant_id, username, password):
     Check that a username+password combination is valid within the `tenant_id` tenant.
     Also ensures that the username is within the set of allowable accounts for the tenant.
 
-    :param tenant_id: 
-    :param username: 
-    :param password: 
-    :return: 
+    :param tenant_id:
+    :param username:
+    :param password:
+    :return:
     """
     logger.debug(f"top of check_username_password for: {tenant_id}; {username}")
     if not username == username.lower():
-        logger.debug(f'Mixed case username: {username}')
-        raise InvalidPasswordError("Invalid username. Only lowercase letters are allowed.")
+        logger.debug(f"Mixed case username: {username}")
+        raise InvalidPasswordError(
+            "Invalid username. Only lowercase letters are allowed."
+        )
 
     bind_dn = get_dn(tenant_id, username)
     logger.debug(f"got bind_dn: {bind_dn}")
     try:
         get_tenant_ldap_connection(tenant_id, bind_dn=bind_dn, bind_password=password)
     except LDAPBindError as e:
-        logger.debug(f'got exception checking password: {e}; type(e): {type(e)}')
+        logger.debug(f"got exception checking password: {e}; type(e): {type(e)}")
         raise InvalidPasswordError("Invalid username/password combination.")
     # the bind above just checks that the username/password combination are in the underlying ldap; it does
     # not check that the user is in the user search filter for the tenant. for simplicty, we check that here
     try:
         get_tenant_user(tenant_id, username)
     except Exception as e:
-        logger.debug(f"got exception trying to check that user {username} was in the ldap user search filter via"
-                     f"a call to get_tenant_user; e: {e}")
-        raise InvalidTenantUserError(f"Invalid username; user {username} does not have access to the {tenant_id} "
-                                     f"tenant.")
+        logger.debug(
+            f"got exception trying to check that user {username} was in the ldap user search filter via"
+            f"a call to get_tenant_user; e: {e}"
+        )
+        raise InvalidTenantUserError(
+            f"Invalid username; user {username} does not have access to the {tenant_id} "
+            f"tenant."
+        )
     return True
 
 
@@ -430,14 +494,16 @@ def add_test_user(tenant_id, username, password=None):
     :return:
     """
     # first, create an LdapUser object with the appropriate attributes.
-    base_dn = tapis_ldap['base_dn']
+    base_dn = tapis_ldap["base_dn"]
     if not password:
         password = username
-    user = LdapUser(dn=f'cn={username},ou=tenants.{tenant_id},{base_dn}',
-                    givenName=username,
-                    sn=username,
-                    mail=f'{username}@test.tapis.io',
-                    userPassword=password)
+    user = LdapUser(
+        dn=f"cn={username},ou=tenants.{tenant_id},{base_dn}",
+        givenName=username,
+        sn=username,
+        mail=f"{username}@test.tapis.io",
+        userPassword=password,
+    )
     # now call the generic add user for the tenant id:
     add_user(tenant_id, user)
 
@@ -453,36 +519,35 @@ def populate_test_ldap(tenant_id):
     ous = list_tapis_ous()
     found = False
     for ou in ous:
-        if ou['ou'][0] == f'tenants.{tenant_id}':
+        if ou["ou"][0] == f"tenants.{tenant_id}":
             found = True
             logger.debug(f"OU tenants.{tenant_id} already present.")
     if not found:
-        logger.debug(f'adding OU tenants.{tenant_id}')
+        logger.debug(f"adding OU tenants.{tenant_id}")
         create_tapis_ldap_tenant_ou(tenant_id)
-    users, _ = list_tenant_users(tenant_id, limit=NUM_USERS+1)
-    usernames = [u.serialize['username'] for u in users]
-    for i in range(1, NUM_USERS+1):
-        username = f'testuser{i}'
+    users, _ = list_tenant_users(tenant_id, limit=NUM_USERS + 1)
+    usernames = [u.serialize["username"] for u in users]
+    for i in range(1, NUM_USERS + 1):
+        username = f"testuser{i}"
         if username not in usernames:
             logger.debug(f"adding user {username}")
             add_test_user(tenant_id, username)
         else:
             logger.debug(f"user {username} already present.")
     # Add testadmin user
-    username = f'testadmin'
+    username = f"testadmin"
     if username not in usernames:
         logger.debug(f"adding user {username}")
         add_test_user(tenant_id, username)
     else:
         logger.debug(f"user {username} already present.")
     # Add "admin" user which is the default tenant admin for the dev tenant.
-    username = 'admin'
+    username = "admin"
     if username not in usernames:
         logger.debug(f"adding user {username}")
         add_test_user(tenant_id, username)
     else:
         logger.debug(f"user {username} already present.")
-
 
 
 def populate_ldap_with_training_accounts(tenant_id, accounts):
@@ -496,14 +561,14 @@ def populate_ldap_with_training_accounts(tenant_id, accounts):
     ous = list_tapis_ous()
     found = False
     for ou in ous:
-        if ou['ou'][0] == f'tenants.{tenant_id}':
+        if ou["ou"][0] == f"tenants.{tenant_id}":
             found = True
             logger.debug(f"OU tenants.{tenant_id} already present.")
     if not found:
-        logger.debug(f'adding OU tenants.{tenant_id}')
+        logger.debug(f"adding OU tenants.{tenant_id}")
         create_tapis_ldap_tenant_ou(tenant_id)
     users, _ = list_tenant_users(tenant_id, limit=len(accounts) + 1)
-    usernames = [u.serialize['username'] for u in users]
+    usernames = [u.serialize["username"] for u in users]
     for a in accounts:
-        if a['username'] not in usernames:
-            add_test_user(tenant_id, a['username'], a['password'])
+        if a["username"] not in usernames:
+            add_test_user(tenant_id, a["username"], a["password"])

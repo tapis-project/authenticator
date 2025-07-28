@@ -12,5 +12,6 @@ class InvalidTenantUserError(BaseTapisError):
 class InvalidAuthorizationCodeError(BaseTapisError):
     pass
 
+
 class InvalidDeviceCodeError(BaseTapisError):
     pass

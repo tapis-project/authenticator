@@ -1,10 +1,8 @@
 {% extends 'base.html' %}
-
 {% block assets %}
-{{ super() }}
-
-{% with core_styles_cdn_url="https://cdn.jsdelivr.net/npm/@tacc/core-styles@v2.30.1" %}
-<style>
+    {{ super() }}
+    {% with core_styles_cdn_url="https://cdn.jsdelivr.net/npm/@tacc/core-styles@v2.30.1" %}
+        <style>
   /* base styles */
   @import url('{{ core_styles_cdn_url }}/dist/core-styles.settings.css') layer(base);
   @import url('{{ core_styles_cdn_url }}/dist/elements/links.css') layer(base);
@@ -22,12 +20,11 @@
   @import url('{{ core_styles_cdn_url }}/dist/settings/font--portal.css') layer(project);
   /* NOTE: authenticator uses v3 but that version does not have a spinner */
   @import url('{{ core_styles_cdn_url }}/dist/vendors/bootstrap5--border-spinner.css') layer(project);
-</style>
-{% endwith %}
+        </style>
+    {% endwith %}
 {% endblock %}
-
 {% block head_extra %}
-<style>
+    <style>
   body {
     background-color: var(--global-color-primary--light);
 
@@ -36,12 +33,12 @@
           it covers the login form on screens shorter than the form */
     min-height: 100vh;
   }
-</style>
-<template id="loading-content">
-  <span class="sr-only" role="status">Loading...</span>
-  <span class="spinner-border" aria-hidden="true"></span>
-</template>
-<script type="module">
+    </style>
+    <template id="loading-content">
+        <span class="sr-only" role="status">Loading...</span>
+        <span class="spinner-border" aria-hidden="true"></span>
+    </template>
+    <script type="module">
     const form = document.querySelector('form');
     const submitButtons = form.querySelectorAll('[type="submit"]');
     const loadingTemplate = document.getElementById('loading-content');
@@ -68,19 +65,21 @@
         field.setAttribute('readonly', '');
       });
     });
-</script>
+    </script>
 {% endblock %}
-
-  {# So banner is NOT rendered #}
-  {% block banner %}
-  {% endblock %}
-
-  {% block footer %}
-  <footer class="s-footer">
-    <p>Tapis project funded by NSF OAC grants
-      <a href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931439" rel="noreferrer" target="_blank">#1931439</a>,
-      <a href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931575" rel="noreferrer" target="_blank">#1931575</a>
-      and #2232259.
-    </p>
-  </footer>
-  {% endblock %}
+{# So banner is NOT rendered #}
+{% block banner %}{% endblock %}
+{% block footer %}
+    <footer class="s-footer">
+        <p>
+            Tapis project funded by NSF OAC grants
+            <a href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931439"
+               rel="noreferrer"
+               target="_blank">#1931439</a>,
+            <a href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931575"
+               rel="noreferrer"
+               target="_blank">#1931575</a>
+            and #2232259.
+        </p>
+    </footer>
+{% endblock %}

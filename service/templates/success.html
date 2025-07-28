@@ -1,26 +1,23 @@
 {% extends 'base-auth.html' %}
-
 {% block content %}
-<main class="s-form-page">
-    <form action="" method="post" class="s-form s-form--login">
-      <h1>
-        <figure>
-        {% with tenant_id=tenant_id %}
-        {% include "./branding.html" %}
-        {% endwith %}
-        {% with tenant_id="tacc" %}
-        {% include "./branding.html" %}
-        {% endwith %}
-        </figure>
-        <span>Congrats! Device Code entered successfully. Please return to your application</span>
-      </h1>
-  
-  
-      {% if error %}
-        <ul>
-          <li>Error: {{ error }}</li>
-        </ul>
-      {% endif %}
-    </form>
-  </main>
+    <main class="s-form-page">
+        <form action="" method="post" class="s-form s-form--login">
+            <h1>
+                <figure>
+                    {% with tenant_id=tenant_id %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                    {% with tenant_id="tacc" %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                </figure>
+                <span>Congrats! Device Code entered successfully. Please return to your application</span>
+            </h1>
+            {% if error %}
+                <ul>
+                    <li>Error: {{ error }}</li>
+                </ul>
+            {% endif %}
+        </form>
+    </main>
 {% endblock %}

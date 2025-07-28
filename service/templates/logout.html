@@ -1,41 +1,36 @@
 {% extends 'base-auth.html' %}
-
 {% block content %}
-<main class="s-form-page">
-  <form action="" method="post" class="s-form s-form--login">
-    <h1>
-      <figure>
-      {% with tenant_id=tenant_id %}
-      {% include "./branding.html" %}
-      {% endwith %}
-      {% with tenant_id="tacc" %}
-      {% include "./branding.html" %}
-      {% endwith %}
-      </figure>
-    </h1>
-
-    {% if logout_message %}
-    <p>{{ logout_message }}</p>
-    {% else %}
-    <p>Are you sure you want to log out?</p>
-    <footer>
-      <button id="submit" type="submit" value="true" name="logout" required>
-        Log out
-      </button>
-    </footer>
-    {% endif %}
-  </form>
-</main>
+    <main class="s-form-page">
+        <form action="" method="post" class="s-form s-form--login">
+            <h1>
+                <figure>
+                    {% with tenant_id=tenant_id %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                    {% with tenant_id="tacc" %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                </figure>
+            </h1>
+            {% if logout_message %}
+                <p>{{ logout_message }}</p>
+            {% else %}
+                <p>Are you sure you want to log out?</p>
+                <footer>
+                    <button id="submit" type="submit" value="true" name="logout" required>Log out</button>
+                </footer>
+            {% endif %}
+        </form>
+    </main>
 {% endblock %}
-
 {% block head_extra %}
-{{ super() }}
-{% if not logout_message %}
-  <style>
+    {{ super() }}
+    {% if not logout_message %}
+        <style>
   /* To center the submit button */
   #submit {
     margin-right: auto;
   }
-  </style>
-{% endif %}
+        </style>
+    {% endif %}
 {% endblock %}

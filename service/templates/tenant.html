@@ -1,41 +1,40 @@
 {% extends 'base-auth.html' %}
-
 {% block content %}
-<main class="s-form-page">
-   <form action="" method="post" class="s-form s-form--login">
-      <h1>
-         <figure>
-            {% with tenant_id=tenant_id %}
-            {% include "./branding.html" %}
-            {% endwith %}
-            {% with tenant_id="tacc" %}
-            {% include "./branding.html" %}
-            {% endwith %}
-         </figure>
-         <span>Tapis Tenant</span>
-      </h1>
-
-      {% if error %}
-      <ul>
-         <li>Error: {{ error }}</li>
-      </ul>
-      {% endif %}
-
-      <div class="has-required">
-         <button name="tenant" value="a2cps">A2CPS</button>
-         <button name="tenant" value="apcd">APCD</button>
-         <button name="tenant" value="dev">Dev Tenant</button>
-         <button name="tenant" value="icicle">ICICLE Tenant</button>
-         <button name="tenant" value="cii">CII Tenant</button>
-         <button name="tenant" value="github-demo">Github Demo Tenant</button>
-         <button name="tenant" value="tacc">TACC Tenant</button>
-      </div>
-      <input type="hidden" name="client_id" value="{{ client_id }}">
-      <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
-      <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
-      <input type="hidden" name="client_state" value="{{ client_state }}">
-
-   </form>
-</main>
-
+    <main class="s-form-page">
+        <form action="" method="post" class="s-form s-form--login">
+            <h1>
+                <figure>
+                    {% with tenant_id=tenant_id %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                    {% with tenant_id="tacc" %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                </figure>
+                <span>Tapis Tenant</span>
+            </h1>
+            {% if error %}
+                <ul>
+                    <li>Error: {{ error }}</li>
+                </ul>
+            {% endif %}
+            <div class="has-required">
+                <button name="tenant" value="a2cps">A2CPS</button>
+                <button name="tenant" value="apcd">APCD</button>
+                <button name="tenant" value="dev">Dev Tenant</button>
+                <button name="tenant" value="icicle">ICICLE Tenant</button>
+                <button name="tenant" value="cii">CII Tenant</button>
+                <button name="tenant" value="github-demo">Github Demo Tenant</button>
+                <button name="tenant" value="tacc">TACC Tenant</button>
+            </div>
+            <input type="hidden" name="client_id" value="{{ client_id }}">
+            <input type="hidden"
+                   name="client_redirect_uri"
+                   value="{{ client_redirect_uri }}">
+            <input type="hidden"
+                   name="client_display_name"
+                   value="{{ client_display_name }}">
+            <input type="hidden" name="client_state" value="{{ client_state }}">
+        </form>
+    </main>
 {% endblock %}

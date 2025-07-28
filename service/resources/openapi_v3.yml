@@ -416,7 +416,7 @@ paths:
                 properties:
                   result:
                     $ref: '#/components/schemas/Profile'
-  
+
   /v3/oauth2/device/code:
     post:
       tags:
@@ -735,7 +735,7 @@ components:
             jti:
               type: string
               description: Unique identifier for the token
-    
+
     V2TokenResponse:
       type: object
       description: A v2 token response object.
@@ -777,7 +777,7 @@ components:
 
     Profile:
       type: object
-      description: The profile associated with a Tapis identity. NOTE -the fields in the Profile object are populated on a best-effort basis and should not be relied upon. Only the username field is guaranteed to be populated. 
+      description: The profile associated with a Tapis identity. NOTE -the fields in the Profile object are populated on a best-effort basis and should not be relied upon. Only the username field is guaranteed to be populated.
       properties:
         username:
           type: string

@@ -15,7 +15,7 @@ First, make sure the following passwords are set correctly.
 
 #### Working With Secrets in the Tapis Security Kernel (SK) ####
 We are now storing LDAP secrets within the Tapis Security Kernel (SK). This is the official Tapis service for
-storing secrets and authorization data. For more background information on the Tapis SK, see 
+storing secrets and authorization data. For more background information on the Tapis SK, see
 the [documentation](https://tapis.readthedocs.io/en/latest/technical/security.html).
 
 To retrieve them, use the Python SDK with a token representing the
@@ -69,7 +69,7 @@ make init_dbs
 make migrate.upgrade
 make test
 ```
-Note that this will remove the 
+Note that this will remove the
 
 #### Updating the API After the First Setup
 Once the First Time Setup has been done a machine, updates can be fetched applied as follows:
@@ -81,12 +81,12 @@ directory).migrations
 4. `docker-compose up -d authenticator` - start a new version of the Authenticator.
 
 #### Updates to the Existing Schema
-If you change any of the SQL table schemas, either via a change to one of the existing `db.model` classes or a new 
+If you change any of the SQL table schemas, either via a change to one of the existing `db.model` classes or a new
 `db.models` class in `models.py`, you will need to generate a new migration version. We use alembic to manage
 migrations. Here are the steps:
 
 0. First, start up the authenticator stack (including postgres database) as is, before making any changes. Check
-   that there are no problems with your existing checkout/development environment. 
+   that there are no problems with your existing checkout/development environment.
 1. Make changes to the models.py file to reflect the updates you want to make.
 2. Rebuild the containers (``make build``), specifically need the migrations container to be rebuilt.
 3. Shut down all the services (``make clean``).
@@ -96,19 +96,19 @@ migrations. Here are the steps:
    docker run -it --entrypoint=bash --network=authenticator_authenticator tapis/authenticator-migrations
 7. Once inside the container:
   $ flask db migrate
-  $ flask db upgrade   
+  $ flask db upgrade
 Note that the migrate step should create a new migration Python source file in /home/tapis/migrations/versions/
-Note also that the upgrade step (that applies the generated file) could fail if, for example, your changes include 
+Note also that the upgrade step (that applies the generated file) could fail if, for example, your changes include
 a new, non-nullable field. For such changes, you will need to make custom changes to the migration Python source
-file. 
+file.
 8. Back outside of the container, copy the migration file to the migrations directory within this repo.
-9. Be sure to update the migrations Python source file, as needed. There are good references on the web for how to 
+9. Be sure to update the migrations Python source file, as needed. There are good references on the web for how to
 do this; see, for example, https://medium.com/the-andela-way/alembic-how-to-add-a-non-nullable-field-to-a-populated-table-998554003134
-   
+
 
 
 #### Configuring Custom IdPs
-When testing the custom IdP configurations (for example, for the github-demo or icicle tenants), 
+When testing the custom IdP configurations (for example, for the github-demo or icicle tenants),
 one needs to store the configuration into the local postgres databse. Here are the steps to do that:
 
 ##### GitHub
@@ -124,7 +124,6 @@ d = {'github': { 'client_id': '<get_from_stache>', 'client_secret': '<get_from_s
 s = json.dumps(d)
 c.custom_idp_configuration = s
 db.session.commit()
-
 ```
 
 
@@ -142,11 +141,10 @@ d = {'tacc_keycloak': { 'client_id': '<get_from_stache>', 'client_secret': '<get
 s = json.dumps(d)
 c.custom_idp_configuration = s
 db.session.commit()
-
 ```
 
 #### Configuring MFA Config
-When testing the MFA config (for example, for the jupyter-tacc-dev tenant) using TACC auth, 
+When testing the MFA config (for example, for the jupyter-tacc-dev tenant) using TACC auth,
 one needs to store the configuration in the local postgres databse. Here are the steps to do that:
 
 ##### Jupyter TACC Dev
@@ -215,7 +213,6 @@ curl -H "X-Tapis-Token: $jwt" localhost:5000/v3/oauth2/clients -H "content-type:
   "status": "success",
   "version": "dev"
 }
-
 ```
 
 #### Work With Profiles
@@ -240,9 +237,8 @@ curl -H "X-Tapis-Token: $jwt" localhost:5000/v3/oauth2/profiles
     . . .
     ],
   "status": "success",
-  "version": "dev"    
- } 
-
+  "version": "dev"
+ }
 ```
 
 Use pagination to page through the profiles:
@@ -268,7 +264,6 @@ curl -H "X-Tapis-Token: $jwt" 'localhost:5000/v3/oauth2/profiles?limit=1&offset=
   "status": "success",
   "version": "dev"
 }
-
 ```
 
 ### Beyond the API Quickstart
@@ -278,54 +273,54 @@ A complete OpenAPI v3 spec file is included in the `service/resources` directory
 
 ### Using the Token Web Application
 This project includes a basic "Token Web Application" that can be used to demonstrate
-the authorization_code flow in a real application and can be used by any user wanting to 
+the authorization_code flow in a real application and can be used by any user wanting to
 retrieve an access token using a graphical interface.
 
 There are different entrypoints to the application, but for a simple start:
 
 ```
 1) Navigate to http://localhost:5000/v3/oauth2/webapp
-``` 
+```
 
-This should redirect your browser to the "Login App" which should provide you with a 
+This should redirect your browser to the "Login App" which should provide you with a
 form to enter your username and password. It should also display the tenant that you
 are interacting with, in this case, "dev".
 
 #### Why is it the "dev" Tenant?
-In general, the Token Web Application is "multi-tenant", and the tenant is derived 
+In general, the Token Web Application is "multi-tenant", and the tenant is derived
 from the base URL. When running locally during development, the base URL is always
 "localhost", so the application defaults to using the "dev" tenant in that case.
 
 In order to use a different tenant when running the Authenticator locally, use the
-tenant selector page, 
+tenant selector page,
 ```
 Navigate to http://localhost:5000/v3/oauth2/tenant to select a different tenant.
 ```
 
 Once you have selected the tenant you wish to work in, you will be prompted to log in.
-If using the dev tenant, be sure to enter valid credentials for a test account. If using 
+If using the dev tenant, be sure to enter valid credentials for a test account. If using
 the TACC tenant, you should be able to enter your TACC credentials.
-  
+
 ```
 2) Enter your username and password
 ```
 
 After entering the credentials, you should be redirected to an "Authorize" page where you will be asked
-to authorize the client to 
+to authorize the client to
 
 ```
-3) Submit approve to authorize the Tapis Token Webapp client application to request an access 
-token ob your behalf. 
+3) Submit approve to authorize the Tapis Token Webapp client application to request an access
+token ob your behalf.
 ```
 
-Once you submit the approval, you should be redirected to a page displaying your Tapis token. The token is 
+Once you submit the approval, you should be redirected to a page displaying your Tapis token. The token is
 a JWT that includes claims corresponding to the user and OAuth client that authenticated.
- 
+
 
 #### Work With The Authorization Code Grant Type In Your Own Application
 
 The authorization code grant type requires a pre-registered client
-with a callback URL. See the "Work With Clients" section for an 
+with a callback URL. See the "Work With Clients" section for an
 example of how to register a client.
 
 Once the client has been registered, start the OAuth2 flow by
@@ -354,10 +349,10 @@ will make a GET request to your client's callback URL, passing the authorization
 
 ```
 3) GET http://localhost:5000/v3/oauth2/webapp/callback?code=<some_code>
-``` 
+```
 
 Your client application code should handle this GET request by making a request to the `/oauth2/tokens` endpoint to exchange
-the authorization code for an OAuth token. 
+the authorization code for an OAuth token.
 
 ```
 4) POST http://localhost:5000/v3/oauth2/token
@@ -370,9 +365,5 @@ the authorization code for an OAuth token.
 #### Work With Tokens
 
 The Authenticator supports OAuth2 flows for generating access (and in some cases, refresh) tokens.
-THe grant types require basic authentication with a valid Tapis OAuth client, however, one can 
+THe grant types require basic authentication with a valid Tapis OAuth client, however, one can
 use the password grant without a Tapis client to first get a token.
-
-
-
-

@@ -82,4 +82,3 @@ services:
           - postgres
         volumes:
             - pgadmindata:/var/lib/pgadmin
-

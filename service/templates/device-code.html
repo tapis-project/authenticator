@@ -1,39 +1,41 @@
 {% extends 'base-auth.html' %}
-
 {% block content %}
-<main class="s-form-page">
-  <form action="" method="post" class="s-form s-form--login">
-    <h1>
-      <figure>
-      {% with tenant_id=tenant_id %}
-      {% include "./branding.html" %}
-      {% endwith %}
-      {% with tenant_id="tacc" %}
-      {% include "./branding.html" %}
-      {% endwith %}
-      </figure>
-      <span>Enter User Code</span>
-    </h1>
-
-
-    {% if error %}
-      <ul>
-        <li>Error: {{ error }}</li>
-      </ul>
-    {% endif %}
-
-    <div class="has-required">
-      <label for="user_code">User Code</label>
-      <input id="user_code" type="text" name="user_code" required>
-      <input type="hidden" name="client_id" value="{{ client_id }}">
-      <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
-      <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
-      <input type="hidden" name="client_state" value="{{ client_state }}">
-      <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
-    </div>
-    <footer>
-      <button type="submit">Submit</button>
-    </footer>
-  </form>
-</main>
+    <main class="s-form-page">
+        <form action="" method="post" class="s-form s-form--login">
+            <h1>
+                <figure>
+                    {% with tenant_id=tenant_id %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                    {% with tenant_id="tacc" %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                </figure>
+                <span>Enter User Code</span>
+            </h1>
+            {% if error %}
+                <ul>
+                    <li>Error: {{ error }}</li>
+                </ul>
+            {% endif %}
+            <div class="has-required">
+                <label for="user_code">User Code</label>
+                <input id="user_code" type="text" name="user_code" required>
+                <input type="hidden" name="client_id" value="{{ client_id }}">
+                <input type="hidden"
+                       name="client_redirect_uri"
+                       value="{{ client_redirect_uri }}">
+                <input type="hidden"
+                       name="client_display_name"
+                       value="{{ client_display_name }}">
+                <input type="hidden" name="client_state" value="{{ client_state }}">
+                <input type="hidden"
+                       name="client_response_type"
+                       value="{{ client_response_type }}">
+            </div>
+            <footer>
+                <button type="submit">Submit</button>
+            </footer>
+        </form>
+    </main>
 {% endblock %}

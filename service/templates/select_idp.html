@@ -1,62 +1,48 @@
 {% extends 'base-auth.html' %}
-
 {% block content %}
-<main class="s-form-page">
- <form action="" method="post" class="s-form s-form--login">   
-   <h1>
-      <figure>
-      {% with tenant_id=tenant_id %}
-        {% include "./branding.html" %}
-      {% endwith %}
-      {% with tenant_id="tacc" %}
-        {% include "./branding.html" %}
-      {% endwith %}
-      </figure>
-      <span>Log in to Tapis</span>
-    </h1>
-    <p>Select an account to continue</p>
-
-   {% if error %}
-   <ul>
-      <li>Error: {{ error }}</li>
-   </ul>
-   {% endif %}
-
-     <div class="button-list">
-        {% for idp in idps %}
-        <button name="idp_id" value="{{ idp.idp_id }}" type="submit">
-          <img src="authorize/{{ idp.idp_id }}.svg" alt="{{ idp.idp_name }}" />
-          {{ idp.idp_name }}
-        </button>
-        {% endfor %}
-     </div>
-     <nav>
-      <p>Having trouble?</p>
-      <a
-        href="https://tacc.utexas.edu/about/help/"
-        rel="noreferrer"
-        target="_blank"
-      >
-        Account Help
-      </a>
-    </nav>
-
- </form>
- <footer>
-   <a href="https://tacc.utexas.edu/about/security-and-compliance/">
-     Security
-   </a>
-   <a href="https://tacc.utexas.edu/use-tacc/user-policies/">
-     Policies
-   </a>
- </footer>
-
-</main>
+    <main class="s-form-page">
+        <form action="" method="post" class="s-form s-form--login">
+            <h1>
+                <figure>
+                    {% with tenant_id=tenant_id %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                    {% with tenant_id="tacc" %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                </figure>
+                <span>Log in to Tapis</span>
+            </h1>
+            <p>Select an account to continue</p>
+            {% if error %}
+                <ul>
+                    <li>Error: {{ error }}</li>
+                </ul>
+            {% endif %}
+            <div class="button-list">
+                {% for idp in idps %}
+                    <button name="idp_id" value="{{ idp.idp_id }}" type="submit">
+                        <img src="authorize/{{ idp.idp_id }}.svg" alt="{{ idp.idp_name }}" />
+                        {{ idp.idp_name }}
+                    </button>
+                {% endfor %}
+            </div>
+            <nav>
+                <p>Having trouble?</p>
+                <a href="https://tacc.utexas.edu/about/help/"
+                   rel="noreferrer"
+                   target="_blank">Account Help</a>
+            </nav>
+        </form>
+        <footer>
+            <a href="https://tacc.utexas.edu/about/security-and-compliance/">Security</a>
+            <a href="https://tacc.utexas.edu/use-tacc/user-policies/">Policies</a>
+        </footer>
+    </main>
 {% endblock %}
-
 {% block head_extra %}
-{{ super() }}
-<style>
+    {{ super() }}
+    <style>
   .button-list {
     /* To lay out buttons in a flexible centered column */
     display: flex;
@@ -76,5 +62,5 @@
     height: 4rem;
     margin-right: 1em;
   }
-</style>
+    </style>
 {% endblock %}

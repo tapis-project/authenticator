@@ -1,55 +1,57 @@
 {% extends 'base-auth.html' %}
-
 {% block content %}
-<main class="s-form-page">
-  <form action="" method="post" id="auth-form" class="s-form s-form--login">
-    <h1>
-      <figure>
-      {% with tenant_id=tenant_id %}
-        {% include "./branding.html" %}
-      {% endwith %}
-      {% with tenant_id="tacc" %}
-        {% include "./branding.html" %}
-      {% endwith %}
-      </figure>
-      <span>Connect to Tapis</span>
-    </h1>
-    <p>The <var>{{ client_display_name }}</var> wants to use <a href="https://tapis-project.org/" target="_blank">Tapis</a> (TACC APIs) service to grant actions on behalf of <var>{{ username }}</var>.</p>
-
-    {% if error %}
-    <ul>
-        <li>Error: {{ error }}</li>
-    </ul>
-    {% endif %}
-
-    {% if device_login %}
-    <div id="ttl-field">
-      <label aria-labelledby="ttl-label">
-        Allow this authorization for
-        <input type="text" id="ttl" name="ttl" value="30" size="3">
-        days.
-      </label>
-      <span hidden id="ttl-label">Allow this authorization for how many days? By default, the authorization will last 30 days.</small>
-    </div>
-    {% endif %}
-    <input type="hidden" name="client_id" value="{{ client_id }}">
-    <input type="hidden" name="client_redirect_uri" value="{{ client_redirect_uri }}">
-    <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
-    <input type="hidden" name="client_state" value="{{ client_state }}">
-    <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
-    {% if user_code is not none %}
-    <input type="hidden" name="user_code" value="{{ user_code }}">
-    {% endif %}
-    <footer id="button-container">
-      <button type="submit" name="approve" value="true" required>Connect</button>
-    </footer>
-  </form>
+    <main class="s-form-page">
+        <form action="" method="post" id="auth-form" class="s-form s-form--login">
+            <h1>
+                <figure>
+                    {% with tenant_id=tenant_id %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                    {% with tenant_id="tacc" %}
+                        {% include "./branding.html" %}
+                    {% endwith %}
+                </figure>
+                <span>Connect to Tapis</span>
+            </h1>
+            <p>
+                The <var>{{ client_display_name }}</var> wants to use <a href="https://tapis-project.org/" target="_blank">Tapis</a> (TACC APIs) service to grant actions on behalf of <var>{{ username }}</var>.
+            </p>
+            {% if error %}
+                <ul>
+                    <li>Error: {{ error }}</li>
+                </ul>
+            {% endif %}
+            {% if device_login %}
+                <div id="ttl-field">
+                    <label aria-labelledby="ttl-label">
+                        Allow this authorization for
+                        <input type="text" id="ttl" name="ttl" value="30" size="3">
+                        days.
+                    </label>
+                <span hidden id="ttl-label">Allow this authorization for how many days? By default, the authorization will last 30 days.</small>
+            </div>
+        {% endif %}
+        <input type="hidden" name="client_id" value="{{ client_id }}">
+        <input type="hidden"
+               name="client_redirect_uri"
+               value="{{ client_redirect_uri }}">
+        <input type="hidden"
+               name="client_display_name"
+               value="{{ client_display_name }}">
+        <input type="hidden" name="client_state" value="{{ client_state }}">
+        <input type="hidden"
+               name="client_response_type"
+               value="{{ client_response_type }}">
+        {% if user_code is not none %}<input type="hidden" name="user_code" value="{{ user_code }}">{% endif %}
+        <footer id="button-container">
+            <button type="submit" name="approve" value="true" required>Connect</button>
+        </footer>
+    </form>
 </main>
 {% endblock %}
-
 {% block head_extra %}
-{{ super() }}
-<style>
+    {{ super() }}
+    <style>
 #auth-form var {
   font-style: normal; /* overwrite browser */
 }
@@ -89,5 +91,5 @@
 #auth-form h1 {
   margin-bottom: 0; /* override Core-Styles */
 }
-</style>
+    </style>
 {% endblock %}
