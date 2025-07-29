@@ -25,6 +25,10 @@ services:
         image: tacc/slapd
         networks:
             - authenticator
+        ulimits:
+            nofile:
+                soft: 1024
+                hard: 4096
         environment:
           LDAP_DOMAIN: "tapis"
           LDAP_ORGANISATION: "Tapis"
