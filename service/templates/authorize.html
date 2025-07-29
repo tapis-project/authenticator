@@ -37,7 +37,7 @@
     <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
     <input type="hidden" name="client_state" value="{{ client_state }}">
     <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
-    {% most inputs are hidden, maybe add nonce claim if this is ever made visible?%}
+    <!-- {% most inputs are hidden, maybe add nonce claim if this is ever made visible?%} -->
     {% if user_code is not none %}
     <input type="hidden" name="user_code" value="{{ user_code }}">
     {% endif %}
