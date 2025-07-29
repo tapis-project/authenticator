@@ -393,6 +393,8 @@ class AuthorizationCode(db.Model):
     # metadata about whether an MFA was performed and if so, how recently 
     # currently not implemented 
     tapis_mfa = db.Column(db.String(200), unique=False, nullable=True)
+    # If /authorize is called with ?nonce=value, we store the value so we can return it on token to mitigate replay attacks.
+    passthrough_nonce = db.Column(db.String(200), unique=False, nullable=True)
 
     def __repr__(self):
         return f'{self.code}'
@@ -485,6 +487,8 @@ class DeviceCode(db.Model):
     # metadata about whether an MFA was performed and if so, how recently 
     # currently not implemented 
     tapis_mfa = db.Column(db.String(200), unique=False, nullable=True)
+    # If /authorize is called with ?nonce=value, we store the value so we can return it on token to mitigate replay attacks.
+    passthrough_nonce = db.Column(db.String(200), unique=False, nullable=True)
 
     def __repr__(self):
         return f'{self.code}'

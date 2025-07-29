@@ -1345,6 +1345,7 @@ class AuthorizeResource(Resource):
             display_name = client.display_name
         except Exception as e:
             logger.debug(f"No client available; e: {e}")
+        nonce = request.args.get("nonce")
         context = {
             "error": "",
             "username": session["username"],
@@ -1356,6 +1357,7 @@ class AuthorizeResource(Resource):
             "client_state": client_state,
             "device_login": session.get("device_login", None),
             "user_code": request.args.get("user_code", None),
+            "nonce": nonce,
         }
 
         return make_response(render_template("authorize.html", **context), 200, headers)
@@ -1493,7 +1495,9 @@ class AuthorizeResource(Resource):
                     f"tenant. Allowable grant types: {allowable_grant_types}"
                 )
 
-            # create the authorization code for the client -
+            # create the authorization code for the client and handle nonce if needed.
+            nonce = request.form.get("nonce")
+            logger.debug(f"inside of auth code grant type - nonce from form: {nonce}, form: {request.form}")
             authz_code = AuthorizationCode(
                 tenant_id=tenant_id,
                 username=username,
@@ -1503,6 +1507,7 @@ class AuthorizeResource(Resource):
                 redirect_url=client.callback_url,
                 code=AuthorizationCode.generate_code(),
                 expiry_time=AuthorizationCode.compute_expiry(),
+                passthrough_nonce=nonce,
             )
             logger.debug("authorization code created.")
             try:
@@ -1740,6 +1745,10 @@ def _handle_tokens_request(request, oidc=False):
                 f"Invalid grant_type ({grant_type}); this grant type is not allowed for this "
                 f"tenant. Allowable grant types: {allowable_grant_types}"
             )
+            raise errors.ResourceError(
+                f"Invalid grant_type ({grant_type}); this grant type is not allowed for this "
+                f"tenant. Allowable grant types: {allowable_grant_types}"
+            )
         # get headers
         auth = request.authorization
         # client id and client key are optional on the password grant type to allow new users to generate tokens
@@ -1850,13 +1859,15 @@ def _handle_tokens_request(request, oidc=False):
             )
             username = db_code.username
             idp_id = db_code.tapis_idp_id
+            passthrough_nonce = getattr(db_code, "passthrough_nonce", None)
         elif grant_type == "device_code":
             username = db_code.username
             ttl = db_code.access_token_ttl
             idp_id = db_code.tapis_idp_id
+            passthrough_nonce = getattr(db_code, "passthrough_nonce", None)
 
             logger.debug(
-                f"USERNAME: {username}; TTL: {ttl}; idp_id: {db_code.tapis_idp_id}"
+                f"device_code; USERNAME: {username}; TTL: {ttl}; idp_id: {db_code.tapis_idp_id}; passthrough_nonce: {passthrough_nonce}"
             )
 
         elif grant_type == "refresh_token":
@@ -1927,12 +1938,18 @@ def _handle_tokens_request(request, oidc=False):
         if idp_id:
             content["claims"]["tapis/idp_id"] = idp_id
         if oidc:
+            logger.debug('Top of OIDC in handle_token_request - passthrough_nonce', passthrough_nonce)
             if client_id:
                 # bookstack for example requires aud to match client id
                 content["claims"]["aud"] = client_id
             content["claims"]["iat"] = int(time.time())
             content["claims"]["extravar"] = username
             content["claims"]["email"] = username
+            # Set passthrough_nonce from authorization code if available
+            if grant_type == "authorization_code" and passthrough_nonce:
+                content["claims"]["nonce"] = passthrough_nonce
+            else:
+                content["claims"]["nonce"] = ""
 
         # only generate a refresh token when OAuth client is passed
         if client_id and client_key:
@@ -2063,6 +2080,15 @@ def _handle_tokens_request(request, oidc=False):
             raise errors.ResourceError(f"{msg}")
 
         if oidc:
+
+            logger.warn("top of POST /v3/oauth2/tokens with OIDC flag set")
+            logger.warn(f"request headers: {request.headers}")
+            logger.warn(f"request form: {request.form}")
+            logger.warn(f"request json: {request.json}")
+            logger.warn(f"request data: {request.data}")
+            logger.warn(f"request args: {request.args}")
+            logger.warn(f"request content type: {request.content_type}")
+            logger.warn(f"request base url: {request.base_url}")
             logger.info("Token endpoint with OIDC flag set.")
             response_json = {
                 "access_token": result["access_token"]["access_token"],
@@ -2084,6 +2110,15 @@ class TokensResource(Resource):
 
 class OIDCTokensResource(Resource):
     def post(self):
+        ## print all of flask request to logs
+        logger.warn("top of POST /v3/oauth2/tokens with OIDC flag set")
+        logger.warn(f"request headers: {request.headers}")
+        logger.warn(f"request form: {request.form}")
+        logger.warn(f"request json: {request.json}")
+        logger.warn(f"request data: {request.data}")
+        logger.warn(f"request args: {request.args}")
+        logger.warn(f"request content type: {request.content_type}")
+        logger.warn(f"request base url: {request.base_url}")
         return _handle_tokens_request(request, oidc=True)
 
 

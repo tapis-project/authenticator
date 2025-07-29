@@ -97,12 +97,12 @@ migrations. Here are the steps:
 3. Shut down all the services (``make clean``).
 4. Start up the db containers (``make init_dbs``).
 5. Run the existing migrations (``make migrate.upgrade``).
-6. Exec into a new migrations container:
-   docker run -it --entrypoint=bash --network=authenticator_authenticator tapis/authenticator-migrations
-7. Once inside the container:
-  $ flask db migrate
-  $ flask db upgrade   
-Note that the migrate step should create a new migration Python source file in /home/tapis/migrations/versions/
+6. Exec into a new migrations container:  
+   `docker run -it --entrypoint=bash --network=authenticator_authenticator tapis/authenticator-migrations`
+7. Once inside the container:  
+    1. `flask db migrate`
+    2. `flask db upgrade`
+    3. Note that the migrate step should create a new migration Python source file in /home/tapis/migrations/versions/
 Note also that the upgrade step (that applies the generated file) could fail if, for example, your changes include 
 a new, non-nullable field. For such changes, you will need to make custom changes to the migration Python source
 file. 
