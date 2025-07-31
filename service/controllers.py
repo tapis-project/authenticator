@@ -1233,6 +1233,15 @@ class AuthorizeResource(Resource):
         config = tenant_configs_cache.get_config(tenant_id)
         allowable_grant_types = json.loads(config.allowable_grant_types)
         mfa_config = json.loads(config.mfa_config)
+        ## in case of oidc we save nonce to session for use later
+        nonce = (
+            request.args.get("nonce")
+            or request.form.get("nonce")
+            or request.cookies.get("nonce")
+            or session.get("nonce")
+        )
+        session["nonce"] = nonce  # Always write nonce to session, even if None or empty
+        logger.debug(f"inside of get auth - nonce derived: {nonce}, args: {request.args}, form: {request.form}, cookies: {request.cookies}")
 
         if mfa_config:
             if session.get("mfa_required") == True:
@@ -1345,7 +1354,6 @@ class AuthorizeResource(Resource):
             display_name = client.display_name
         except Exception as e:
             logger.debug(f"No client available; e: {e}")
-        nonce = request.args.get("nonce")
         context = {
             "error": "",
             "username": session["username"],
@@ -1496,8 +1504,13 @@ class AuthorizeResource(Resource):
                 )
 
             # create the authorization code for the client and handle nonce if needed.
-            nonce = request.form.get("nonce")
-            logger.debug(f"inside of auth code grant type - nonce from form: {nonce}, form: {request.form}")
+            nonce = (
+                request.args.get("nonce")
+                or request.form.get("nonce")
+                or request.cookies.get("nonce")
+                or session.pop("nonce", None)
+            )
+            logger.debug(f"inside of post auth - nonce derived: {nonce}, args: {request.args}, form: {request.form}, cookies: {request.cookies}, session: {session}")
             authz_code = AuthorizationCode(
                 tenant_id=tenant_id,
                 username=username,
@@ -2080,8 +2093,7 @@ def _handle_tokens_request(request, oidc=False):
             raise errors.ResourceError(f"{msg}")
 
         if oidc:
-
-            logger.warn("top of POST /v3/oauth2/tokens with OIDC flag set")
+            logger.warn("inside of POST /v3/oauth2/tokens with OIDC flag set")
             logger.warn(f"request headers: {request.headers}")
             logger.warn(f"request form: {request.form}")
             logger.warn(f"request json: {request.json}")
@@ -2340,6 +2352,7 @@ def logout():
     session.pop("orig_client_redirect_uri", None)
     session.pop("orig_client_response_type", None)
     session.pop("orig_client_state", None)
+    session.pop("nonce", None)
 
 
 def clear_orig_client_data():
