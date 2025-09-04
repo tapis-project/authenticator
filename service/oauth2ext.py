@@ -1,18 +1,23 @@
 """
-Module to support OAuth2 extension identity providers. Here, a 3rd party OAuth2 provider server, such as
-github, is being used as the IdP for the tenant. This module provides all required functionality for interacting
+Module to support OAuth2 extension identity providers.
+Here, a 3rd party OAuth2 provider server, such as github,
+is being used as the IdP for the tenant.
+
+This module provides all required functionality for interacting
 with the 3rd party OAuth server.
 
 To implement a new OAuth2 provider, the following updates must be made:
-1) Update the OAuth2ProviderExtension.__init__() to set the client id, key, identity redirect and token URL parameters.
-2) Check the get_token_using_auth_code() to ensure the request parameters are the same as what the OAuth provider
-is expecting and that the response type (e.g., json) is handled correctly.
-3) Implement the get_user_from_token() method to determine the user's identity once an access token has been obtained.
+1) Update the OAuth2ProviderExtension.__init__() to set the client id, key,
+    identity redirect and token URL parameters.
+2) Check the get_token_using_auth_code() to ensure the request parameters are
+    the same as what the OAuth provider is expecting and that the response type
+    (e.g., json) is handled correctly.
+3) Implement the get_user_from_token() method to determine the user's identity
+    once an access token has been obtained.
 
 Other changes:
-1) Within models.py, update the get_custom_oa2_extension_type method to recognize the new extension type.
-
-
+1) Within models.py, update the get_custom_oa2_extension_type method
+    to recognize the new extension type.
 """
 
 import json
@@ -23,16 +28,19 @@ from flask import session
 from tapisservice import errors
 from tapisservice.logs import get_logger
 
-logger = get_logger(__name__)
-
 from service import t
 from service.models import tenant_configs_cache
+
+logger = get_logger(__name__)
 
 
 class OAuth2ProviderExtension(object):
     """
-    This class contains attributes and methods for working with a 3rd party OAuth2 provider.
-    For each provider that is supported, some custom code is needed. See the module-level docstring.
+    This class contains attributes and methods for working with
+    a 3rd party OAuth2 provider.
+
+    For each provider that is supported, some custom code is needed.
+    See the module-level docstring.
     """
 
     def __init__(self, tenant_id, is_local_development=False, idp_id_for_multi=None):
@@ -44,8 +52,10 @@ class OAuth2ProviderExtension(object):
         self.ext_type = tenant_configs_cache.get_custom_oa2_extension_type(tenant_id)
         # the actual custom_idp_configuration object, as a python dictionary
         # if the type multi_idps, there are two cases: the first time called
-        # the user will not have selected the ipd_id (in which case idp_id_for_multi will be None)
-        # so just return the whole config, otherwise, return just the config for the idp_id:
+        # the user will not have selected the ipd_id
+        # (in which case idp_id_for_multi will be None)
+        # so just return the whole config,
+        # otherwise, return just the config for the idp_id:
         if self.ext_type == "multi_idps" and idp_id_for_multi:
             logger.debug(
                 f"Second call for multi_idps with idp_id_for_multi: {idp_id_for_multi}"
@@ -59,14 +69,16 @@ class OAuth2ProviderExtension(object):
                     self.custom_idp_config_dict = idp["idp_description"]
                     # set the type to the type corresponding to the idp_id
                     for k in idp["idp_description"].keys():
-                        # the type is the first and only key, but can use indexes with dict_keys
+                        # the type is the first and only key,
+                        # but can use indexes with dict_keys
                         self.ext_type = k
                         break
         else:
             self.custom_idp_config_dict = json.loads(
                 self.tenant_config.custom_idp_configuration
             )
-        # whether or not this authenticator is running in local development mode (i.e., on localhost)
+        # whether or not this authenticator is running in local development mode
+        # (i.e., on localhost)
         self.is_local_development = is_local_development
         # validate that this tenant should be using the OAuth2 extension module.
         if not self.ext_type:
@@ -76,7 +88,7 @@ class OAuth2ProviderExtension(object):
         tenant_base_url = t.tenant_cache.get_tenant_config(tenant_id).base_url
         if self.is_local_development:
             self.callback_url = (
-                f"http://localhost:5000/v3/oauth2/extensions/oa2/callback"
+                "http://localhost:5000/v3/oauth2/extensions/oa2/callback"
             )
         else:
             self.callback_url = f"{tenant_base_url}/v3/oauth2/extensions/oa2/callback"
@@ -97,7 +109,8 @@ class OAuth2ProviderExtension(object):
             # URL to use to exchange the code for an qccess token
             self.oauth2_token_url = "https://github.com/login/oauth/access_token"
         elif self.ext_type == "cii":
-            # we configure the CII redirect URL directly in the config because there are different CII environments.
+            # We configure the CII redirect URL directly in the config
+            # because there are different CII environments.
             self.identity_redirect_url = self.custom_idp_config_dict.get("cii").get(
                 "login_url"
             )
@@ -117,7 +130,8 @@ class OAuth2ProviderExtension(object):
             self.check_jwt_signature = self.custom_idp_config_dict.get(
                 "check_jwt_signature"
             )
-            # note that CII does not implement standard OAuth2; they do not require a client id and key and they do not
+            # note that CII does not implement standard OAuth2;
+            # they do not require a client id and key and they do not
             # create an authorization code to be exchanged for a token.
             self.client_id = "not_used"
             self.client_key = "not_used"
@@ -130,9 +144,9 @@ class OAuth2ProviderExtension(object):
                 "client_secret"
             )
             # initial redirect URL; used to start the oauth flow and log in the user
-            self.identity_redirect_url = "https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/auth"
+            self.identity_redirect_url = "https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/auth"  # noqa
             # URL to use to exchange the code for an qccess token
-            self.oauth2_token_url = "https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/token"
+            self.oauth2_token_url = "https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/token"  # noqa
             logger.debug("properties set of tacc_keycloak ")
         elif self.ext_type == "multi_keycloak":
             # keycloak utilizes a client id and secret like github
@@ -173,16 +187,18 @@ class OAuth2ProviderExtension(object):
                 "user_info_url"
             )
         elif self.ext_type == "ldap":
-            # NOTE: for the "ldap" type, we don't actually set any of the custom attributes,
+            # NOTE: for the "ldap" type,
+            # we don't actually set any of the custom attributes,
             # but we still need a check here to not fall into the ERROR else below.
-            # We don't have any custom attributes because those are set in the individual idp types.
-            #
+            # We don't have any custom attributes because those
+            # are set in the individual idp types.
             logger.debug("Note setting any properties for ldap.")
         elif self.ext_type == "multi_idps":
-            # NOTE: for the "multi_idps" type, we don't actually set any of the custom attributes,
+            # NOTE: for the "multi_idps" type,
+            # we don't actually set any of the custom attributes,
             # but we still need a check here to not fall into the ERROR else below.
-            # We don't have any custom attributes because those are set in the individual idp types.
-            #
+            # We don't have any custom attributes because those
+            # are set in the individual idp types.
             logger.debug("Note setting any properties for multi_idps.")
 
         # NOTE: each provider type must implement this check
@@ -190,8 +206,8 @@ class OAuth2ProviderExtension(object):
         #     ...
         else:
             logger.error(
-                f"ERROR! OAuth2ProviderExtension constructor not implemented for OAuth2 provider "
-                f"extension {self.ext_type}."
+                f"ERROR! OAuth2ProviderExtension constructor not implemented for "
+                f"OAuth2 provider extension {self.ext_type}."
             )
             raise errors.ServiceConfigError(
                 f"Error processing callback URL: extension type {self.ext_type} not "
@@ -200,22 +216,27 @@ class OAuth2ProviderExtension(object):
 
     def get_auth_code_from_callback(self, request):
         """
-        This function processes the callback from the OAuth2 provider server; in particular, it gets the
-        authorization code out of the request and checks the state parameter as well, if applicable.
+        This function processes the callback from the OAuth2 provider server;
+        in particular, it gets the authorization code out of the request
+        and checks the state parameter as well, if applicable.
+
         :param request: the request object made by the 3rd party OAuth2 provider server.
-        :return:
+
+        :return: None
         """
-        # first, check for the state parameter and, if passed, compare it to the state in the session
+        # first, check for the state parameter and, if passed,
+        # compare it to the state in the session
         logger.debug(
-            f"top of get_auth_code_from_callback; request.args: {request.args}; request: {request}"
+            "top of get_auth_code_from_callback; "
+            f"request.args: {request.args}; request: {request}"
         )
         req_state = request.args.get("state")
         if req_state:
             state = session.get("state")
             if not state == req_state:
                 logger.error(
-                    f"ERROR! state stored in the session ({state}) did not match the state passed in"
-                    f"the callback ({req_state}"
+                    f"ERROR! state stored in the session ({state}) did not match "
+                    f"the state passed in the callback ({req_state}"
                 )
                 raise errors.ServiceConfigError(
                     "Error processing provider callback -- state mismatch."
@@ -223,7 +244,7 @@ class OAuth2ProviderExtension(object):
         req_code = request.args.get("code")
         if not req_code:
             logger.error(
-                f"ERROR! did not receive an authorization code in the callback."
+                "ERROR! did not receive an authorization code in the callback."
             )
             raise errors.ServiceConfigError(
                 "Error processing provider callback -- code missing."
@@ -236,8 +257,9 @@ class OAuth2ProviderExtension(object):
         :return:
         """
         logger.debug("top of get_token_using_auth_code")
-        # todo -- it is possible these body parameters will need to change for different oauth2 servers
-        # note -- this function is not called by CII because it does non-standard OAuth.
+        # TODO -- it is possible these body parameters will need to change
+        #         for different oauth2 servers
+        # NOTE -- this function is not called by CII because it does non-standard OAuth.
         body = {
             "client_id": self.client_id,
             "client_secret": self.client_key,
@@ -260,10 +282,9 @@ class OAuth2ProviderExtension(object):
             )
         except Exception as e:
             logger.error(
-                f"Got exception from POST request to OAuth server attempting to exchange the"
-                f"authorization code for a token. Debug data:"
-                f"request body: {body}"
-                f"exception: {e}"
+                "Got exception from POST request to OAuth server attempting to "
+                "exchange the authorization code for a token."
+                f"Debug data: request body: {body}; exception: {e}"
             )
             raise errors.ServiceConfigError(
                 "Error requesting access token. Contact server administrator."
@@ -277,11 +298,9 @@ class OAuth2ProviderExtension(object):
             self.access_token = rsp.json().get("access_token")
         except Exception as e:
             logger.error(
-                f"Got exception trying to process response from POST request to exchange the"
-                f"authorization code for a token. Debug data:"
-                f"request body: {body};"
-                f"response: {rsp}"
-                f"exception: {e}"
+                "Got exception trying to process response from POST request to "
+                "exchange the authorization code for a token. "
+                f"Debug data: request body: {body}; response: {rsp}; exception: {e}"
             )
             raise errors.ServiceConfigError(
                 "Error parsing access token. Contact server administrator."
@@ -291,16 +310,21 @@ class OAuth2ProviderExtension(object):
 
     def get_token_from_callback(self, request):
         """
-        For the cii tenant, get the token directly from the callback URL. This function is only called by
-        the CII tenant; other tenants do standard OAuth and pass an authorization code which is exchanged
-        for the token.
+        For the cii tenant, get the token directly from the callback URL.
+
+        This function is only called by the CII tenant;
+        other tenants do standard OAuth and pass an authorization code which is
+        exchanged for the token.
+
         :param request: The request made to the Tapis callback URL.
+
         :return:
         """
         if not self.ext_type == "cii":
             msg = (
-                f"get_token_from_callback() called for a non-cii ext type; ext type: {self.ext_type}; "
-                f"This function should only be called by cii tenants. "
+                f"get_token_from_callback() called for a non-cii ext type;"
+                f"ext type: {self.ext_type}; "
+                "This function should only be called by cii tenants. "
                 f"request: {request}."
             )
             logger.error(msg)
@@ -308,10 +332,13 @@ class OAuth2ProviderExtension(object):
                 f"Program error; contact system administrators. "
                 f"(Debug message: {msg})"
             )
-        # the CII OAuth server returns the access token in a URL query parameter, "token"
+        # CII OAuth server returns the access token in a URL query parameter, "token"
         self.access_token = request.args.get("token")
         if not self.access_token:
-            msg = f"Did not get access token from CII callback. request args: {request.args}"
+            msg = (
+                "Did not get access token from CII callback. "
+                f"request args: {request.args}"
+            )
             raise errors.ResourceError()
         return self.access_token
 
@@ -322,7 +349,8 @@ class OAuth2ProviderExtension(object):
         :return:
         """
         logger.debug("top of get_user_from_token")
-        # todo -- each OAuth2 provider will have a different mechanism for determining the user's identity
+        # TODO -- each OAuth2 provider will have a different mechanism
+        #         for determining the user's identity
         if (
             self.ext_type == "github"
             or self.ext_type == "tacc_keycloak"
@@ -332,7 +360,7 @@ class OAuth2ProviderExtension(object):
             if self.ext_type == "github":
                 user_info_url = "https://api.github.com/user"
             if self.ext_type == "tacc_keycloak":
-                user_info_url = "https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/userinfo"
+                user_info_url = "https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/userinfo"  # noqa
             if self.ext_type == "multi_keycloak" or self.ext_type == "globus":
                 user_info_url = self.user_info_url
             if self.ext_type == "github":
@@ -352,16 +380,16 @@ class OAuth2ProviderExtension(object):
                 rsp = requests.get(user_info_url, headers=headers)
             except Exception as e:
                 logger.error(
-                    f"Got exception from request to look up user's identity with {self.ext_type}. Debug data:"
-                    f"exception: {e}"
+                    f"Got exception from request to look up user's identity "
+                    f"with {self.ext_type}. Debug data: exception: {e}"
                 )
                 raise errors.ServiceConfigError(
                     "Error determining user identity. Contact server administrator."
                 )
             if not rsp.status_code == 200:
                 logger.error(
-                    f"Did not get 200 from request to look up user's identity with {self.ext_type}. Debug data:"
-                    f"status code: {rsp.status_code};"
+                    f"Did not get 200 from request to look up user's identity with "
+                    f"{self.ext_type}. Debug data:status code: {rsp.status_code};"
                     f"rsp content: {rsp.content}"
                 )
                 raise errors.ServiceConfigError(
@@ -371,8 +399,8 @@ class OAuth2ProviderExtension(object):
                 username = rsp.json().get("login")
                 if not username:
                     logger.error(
-                        f"username was none after processing the github response. Debug data:"
-                        f"response: {rsp}"
+                        f"username was none after processing the github response. "
+                        f"Debug data: response: {rsp}"
                     )
                     raise errors.ServiceConfigError(
                         "Error determining user identity: username was empty. "
@@ -391,10 +419,12 @@ class OAuth2ProviderExtension(object):
                     rsp_data = rsp.json()
                 except Exception as e:
                     logger.error(
-                        f"Got error trying to parse the JSON from the Globus/Keycloak instance; error: {e}"
+                        "Got error trying to parse the JSON from the "
+                        f"Globus/Keycloak instance; error: {e}"
                     )
                     raise errors.ServiceConfigError(
-                        "Error determining user identity: could not parse identity response. "
+                        "Error determining user identity: "
+                        "could not parse identity response. "
                         "Contact server administrator."
                     )
                 username = None
@@ -404,10 +434,12 @@ class OAuth2ProviderExtension(object):
                     username = rsp_data.get("email")
                 if not username:
                     logger.error(
-                        f"Could not parse the username from the Globus/Keycloak instance; username could not be determined."
+                        "Could not parse username from the Globus/Keycloak instance; "
+                        "username could not be determined."
                     )
                     raise errors.ServiceConfigError(
-                        "Error determining user identity: username could not be determined. "
+                        "Error determining user identity: "
+                        "username could not be determined. "
                         "Contact server administrator."
                     )
                 self.username = username
@@ -417,8 +449,9 @@ class OAuth2ProviderExtension(object):
             return self.username
 
         elif self.ext_type == "cii":
-            # the CII token is a JWT; we only need to decode it and get the username out of the payload.
-            # todo -- we should verify the signature if that is working...
+            # the CII token is a JWT; we only need to decode it
+            # and get the username out of the payload.
+            # TODO -- we should verify the signature if that is working...
             logger.debug(f"CII jwt: {self.access_token}")
             try:
                 claims = jwt.decode(
@@ -439,9 +472,8 @@ class OAuth2ProviderExtension(object):
                 msg = f"Did not get a username from the CII jwt; full claims: {claims}"
                 logger.error(msg)
                 raise errors.ResourceError(
-                    f"Unable to determine username from third-party JWT. Contact system "
-                    f"administrator."
-                    f"(Debug message:{msg})"
+                    "Unable to determine username from third-party JWT. "
+                    f"Contact system administrator. Debug message: {msg})"
                 )
             logger.debug(f"Successfully determined user's identity: {self.username}")
             if idp_id:
@@ -451,10 +483,10 @@ class OAuth2ProviderExtension(object):
         #     ...
         else:
             logger.error(
-                f"ERROR! OAuth2ProviderExtension.get_user_from_token not implemented for OAuth2 provider "
-                f"extension type ({self.ext_type})."
+                "ERROR! OAuth2ProviderExtension.get_user_from_token not implemented "
+                f"for OAuth2 provider extension type: ({self.ext_type})."
             )
             raise errors.ServiceConfigError(
-                f"Error determining user identity: extension type ({self.ext_type}) not "
-                f"supported."
+                "Error determining user identity: "
+                f"extension type ({self.ext_type}) not  supported."
             )

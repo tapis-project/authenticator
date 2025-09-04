@@ -7,7 +7,7 @@ from tapisservice.tapisflask.utils import TapisApi, flask_errors_dict, handle_er
 
 from service import MIGRATIONS_RUNNING
 from service.auth import authn_and_authz
-from service.controllers import (  # OIDCMetadataResource,
+from service.endpoints import (  # OIDCMetadataResource,
     AuthorizeResource,
     ClientResource,
     ClientsResource,

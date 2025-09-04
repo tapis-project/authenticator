@@ -6,7 +6,7 @@ import string
 import uuid
 from copy import deepcopy
 
-from flask import Flask, g, session
+from flask import Flask, g
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from hashids import Hashids
@@ -14,13 +14,11 @@ from tapisservice.config import conf
 from tapisservice.errors import DAOError, ServiceConfigError
 from tapisservice.logs import get_logger
 
-from service import MIGRATIONS_RUNNING
-from service.errors import (InvalidAuthorizationCodeError,
-                            InvalidDeviceCodeError)
+from service import MIGRATIONS_RUNNING, tenants
+from service.errors import InvalidAuthorizationCodeError, InvalidDeviceCodeError
 
 logger = get_logger(__name__)
 
-from service import tenants
 
 app = Flask(__name__)
 # set the session expiry to a low level to force logins
@@ -40,11 +38,6 @@ app.config["SQLALCHEMY_DATABASE_URI"] = full_db_url
 db = SQLAlchemy(app, session_options={"expire_on_commit": False})
 migrate = Migrate(app, db)
 
-# get the logger instance -
-from tapisservice.logs import get_logger
-
-logger = get_logger(__name__)
-
 
 class TenantConfig(db.Model):
     """
@@ -57,7 +50,10 @@ class TenantConfig(db.Model):
     tenant_id = db.Column(db.String(50), unique=True, nullable=False, index=True)
 
     # json serialized list of strings of allowable grant types, comma separated
-    # ex:'["authorization_code", "password", "implicit", "device_code", "refresh_token", "impersonation", "delegation"]'
+    # ex:'[
+    #      "authorization_code", "password", "implicit", "device_code",
+    #      "refresh_token", "impersonation", "delegation"
+    #     ]'
     allowable_grant_types = db.Column(db.String(500), unique=False, nullable=False)
 
     # whether to use the LDAP configured in the Tenants API
@@ -66,8 +62,8 @@ class TenantConfig(db.Model):
     # whether to make the Authenticator token web app available
     use_token_webapp = db.Column(db.Boolean(), unique=False, nullable=False)
 
-    # MFA config is a json-serialized string which includes various details such as which MFA system to use (tacc or
-    # some other one) and configurations for it.
+    # MFA config is a json-serialized string which includes various details such as
+    # which MFA system to use (tacc or some other one) and configurations for it.
     mfa_config = db.Column(db.String(2500), unique=False, nullable=False)
 
     # for the standard grant types, such as password and authorization_code --
@@ -78,7 +74,8 @@ class TenantConfig(db.Model):
     max_access_token_ttl = db.Column(db.Integer)
     max_refresh_token_ttl = db.Column(db.Integer)
 
-    # Configuration for customizing the IdP integration, including custom ldap search filters and alternative IdPs
+    # Configuration for customizing the IdP integration, i
+    # ncluding custom ldap search filters and alternative IdPs
     # like github OAuth of Custos; stored as a JSON-serialized string.
     custom_idp_configuration = db.Column(db.String(2500), unique=False, nullable=False)
 
@@ -111,9 +108,11 @@ class TenantConfig(db.Model):
 
 def initialize_tenant_configs(tenant_id):
     """
-    Checks to see if a TenantConfig record exists for the tenant_id passed, and if it does not, it creates one
-    with the default configs. This function is called at authenticator start up (from api.py) with each tenant id
-    in the authenticator's conf.tenants configuration and adds a minimal default configuration for every tenant.
+    Checks to see if a TenantConfig record exists for the tenant_id passed,
+    and if it does not, it creates one with the default configs.
+    This function is called at authenticator start up (from api.py) with each tenant id
+    in the authenticator's conf.tenants configuration and adds a minimal default
+    configuration for every tenant.
 
     :param tenant_id: The tenant id to check.
     :return: config -- the config object assoicated with the tenant.
@@ -123,7 +122,8 @@ def initialize_tenant_configs(tenant_id):
         config = TenantConfig.query.filter_by(tenant_id=tenant_id).first()
     except Exception as e:
         logger.info(
-            f"got exception trying to check for the existence of a TenantConfig record for tenant: {tenant_id}."
+            "got exception trying to check for the existence of a TenantConfig "
+            f"record for tenant: {tenant_id}."
         )
         db.session.rollback()
         logger.debug(f"exception details: {e}")
@@ -170,8 +170,8 @@ def initialize_tenant_configs(tenant_id):
         return config
     except Exception as e:
         logger.info(
-            f"Got exception trying to add a new config for tenant {tenant_id} to the db."
-            f"Multiple threads trying to add the same tenant."
+            f"Got exception trying to add a new config for tenant {tenant_id} "
+            "to the db. Multiple threads trying to add the same tenant."
         )
         db.session.rollback()
         logger.debug(f"Exception details: {e}.")
@@ -186,8 +186,9 @@ class TenantConfigsCache(object):
     def __init__(self):
         self.tenant_config_models = self.load_tenant_config_cache()
         # self.cache_lifetime = datetime.timedelta(minutes=5)
-        # todo -- setting this to 4 seconds for now but we can increase; 4 seconds should allow us to
-        # use one cache instance throughout the life of a single request.
+        # todo -- setting this to 4 seconds for now but we can increase;
+        # 4 seconds should allow us to use one cache instance throughout
+        # the life of a single request.
         self.cache_lifetime = datetime.timedelta(seconds=4)
 
     def load_tenant_config_cache(self):
@@ -217,18 +218,20 @@ class TenantConfigsCache(object):
         while tries < 2:
             for t in self.tenant_config_models:
                 if t.tenant_id == tenant_id:
-                    # we commit here because the get_config() is the method that actually issues the sql call
-                    # because the ORM is lazy and does not load it ahead of time.
+                    # we commit here because the get_config() is the method that
+                    # actually issues the sql call because the ORM is lazy and does not
+                    # load it ahead of time.
                     db.session.commit()
                     return t
-            # the first pass through, if we didn't find the tenant_id, reload the cache and try again
+            # the first pass through, if we didn't find the tenant_id,
+            # reload the cache and try again
             if tries == 0:
                 self.load_tenant_config_cache()
                 tries = 1
                 continue
             tries = 2
-        # we commit here because the get_config() is the method that actually issues the sql call
-        # because the ORM is lazy and does not load it ahead of time.
+        # we commit here because the get_config() is the method that actually issues
+        # the sql call because the ORM is lazy and does not load it ahead of time.
         db.session.commit()
         raise ServiceConfigError(
             f"tenant id {tenant_id} not found in tenant configurations."
@@ -236,18 +239,25 @@ class TenantConfigsCache(object):
 
     def get_custom_oa2_extension_type(self, tenant_id):
         """
-        Returns the custom OAuth2 extension type being used by the given tenant_id, or None if not.
+        Returns the custom OAuth2 extension type being used by the given tenant_id,
+        or None if not.
+
         :param tenant_id: the tenant_id to check
         :return: string or None
         """
         logger.debug(f"top of get_custom_oa2_extension_type for tenant: {tenant_id}")
         config = self.get_config(tenant_id)
         custom_idp_config = json.loads(config.custom_idp_configuration)
-        # we commit here because the get_config() is the method that actually issues the sql call
-        # because the ORM is lazy and does not load it ahead of time.
+        # We commit here because the get_config() is the method that actually
+        # issues the sql call because the ORM is lazy and does not
+        # load it ahead of time.
         db.session.commit()
-        # check whether the tenant config has one of the OAuth2 extension configuration properties.
-        # this check will expand over time as we add support for additional types of OAuth2 extension modules.
+
+        # Check whether the tenant config has one of the
+        # OAuth2 extension configuration properties.
+
+        # This check will expand over time as we add support for additional types
+        # of OAuth2 extension modules.
         # TODO -- this must be updated for every new custom oa2 extension type.
         if "github" in custom_idp_config.keys():
             return "github"
@@ -267,32 +277,36 @@ class TenantConfigsCache(object):
 
     def get_mfa_type(self, tenant_id):
         logger.debug()
-        config = self.get_config(tenant_id)
-        mfa_config = json.loads(config.mfa_config)
-        # we commit here because the get_config() is the method that actually issues the sql call
-        # because the ORM is lazy and does not load it ahead of time.
-        db.session.commit()
 
         # TODO parse mfa_config for mfa_type, for now only available for tacc OTP
+        # config = self.get_config(tenant_id)
+        # mfa_config = json.loads(config.mfa_config)
+
+        # we commit here because the get_config() is the method that actually issues
+        # the sql call because the ORM is lazy and does not load it ahead of time.
+        db.session.commit()
+
         return "tacc"
 
 
-# singleton cache object -- when migrations are running the TenantConfig relations in Postgres could not
-# exist
+# singleton cache object -- when migrations are running, the TenantConfig relations
+# in Postgres could not exist
 try:
     tenant_configs_cache = TenantConfigsCache()
 except Exception as e:
     if not MIGRATIONS_RUNNING:
         logger.error(
-            f"got exception trying to load tenant configs cache and migrations were NOT running."
-            f" giving up; exception: {e}"
+            "got exception trying to load tenant configs cache and migrations were NOT "
+            f"running. giving up; exception: {e}"
         )
         raise e
     else:
         logger.warn(
-            f"got exception try to load tenant configs object while migrations were running. This better "
-            f"be because the migrations are creating the TenantConfigs relations. Setting cache object to "
-            f"none. "
+            "Got exception try to load tenant configs object while migrations were "
+            "running. "
+            "This better be because the migrations are creating the TenantConfigs "
+            "relations. "
+            "Setting cache object to none. "
         )
         logger.debug(f"Exception details: {e}")
         tenant_configs_cache = None
@@ -313,7 +327,8 @@ class Client(db.Model):
     )
     display_name = db.Column(db.String(50), unique=False, nullable=True)
     description = db.Column(db.String(70), unique=False, nullable=True)
-    # Ideally, this would be nullable=False, but due to a bug, we were unable to set nullable to False
+    # Ideally, this would be nullable=False, but due to a bug,
+    # we were unable to set nullable to False
     # Attempts to set nullable to False caused it to hang
     active = db.Column(db.Boolean, default=True, nullable=True)
 
@@ -341,6 +356,7 @@ class Client(db.Model):
     def generate_client_id(cls):
         """
         Generates a client_id when none is provided by the user.
+
         :return:
         """
         hashids = Hashids(salt=Client.HASH_SALT)
@@ -350,7 +366,9 @@ class Client(db.Model):
     def get_derived_values(cls, data):
         """
         Computes derived values for the client from input and defaults.
+
         :param data:
+
         :return: dict (result)
         """
         result = {}
@@ -358,7 +376,8 @@ class Client(db.Model):
         result["username"] = g.username
         result["create_time"] = datetime.datetime.utcnow()
         result["last_update_time"] = datetime.datetime.utcnow()
-        # client_id and client_key are optional fields -- if they are not passed, the service will generate them.
+        # client_id and client_key are optional fields
+        # if they are not passed, the service will generate them.
         try:
             result["client_id"] = getattr(data, "client_id")
         except AttributeError:
@@ -427,7 +446,8 @@ class AuthorizationCode(db.Model):
     def serialize(self):
         return {"code": self.code, "expiry_time": self.expiry_time}
 
-    # character set to use to generate random strings from to serve as the actual authorization codes themselves.
+    # character set to use to generate random strings from to serve
+    # as the actual authorization codes themselves.
     UNICODE_ASCII_CHARACTER_SET = string.ascii_letters + string.digits
 
     # time-to-live for authrorization codes, in seconds.
@@ -449,12 +469,15 @@ class AuthorizationCode(db.Model):
     @classmethod
     def validate_code(cls, tenant_id, code, client_id, client_key):
         """
-        Validate the use of an authorization code. This method checks the code expiry and client credentials against the
+        Validate the use of an authorization code.
+        This method checks the code expiry and client credentials against the
         AuthorizationCode table.
+
         :param tenant_id (str) The tenant_id for which the authorization code belongs.
         :param code: (str) The authorization code.
         :param client_id: (str) The client_id owning the code.
         :param client_key: (str) Associated client_secret.
+
         :return:
         """
         code_result = cls.query.filter_by(
@@ -473,12 +496,15 @@ class AuthorizationCode(db.Model):
     @classmethod
     def validate_and_consume_code(cls, tenant_id, code, client_id, client_key):
         """
-        Validate the use of an authorization code and then consume it. This method checks the code expiry and
-        client credentials against the AuthorizationCode table; if valid the code is then expired.
+        Validate the use of an authorization code and then consume it.
+        This method checks the code expiry and client credentials against
+        the AuthorizationCode table; if valid the code is then expired.
+
         :param tenant_id (str) The tenant_id for which the authorization code belongs.
         :param code: (str) The authorization code.
         :param client_id: (str) The client_id owning the code.
         :param client_key: (str) Associated client_secret.
+
         :return:
         """
         code = AuthorizationCode.validate_code(tenant_id, code, client_id, client_key)
@@ -488,7 +514,8 @@ class AuthorizationCode(db.Model):
             logger.debug(f"validated and consumed authorization code: {code}")
         except Exception as e:
             logger.error(
-                f"Got exception trying to delete authorization code; code: {code}; e: {e}; type(e): {type(e)}"
+                f"Got exception trying to delete authorization code; code: {code}; "
+                f"e: {e}; type(e): {type(e)}"
             )
             raise InvalidAuthorizationCodeError(
                 msg="authorization code could not be deleted."
@@ -575,8 +602,8 @@ class DeviceCode(db.Model):
     @classmethod
     def validate_code(cls, code):
         """
-        Validate the use of a device code. This method checks the code expiry and client credentials against the
-        DeviceCode table.
+        Validate the use of a device code. This method checks the code expiry
+        and client credentials against the DeviceCode table.
 
         :return:
         """
@@ -604,9 +631,12 @@ class DeviceCode(db.Model):
     @classmethod
     def consume_code(cls, code):
         """
-        Validate the use of a device code and then consume it. This method checks the code expiry and
-        client credentials against the DeviceCode table; if valid the code is then deleted.
-        :return: cod
+        Validate the use of a device code and then consume it.
+
+        This method checks the code expiry and client credentials against
+        the DeviceCode table; if valid the code is then deleted.
+
+        :return: bool
         """
         code = DeviceCode.validate_code(code)
         try:
@@ -615,7 +645,8 @@ class DeviceCode(db.Model):
             logger.debug(f"Consumed device code: {code}")
         except Exception as e:
             logger.error(
-                f"Got exception trying to delete device code; code: {code}; e: {e}; type(e): {type(e)}"
+                f"Got exception trying to delete device code; code: {code}; "
+                f"e: {e}; type(e): {type(e)}"
             )
             raise InvalidDeviceCodeError(msg="device code could not be deleted.")
         return True
@@ -637,7 +668,8 @@ class AccessTokens(db.Model):
     tenant_id = db.Column(db.String(50), unique=False, nullable=False, index=True)
     username = db.Column(db.String(50), unique=False, nullable=False, index=True)
 
-    # the client id used to generate the token; could be null, for example, in the case of the password grant
+    # the client id used to generate the token;
+    # could be null, for example, in the case of the password grant
     client_id = db.Column(
         db.String(80),
         db.ForeignKey("clients.client_id"),
@@ -674,8 +706,10 @@ class AccessTokens(db.Model):
 class RefreshTokens(db.Model):
     __tablename__ = "refresh_tokens"
     """
-    Table of all refresh tokens generated by this authenticator. Note that we store refresh tokens on a separate
-    table to prevent any one table from getting too large.
+    Table of all refresh tokens generated by this authenticator.
+
+    Note that we store refresh tokens on a separate table to prevent
+    any one table from getting too large.
     """
     # primary key for the table
     id = db.Column(db.Integer, primary_key=True)
@@ -688,7 +722,8 @@ class RefreshTokens(db.Model):
     tenant_id = db.Column(db.String(50), unique=False, nullable=False, index=True)
     username = db.Column(db.String(50), unique=False, nullable=False, index=True)
 
-    # the client id used to generate the token; could be null, for example, in the case of the password grant
+    # the client id used to generate the token;
+    # could be null, for example, in the case of the password grant
     client_id = db.Column(
         db.String(80), db.ForeignKey("clients.client_id"), unique=False, nullable=True
     )
@@ -808,7 +843,8 @@ class LdapUser(object):
             attrs["dn"] = ldap_user_dn.replace("${username}", attrs["uid"])
         else:
             attrs["dn"] = f"cn={cn},{ldap_user_dn}"
-        # the remaining params are computed directly in the same way -- as the first entry in an array of bytes
+        # the remaining params are computed directly in the same way --
+        # as the first entry in an array of bytes
         params = [
             "givenName",
             "sn",
@@ -836,8 +872,8 @@ class LdapUser(object):
         :param conn (ldap3.core.connection.Connection) A connection to the ldap server.
         :return:
         """
-        # first, get the ldap representation of this object and remove any fields not allowed to be passed to
-        # ldap on save:
+        # first, get the ldap representation of this object and remove any fields
+        # not allowed to be passed to ldap on save:
         repr = self.serialize_to_ldap
         repr.pop("create_time", None)
         repr.pop("dn")
@@ -847,7 +883,8 @@ class LdapUser(object):
             msg = f"Got exception trying to add a user to LDAP; exception: {e}"
             logger.error(msg)
             raise DAOError(
-                "Unable to communicate with LDAP database when trying to save user account."
+                "Unable to communicate with LDAP database when "
+                "trying to save user account."
             )
         # handle the case where the record was already added:
         if (
@@ -858,7 +895,10 @@ class LdapUser(object):
             logger.debug("user was previously added to the LDAP.")
             return True
         if not result:
-            msg = f"Got False result trying to add a user with dn {self.dn} to LDAP; error data: {conn.result}"
+            msg = (
+                f"Got False result trying to add a user with dn {self.dn} to LDAP; "
+                f"error data: {conn.result}"
+            )
             logger.error(msg)
             raise DAOError(
                 "Unable to save user account in LDAP database; "
@@ -935,9 +975,10 @@ class LdapOU(object):
 
 class TokenRequestBody(object):
     """
-    Represents a request body sent to the POST /v3/oauth2/tokens endpoint. This class is used to
-    create a request body when www-form content types are passed instead of using the openapicore.validated_body
-    object.
+    Represents a request body sent to the POST /v3/oauth2/tokens endpoint.
+
+    This class is used to create a request body when www-form content types
+    are passed instead of using the openapicore.validated_body object.
     """
 
     def __init__(self, form):
@@ -1009,9 +1050,11 @@ class Token(object):
 
 def create_clients_for_tenant(tenant_id):
     """
-    Create the OAuth clients for the Token Webapp for a specific tenant_id. There are two clients that get created in
-    each tenant: one with a registered callback using the tenant's base_url and another with a "localhost" callback
-    for running locally.
+    Create the OAuth clients for the Token Webapp for a specific tenant_id.
+
+    There are two clients that get created in each tenant:
+    one with a registered callback using the tenant's base_url and another
+    with a "localhost" callback for running locally.
 
     :param tenant_id: The tenant_id to register the client in.
     :return:
@@ -1059,8 +1102,10 @@ def delete_tenant_from_db(tenant_id):
 def add_tenant_to_db(config):
     """
     Add a tenant directly to the tenants db.
-    :param data: A Python dictionary containing a complete desecription of the tenant to add.
-    :return:
+
+    :param data: A dictionary containing a complete desecription of the tenant to add.
+
+    :return: None
     """
     try:
         tenant = TenantConfig.query.filter_by(tenant_id=config["tenant_id"]).first()
@@ -1078,8 +1123,10 @@ def add_tenant_to_db(config):
 def add_client_to_db(data):
     """
     Add a client directly to the clients db.
-    :param data: A Python dictionary containing a complete description of the client to add.
-    :return:
+
+    :param data: A dictionary containing a complete description of the client to add.
+
+    :return: None
     """
     try:
         client = Client.query.filter_by(
@@ -1089,18 +1136,21 @@ def add_client_to_db(data):
         ).first()
         if not client:
             logger.debug(
-                f"registering localhost {data['tenant_id']} client; callback_url: {data['callback_url']}."
+                f"registering localhost {data['tenant_id']} client; "
+                f"callback_url: {data['callback_url']}."
             )
             client = Client(**data)
             db.session.add(client)
             db.session.commit()
         else:
             logger.debug(
-                f"client with id {data['client_id']} for tenant {data['tenant_id']} already existed."
+                f"client with id {data['client_id']} for "
+                f"tenant {data['tenant_id']} already existed."
             )
     except Exception as e:
         logger.info(
-            f"Got exception trying to create the token web app client; this better be migrations."
+            "Got exception trying to create the token web app client; "
+            "this better be migrations."
         )
         logger.debug(f"Exception details: {e}")
         db.session.rollback()

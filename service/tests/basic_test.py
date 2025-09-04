@@ -6,16 +6,17 @@ from base64 import b64encode
 import pyotp
 import pytest
 from tapisservice.auth import get_service_tapis_client, validate_token
-from tapisservice.config import conf as tapisconf
 from tapisservice.tenants import tenant_cache as auth_tenants
 
-from service import mfa, models
+from service import models
 from service.api import app
-from service.models import DeviceCode, tenant_configs_cache
+from service.helpers import mfa
+from service.models import tenant_configs_cache
 
 # These tests are intended to be run locally.
 
-# client id and key for the test suite. a client with these credentials is added by the test suite at start up.
+# client id and key for the test suite. a client with these credentials
+# is added by the test suite at start up.
 TEST_TENANT_ID = "dev"
 TEST_CLIENT_ID = "tapis_authn_test_suite_client_id"
 TEST_CLIENT_KEY = "Dkrio2odj2AbvR"
@@ -120,7 +121,8 @@ def teardown_module():
 
 def get_basic_auth_header(username, password):
     """
-    Convenience function with will return a properly formatted Authorization header from a username and password.
+    Convenience function that returns a properly formatted Authorization header
+    from a username and password.
     """
     user_pass = bytes(f"{username}:{password}", "utf-8")
     return "Basic {}".format(b64encode(user_pass).decode())
@@ -144,11 +146,11 @@ def validate_access_token(response):
 
 def check_access_token_table(claims, grant_type, token_revoked, client_id=None):
     """
-    Check that a token with `claims` generated using `grant_type` with `token_revoked` status
-    appears on the AccessTokens table.
+    Check that a token with `claims` generated using `grant_type` with `token_revoked`
+    status appears on the AccessTokens table.
 
-    Additionally, if a `client_id` was used to generate the token, this checks that the client_id
-    appears correctly.
+    Additionally, if a `client_id` was used to generate the token, this checks that the
+    client_id appears correctly.
     """
     jti = claims["jti"]
     token = models.AccessTokens.query.filter_by(jti=jti).first()
@@ -167,11 +169,11 @@ def check_access_token_table(claims, grant_type, token_revoked, client_id=None):
 
 def check_refresh_token_table(claims, grant_type, token_revoked, client_id=None):
     """
-    Check that a token with `claims` generated using `grant_type` with `token_revoked` status
-    appears on the RefreshTokens table.
+    Check that a token with `claims` generated using `grant_type` with `token_revoked`
+    status appears on the RefreshTokens table.
 
-    Additionally, if a `client_id` was used to generate the token, this checks that the client_id
-    appears correctly.
+    Additionally, if a `client_id` was used to generate the token, this checks that the
+    client_id appears correctly.
     """
     jti = claims["jti"]
     token = models.RefreshTokens.query.filter_by(jti=jti).first()
@@ -192,10 +194,12 @@ def check_clients_table(
     client_id, callback_url=None, display_name=None, description=None, negative=False
 ):
     """
-    Check that a client created with the 'create client' endpoint exists with correct info
+    Check that a client created with the 'create client' endpoint
+    exists with correct info
+
     If negative=true, check that this client doesn't exist instead
     """
-    print(f"checking clients table")
+    print("checking clients table")
     retrieved = models.Client.query.filter_by(client_id=client_id).first()
     print(f"DEBUG got client:: {retrieved}")
     try:
@@ -208,7 +212,7 @@ def check_clients_table(
             assert retrieved.display_name == display_name
         if description:
             assert retrieved.description == description
-    except AssertionError as e:
+    except AssertionError:
         if not negative:
             raise AssertionError
         pass
@@ -218,7 +222,8 @@ def check_device_code_table(
     client_id, user_code, device_code, verification_url, status, negative=False
 ):
     """
-    Check that a device code created with the device code endpoint exists with correct info
+    Check that a device code created with the device code endpoint
+    exists with correct info
     """
     print("Checking device_codes table")
     retrieved = models.DeviceCode.query.filter_by(user_code=user_code).first()
@@ -293,14 +298,21 @@ def tapis_service_jwt(client):
         resource_set="dev",
     )
     service_jwt = t.service_tokens["admin"]["access_token"].access_token
-    # jwt = get_jwt(client, username='admin', password=tapisconf['service_password'], admin=True)
-    # jwt = get_service_tapis_client(tenant_id=tapisconf['service_tenant_id'],
-    #                                 base_url=None,
-    #                                 jwt=None,
-    #                                 resource_set='tapipy', #todo -- change back to resource_set='tapipy'
-    #                                 custom_spec_dict=None,
-    #                                 download_latest_specs=False,
-    #                                 tenants=None):
+    # jwt = get_jwt(
+    #           client,
+    #           username='admin',
+    #           password=tapisconf['service_password'],
+    #           admin=True
+    # )
+    # jwt = get_service_tapis_client(
+    #           tenant_id=tapisconf['service_tenant_id'],
+    #           base_url=None,
+    #           jwt=None,
+    #           resource_set='tapipy', #todo -- change back to resource_set='tapipy'
+    #           custom_spec_dict=None,
+    #           download_latest_specs=False,
+    #           tenants=None
+    # )
     globals()["TAPIS_SERVICE_JWT"] = service_jwt
     return service_jwt
 
@@ -322,14 +334,19 @@ def mfa_token(tokencode=None):
 # Actual test functions
 # =====================
 
+# -----------------
+# Utility tests
+# -----------------
 
-## utility tests
+
 # get jwt
 def test_get_jwt(client):
     # note: This serves as a smoke test to verify the validity of the other results.
-    # If this is failing, it will likely cause other authenticated endpoint tests to fail, but they won't always give the correct reason
-    # the assertions made in the get_jwt func are enough to verify success. No addtl checks needed here
-    print(f"Starting test of getting JWT")
+    # If this is failing, it will likely cause other authenticated endpoint tests
+    # to fail, but they won't always give the correct reason
+    # the assertions made in the get_jwt func are enough to verify success.
+    # No addtl checks needed here
+    print("Starting test of getting JWT")
     result = get_jwt(client)
     print(f"got result = {result}")
 
@@ -342,7 +359,7 @@ def test_get_mfa_config(client):
         print(f"after tenant config get:: {tenant_config}")
         mfa_config = json.loads(tenant_config.mfa_config)
         if not mfa_config:
-            print(f"No mfa config found in tenant_config. Creating... ")
+            print("No mfa config found in tenant_config. Creating... ")
             mfa_config = json.dumps(
                 {
                     "tacc": {
@@ -365,7 +382,11 @@ def test_get_mfa_code(client, mfa_token):
     assert mfa_token is not None
 
 
-## Health Check
+# -----------------
+# Health Check
+# -----------------
+
+
 # hello
 def test_authenticator_hello(client):
     # result = client.authenticator.hello()
@@ -380,7 +401,11 @@ def test_authenticator_ready(client):
     assert result.status_code == 200
 
 
-## Metadata
+# -----------------
+# Metadata
+# -----------------
+
+
 # get_server_metadata
 def test_get_metadata(client):
     result = client.get(
@@ -389,7 +414,11 @@ def test_get_metadata(client):
     assert result.status_code == 200
 
 
-## Admin
+# -----------------
+# Admin
+# -----------------
+
+
 # get_config
 def test_get_admin_config(client, tapis_service_jwt, init_db):
     with client:
@@ -415,7 +444,7 @@ def test_get_admin_config(client, tapis_service_jwt, init_db):
         assert retrieved_config == tenant_config_data
 
 
-# # # update_config
+# update_config
 def test_update_admin_config(client, tapis_service_jwt):
     with client:
         # get current config
@@ -460,7 +489,9 @@ def test_update_admin_config(client, tapis_service_jwt):
         assert response.status_code == 200
 
 
-## Clients
+# -----------------
+# Clients
+# -----------------
 
 
 # utility setup / teardown
@@ -510,8 +541,10 @@ def test_authenticator_list_clients(client):
 # create_client
 def test_authenticator_create_clients(
     client, tapis_jwt
-):  ## TODO: this works, but doing it twice violates uniqueness constraint. Need to find a way to reliably erase it without using another endpoint
-    # result = client.authenticator.create_client(client_id=TEST_CLIENT_ID, callback_url='https://foo.example.com/oauth2/callback')
+):  # TODO: this works, but doing it twice violates uniqueness constraint.
+    # Need to find a way to reliably erase it without using another endpoint
+    # result = client.authenticator.create_client(client_id=TEST_CLIENT_ID,
+    # callback_url='https://foo.example.com/oauth2/callback')
     with client:
         new_client_id = f"{TEST_CLIENT_ID}__create_test"
         header = {"X-Tapis-Token": tapis_jwt}
@@ -615,7 +648,11 @@ def test_authenticator_delete_clients(client, tapis_jwt):
     remove_test_client(client, new_client)
 
 
-## Tokens
+# -----------------
+# Tokens
+# -----------------
+
+
 # Generate a Tapis JWT
 def test_password_grant_invalid_client(client, init_db):
     with client:
@@ -703,8 +740,8 @@ def test_password_grant_invalid_user_pass(client, init_db):
 
 
 def test_password_grant_invalid_uppercase_user(client, init_db):
-    # ldap clients are case insensitive, but the ldap.py bind code checks for upper case letters in the
-    # username and rejects it if any appear.
+    # ldap clients are case insensitive, but the ldap.py bind code checks for
+    # upper case letters in the username and rejects it if any appear.
     with client:
         auth_header = {
             "Authorization": get_basic_auth_header(TEST_CLIENT_ID, TEST_CLIENT_KEY)
@@ -813,14 +850,14 @@ def test_password_grant_no_client(client, init_db):
 #         print(f'DEBUG:: got result generating v2 token: {result.json}')
 #         assert result.status_code == 200
 #         raise Exception()
-## TODO!!! this is likely deprecated now that v2 is down...
+# TODO!!! this is likely deprecated now that v2 is down...
 
 
 # Revoke a token
 def test_revoke_token(client, init_db):
     """
-    Test the revocation endpoint, and check the status of the tokens are updated on the table
-    after revoking.
+    Test the revocation endpoint, and check the status of the tokens are updated
+    on the table after revoking.
     """
     # first, generate an access and refresh token pair
     with client:
@@ -872,11 +909,11 @@ def test_revoke_token(client, init_db):
         )
 
 
-## Device Code
-# Note: Device code checks are below
+# -----------------
+# Profiles
+# -----------------
 
 
-## Profiles
 # get_userinfo
 def test_get_userinfo(client, tapis_jwt):
     with client:
@@ -903,17 +940,20 @@ def test_get_profile(client, tapis_jwt):
         assert result.status_code == 200
 
 
-## grant type tests
+# -----------------
+# grant type tests
+# -----------------
 
 
 def test_authorization_code(client, init_db):
     # simulate the authorization approval -
     with client:
         # use hte session_transaction to enable modification of the session object:
-        # cf., https://flask.palletsprojects.com/en/1.1.x/testing/#accessing-and-modifying-sessions
+        # cf., https://flask.palletsprojects.com/en/1.1.x/testing/#accessing-and-modifying-sessions # noqa
         with client.session_transaction() as sess:
             sess["username"] = TEST_USERNAME
-        # once we leave the context, session updates applied via sess object are available -
+        # once we leave the context,
+        # session updates applied via sess object are available -
         print("post to authorize in test")
         response = client.post(
             "http://localhost:5000/v3/oauth2/authorize",
@@ -927,8 +967,9 @@ def test_authorization_code(client, init_db):
         )
         print(response)
         assert response.status_code == 302
-        # note: response.data is a raw bytes object containing the full HTML returned from the page.
-        # try this if you want to debug ===>  print(response.data)
+        # note: response.data is a raw bytes object containing
+        # the full HTML returned from the page.
+        # try this if you want to debug ===> print(response.data)
         response_str = response.data.decode("utf-8")
         assert "code=" in response_str
         assert "state=" in response_str
@@ -1050,10 +1091,11 @@ def test_implicit_grant(client, init_db):
     # simulate the authorization approval -
     with client:
         # use the session_transaction to enable modification of the session object:
-        # cf., https://flask.palletsprojects.com/en/1.1.x/testing/#accessing-and-modifying-sessions
+        # cf., https://flask.palletsprojects.com/en/1.1.x/testing/#accessing-and-modifying-sessions # noqa
         with client.session_transaction() as sess:
             sess["username"] = TEST_USERNAME
-        # once we leave the context, session updates applied via sess object are available -
+        # once we leave the context,
+        # session updates applied via sess object are available -
         response = client.post(
             "http://localhost:5000/v3/oauth2/authorize",
             data={
@@ -1066,15 +1108,18 @@ def test_implicit_grant(client, init_db):
         )
         print(response.data)
         assert response.status_code == 302
-        # note: response.data is a raw bytes object containing the full HTML returned from the page.
+        # note: response.data is a raw bytes object containing
+        # the full HTML returned from the page.
         # try this if you want to debug ===>  print(response.data)
         response_str = response.data.decode("utf-8")
         assert "token=" in response_str
         assert "state=" in response_str
         print(response_str)
-        # pull the JWT out of the full response_str. to do this, we split the respnse string (which is the entire
-        # html document) first by the "access_token=" substring and take the second part (index 1) to get the part
-        # after, then we split again up to the first encoded ampersand (&) character and take the first part (index 0)
+        # pull the JWT out of the full response_str. to do this,
+        # we split the respnse string (which is the entire html document)
+        # first by the "access_token=" substring and take the second part (index 1)
+        # to get the part after, then we split again up to the first encoded
+        # ampersand (&) character and take the first part (index 0)
         # which gives us everything in the access_token query parameter.
         jwt = response_str.split("access_token=")[1].split("&amp")[0]
         # decode jwt and check claims
@@ -1082,11 +1127,15 @@ def test_implicit_grant(client, init_db):
         assert claims["tapis/tenant_id"] == TEST_TENANT_ID
         assert claims["tapis/username"] == TEST_USERNAME
         assert claims["sub"] == f"{TEST_USERNAME}@{TEST_TENANT_ID}"
-        # TODO -- validate that the token returned has the correct claims.. to do this, will need to parse the token
-        # from out of the raw string.
+        # TODO -- validate that the token returned has the correct claims..
+        # to do this, will need to parse the token from out of the raw string.
 
 
-## Device code checks
+# -----------------
+# Device Code
+# -----------------
+
+
 def test_get_device_code(client):
     with client:
         # get device code url
@@ -1113,10 +1162,12 @@ def test_get_device_code(client):
 
 
 def test_authorize_device_code(client):
-    # TODO: not sure how to do this one yet, since it tyically requires manually going to the verification url and signing in.
-    # the test_exchange_device_code func directly inserts the "Entered" status in the device_codes table to simulate this.
-    # Skipping this one for now
-    # Maybe look more into modifying context, like https://flask.palletsprojects.com/en/stable/testing/#tests-that-depend-on-an-active-context
+    # TODO: not sure how to do this one yet, since it tyically requires manually going
+    # to the verification url and signing in.
+    # the test_exchange_device_code func directly inserts the "Entered" status
+    # in the device_codes table to simulate this. Skipping this one for now.
+    # Maybe look more into modifying context,
+    # like https://flask.palletsprojects.com/en/stable/testing/#tests-that-depend-on-an-active-context # noqa
     pass
 
 
@@ -1153,7 +1204,8 @@ def test_exchange_device_code(client):
         print("DEBUG: committed device code object to DB")
     except Exception as e:
         print(
-            f"Got exception trying to add and commit the device code. e: {e}; type(e): {type(e)}"
+            "Got exception trying to add and commit the device code. "
+            f"e: {e}; type(e): {type(e)}"
         )
         raise Exception("Internal error saving device code. Please try again later.")
     # verify that it was added to the db correctly
@@ -1179,7 +1231,11 @@ def test_exchange_device_code(client):
     validate_access_token(response)
 
 
-## MFA tests
+# -----------------
+# MFA tests
+# -----------------
+
+
 def test_mfa_valid_code(mfa_token):
     # uses the cicsvc creds to auth.
     response = mfa.call_mfa(mfa_token, TEST_TENANT_ID, MFA_USERNAME)
@@ -1193,5 +1249,7 @@ def test_mfa_invalid_code(mfa_token):
     assert response is False
 
 
-## OAuth2ProviderExtCallback tests
+# -----------------
+# OAuth2ProviderExtCallback tests
+# -----------------
 # TODO

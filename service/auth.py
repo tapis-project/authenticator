@@ -1,10 +1,10 @@
-import datetime
-
 from flask import g, request, session
 from tapisservice import errors as common_errors
 from tapisservice.config import conf
+
 # get the logger instance -
 from tapisservice.logs import get_logger
+
 # from common import auth
 from tapisservice.tapisflask import auth
 
@@ -17,24 +17,26 @@ logger = get_logger(__name__)
 
 def authn_and_authz():
     """
-    Entry point for checking authentication and authorization for all requests to the authenticator.
-    :return:
+    Entry point for checking authentication and authorization
+    for all requests to the authenticator.
+    :return: None
     """
-    # Setting session.permanent = True means that the session will survive even after the user closes their
-    # browser.
+    # Setting session.permanent = True means that the session will survive
+    # even after the user closes their browser.
     # session.permanent = True
     # session.permanent_session_lifetime = datetime.timedelta(seconds=15)
     # if we know the tenant_id based on the request base URL then do the following:
-    #   1. look up the session expiry for the tenant based on the tenant config and set it on the session object
-    #      using
-    #   2. expire the session (ie., call logout()) if the session is older than the expiry
+    #   1. look up the session expiry for the tenant based on the tenant config
+    #      and set it on the session object
+    #   2. expire the session (ie., logout()) if the session is older than the expiry
     #      * requires that we store the session creation time in the session object
     authentication()
-    # when running locally, the g.request_tenant_id will always be 'dev', so we use the session to allow for testing
-    # other tenants locally
+    # when running locally, the g.request_tenant_id will always be 'dev',
+    # so we use the session to allow for testing other tenants locally
     if "localhost" in request.base_url:
         logger.debug(
-            "localhost was in request.base_url, so we are looking to override tenant_id based on session."
+            "localhost was in request.base_url, "
+            "so we are looking to override tenant_id based on session."
         )
         try:
             if "tenant_id" in session and session["tenant_id"]:
@@ -46,7 +48,7 @@ def authn_and_authz():
             else:
                 logger.debug("did not override g.request_tenant_id")
         except Exception as e:
-            # we swallow any exception because this code should only run in local development.
+            # this code should only run in local development.
             logger.debug(
                 f"Got exception trying to check tenant_id in session; exception: {e}"
             )
@@ -58,11 +60,13 @@ def authentication():
     Entry point for checking authentication for all requests to the authenticator.
     :return:
     """
-    # The authenticator uses different authentication methods for different endpoints. For example, the service
-    # APIs such as clients and profiles use pure JWT authentication, while the OAuth endpoints use Basic Authentication
+    # The authenticator uses different authentication methods for different endpoints.
+    # For example, the service APIs such as clients and profiles
+    # wuse pure JWT authentication, hile the OAuth endpoints use Basic Authentication
     # with OAuth client credentials.
     logger.debug(
-        f"Top of authentication(). base_url: {request.base_url}; url_rule: {request.url_rule}"
+        f"Top of authentication(). base_url: {request.base_url}; "
+        f"url_rule: {request.url_rule}"
     )
     if (
         not hasattr(request, "url_rule")
@@ -87,11 +91,12 @@ def authentication():
         auth.resolve_tenant_id_for_request()
         return True
 
-    # only the authenticator's own service token and tenant admins for the tenant can retrieve or modify the tenant
-    # config
+    # only the authenticator's own service token and tenant admins for the tenant
+    # can retrieve or modify the tenant config
     if "/v3/oauth2/admin" in request.url_rule.rule:
         logger.debug(
-            "admin endpoint; checking for authenticator service token or tenant admin role..."
+            "admin endpoint; checking for authenticator service token "
+            "or tenant admin role..."
         )
         # admin endpoints always require tapis token auth
         auth.authentication()
@@ -103,9 +108,10 @@ def authentication():
                 f"The request is for a tenant ({g.request_tenant_id}) that is not "
                 f"served by this authenticator."
             )
-        # we only want to honor tokens from THIS authenticator; i.e., not some other authenticator. therefore, we need
-        # to check that the tenant_id associated with the token (g.tenant_id) is the same as THIS authenticator's tenant
-        # id;
+        # we only want to honor tokens from THIS authenticator;
+        # i.e., not some other authenticator. therefore, we need
+        # to check that the tenant_id associated with the token (g.tenant_id)
+        # is the same as THIS authenticator's tenant id;
         if g.username == conf.service_name and g.tenant_id == conf.service_tenant_id:
             logger.info(
                 f"allowing admin request because username was {conf.service_name} "
@@ -113,7 +119,8 @@ def authentication():
             )
             return True
         logger.debug(
-            f"request token does not represent THIS authenticator: token username: {g.username};"
+            "request token does not represent THIS authenticator: "
+            f"token username: {g.username}; "
             f" request tenant: {g.tenant_id}. Now checking for tenant admin..."
         )
         # all other service accounts are not allowed to update authenticator
@@ -122,16 +129,16 @@ def authentication():
                 "Not authorized -- service accounts are not allowed to access the"
                 "authenticator admin endpoints."
             )
-        # sanity check -- the request tenant id should be the same as the token tenant id in the remaining cases because
-        # they are all user tokens
+        # sanity check - the request tenant id should be the same as the token tenant id
+        # in the remaining cases because they are all user tokens
         if not g.request_tenant_id == g.tenant_id:
             logger.error(
-                f"program error -- g.request_tenant_id: {g.request_tenant_id} not equal to "
-                f"g.tenant_id: {g.tenant_id} even though account type was user!"
+                f"program error -- request_tenant_id: {g.request_tenant_id} not equal "
+                f"to tenant_id: {g.tenant_id} even though account type was user!"
             )
             raise common_errors.ServiceConfigError(
                 f"Unexpected program error checking permissions. The tenant id of"
-                f"the request ({g.request_tenant_id})  did not match the tenant id "
+                f"the request ({g.request_tenant_id}) did not match the tenant id "
                 f"of the access token ({g.tenant_id}). Please contact server "
                 f"administrators."
             )
@@ -140,8 +147,9 @@ def authentication():
             rsp = t.sk.isAdmin(tenant=g.tenant_id, user=g.username)
         except Exception as e:
             logger.error(
-                f"Got exception trying to check tenant admin role for tenant: {g.tenant_id} "
-                f"and user: {g.username}; exception: {e}"
+                "Got exception trying to check tenant admin role for "
+                f"tenant: {g.tenant_id} and user: {g.username}; "
+                f"exception: {e}"
             )
             raise common_errors.PermissionsError(
                 "Could not check tenant admin role with SK; this role is required for "
@@ -150,13 +158,14 @@ def authentication():
         try:
             if rsp.isAuthorized:
                 logger.info(
-                    f"user {g.username} had tenant admin role for tenant {g.tenant_id}; allowing request."
+                    f"user: {g.username} had tenant admin role for "
+                    f"tenant {g.tenant_id}; allowing request."
                 )
                 return True
             else:
                 logger.info(
-                    f"user {g.username} DID NOT have tenant admin role for tenant {g.tenant_id}; "
-                    f"NOT allowing request."
+                    f"user: {g.username} DID NOT have tenant admin role for "
+                    f"tenant {g.tenant_id}; NOT allowing request."
                 )
                 raise common_errors.PermissionsError(
                     "Permission denied -- Tenant admin role required for accessing "
@@ -164,12 +173,13 @@ def authentication():
                 )
         except Exception as e:
             logger.error(
-                f"got exception trying to check isAuthorized property from isAdmin() call to SK."
+                "got exception trying to check isAuthorized property "
+                "from isAdmin() call to SK. "
                 f"username: {g.username}; tenant: {g.tenant_id}; rsp: {rsp}; e: {e}"
             )
             logger.info(
-                f"user {g.username} DID NOT have tenant admin role for tenant {g.tenant_id}; "
-                f"NOT allowing request."
+                f"user: {g.username} DID NOT have tenant admin role for "
+                f"tenant {g.tenant_id}; NOT allowing request."
             )
             raise common_errors.PermissionsError(
                 "Permission denied -- Tenant admin role required for accessing the "
@@ -201,8 +211,9 @@ def authentication():
             )
         return True
 
-    # token should come from `Authorization: Bearer $token` header. rather than x-tapis-token
-    # this endpoint takes both, converts Authorization to x-tapis-token for simplicity
+    # token should come from `Authorization: Bearer $token` header
+    # rather than x-tapis-token. this endpoint takes both and
+    # converts Authorization to x-tapis-token for simplicity
     if "/v3/oauth2/userinfo/oidc" in request.url_rule.rule:
         logger.debug(
             f"top of /v3/oauth2/userinfo/oidc auth: request.headers: {request.headers}"
@@ -215,13 +226,15 @@ def authentication():
             and not request.headers.get("X-Tapis-Token")
         ):
             try:
-                # overwrite the headers via wsgi environ. request.headers itself is read-only
+                # overwrite the headers via wsgi environ.
+                # request.headers itself is read-only
                 tapis_token = auth_token.replace("Bearer ", "")
                 logger.debug(
                     f"found auth header; setting environ X-Tapis-Token to {tapis_token}"
                 )
                 # modify the WSGI environment directly
-                # wsgi requires headers be uppercase, no dashes, and prefixed with 'HTTP_'
+                # wsgi requires headers be uppercase, no dashes,
+                # and prefixed with 'HTTP_'
                 request.environ["HTTP_X_TAPIS_TOKEN"] = tapis_token
             except Exception as e:
                 logger.error(
@@ -234,16 +247,23 @@ def authentication():
             logger.debug(
                 f"before auth.authentication(). request.headers: {headers.keys()}"
             )
-        except Exception as e:
+        except Exception:
             pass
 
-        # tokens might have aud, if jwt.decode in tapisservice doesn't specify expected aud you'll
-        # get invalid aud. Either we can somehow pop aud or specify to jwt.decode(options={'verify_aud': False})
-        # Instead of verify = false we can also specify a list of valid auds. Pop aud would require
-        # re-encoding+signing key. We don't have private tenant key in auth though. Ignoring for now, only
-        # bookstack looks for this when running their auth.
-        # resolve_tenant_id_for_request decode needs aud to expect - https://github.com/jpadilla/pyjwt/blob/master/docs/usage.rst#audience-claim-aud
-        # Edit, expected_aud now exists. Bookstack asks for aud == client_id. For now we'll just allow any aud, especially as this is one endpoint.
+        # tokens might have aud, if jwt.decode in tapisservice doesn't specify
+        # expected aud you'll get invalid aud.
+        # Either we can somehow pop aud or specify to
+        #   jwt.decode(
+        #       options={'verify_aud': False}
+        #   )
+        # Instead of verify = false we can also specify a list of valid auds.
+        # Pop aud would require re-encoding+signing key.
+        # We don't have private tenant key in auth though.
+        # Ignoring for now, only bookstack looks for this when running their auth.
+        # resolve_tenant_id_for_request decode needs aud to expect
+        # https://github.com/jpadilla/pyjwt/blob/master/docs/usage.rst#audience-claim-aud
+        # Edit, expected_aud now exists. Bookstack asks for aud == client_id.
+        # For now we'll just allow any aud, especially as this is one endpoint.
 
         auth.authentication(expected_aud=["*"])
         # always resolve the request tenant id based on the URL:
@@ -255,7 +275,8 @@ def authentication():
                 f"served by this authenticator."
             )
         logger.debug(
-            f"End of v3/oauth2/userinfo/oidc auth: final request_tenant_id: {g.request_tenant_id}"
+            "End of v3/oauth2/userinfo/oidc auth: "
+            f"final request_tenant_id: {g.request_tenant_id}"
         )
         return True
 
@@ -275,7 +296,7 @@ def authentication():
             )
         return True
 
-    # the clients endpoints need to accept both standard Tapis Token auth and basic auth,
+    # the clients endpoints need to accept both standard Tapis Token auth and basic auth
     if "/v3/oauth2/clients" in request.url_rule.rule:
         # first check for basic auth header:
         parts = get_basic_auth_parts()
@@ -306,15 +327,18 @@ def authentication():
             # check for a Tapis token
             auth.authentication()
 
-            # g.username is JWT claim username
-            # g.request_username, defaults to g.username unless service specifies _x_tapis_user
-            # We require that request_username must be JWT username or _tapis_{JWT username}.
+            # g.username is JWT claim username g.request_username,
+            # defaults to g.username unless service specifies _x_tapis_user
+            # We require that request_username must be JWT username or
+            # _tapis_{JWT username}.
             if (
                 g.username != g.request_username
                 and g.request_username != f"_tapis_{g.username}"
             ):
                 raise common_errors.AuthenticationError(
-                    f"Client requests requires jwt username (g.username: {g.username}) match request username (g.request_username: {g.request_username}) or request username to match _tapis_{{jwt username}}."
+                    f"Client requests requires jwt username (g.username: {g.username}) "
+                    f"match request username (g.request_username: {g.request_username})"
+                    f" or request username to match _tapis_{{jwt username}}."
                 )
 
             # always resolve the request tenant id based on the URL:
@@ -329,46 +353,58 @@ def authentication():
 
     # Token Revocation Endpoint -----
     if "/v3/oauth2/tokens/revoke" in request.url_rule.rule:
-        # anyone with a token is currently allowed to revoke it. the only issue is whether this tokens API
-        # should revoke it.
+        # anyone with a token is currently allowed to revoke it.
+        # the only issue is whether this tokens API should revoke it.
         try:
-            token_str = request.get_json().get("token")
+            # TODO - This never verifies the token. Do we need to?
+            # It just checks that the request contains a JSON body.
+            if request.get_json().get("token"):
+                pass
+            # token_str = request.get_json().get("token")
         except Exception as e:
             logger.info(
-                f"Got exception trying to parse JSON from request; e: {e}; type(e):{type(e)}"
+                "Got exception trying to parse JSON from request; "
+                f"e: {e}; type(e):{type(e)}"
             )
             raise common_errors.AuthenticationError(
                 "Unable to parse message payload; is it JSON?"
             )
-        # for now, we allow any site to revoke any token. we can revisit this in the future
+        # for now, we allow any site to revoke any token.
+        # we can revisit this in the future
         return True
 
     # Token Creation Endpoints -----
-    # we've already checked the revoke endpoint specifically, so if we're here, the request is to a
-    # token creation endpoint
+    # we've already checked the revoke endpoint specifically, so if we're here,
+    # the request is to a token creation endpoint
     if "/v3/oauth2/tokens" in request.url_rule.rule:
         logger.debug("oauth2 tokens URL")
-        # the tokens endpoint uses basic auth with the client; logic handled in the controller. # however, it does
-        # require the request tenant id:
+        # the tokens endpoint uses basic auth with the client;
+        # logic handled in the controller
+        # however, it does require the request tenant id:
 
-        # first, check if an X-Tapis-Token header appears in the request. We do not honor JWT authentication for
-        # generating new tokens, but we also don't want to fail for an expired token. So, we remove the token header
-        # if it is present
+        # First, check if an X-Tapis-Token header appears in the request.
+        # We do not honor JWT authentication for generating new tokens,
+        # but we also don't want to fail for an expired token.
+        # So, we remove the token header if it is present
         if "X-Tapis-Token" in request.headers:
             logger.debug("Got an X-Tapis-Token header.")
             try:
                 auth.add_headers()
                 auth.validate_request_token()
-            except:
-                # we need to set the token claims because the resolve_tenant_id_for_request method depends on it:
+            except Exception:
+                # we need to set the token claims because
+                # the resolve_tenant_id_for_request method depends on it:
                 g.token_claims = {}
         # now, resolve the tenant_id
         try:
             auth.resolve_tenant_id_for_request()
-        except:
-            # we need to catch and swallow permissions errors having to do with an invalid JWT; if the JWT is invalid,
-            # its claims (including its tenant claim) will be ignored, but then resolve_tenant_id_for_request() will
-            # throw an error because the None tenant_id claim will not match the tenant_id of the URL.
+        except Exception:
+            # we need to catch and swallow permissions errors
+            # having to do with an invalid JWT;
+            # if the JWT is invalid, its claims (including its tenant claim)
+            # will be ignored, but then resolve_tenant_id_for_request() will
+            # throw an error because the None tenant_id claim
+            # will not match the tenant_id of the URL.
             pass
         try:
             logger.debug(f"request_tenant_id: {g.request_tenant_id}")
@@ -379,15 +415,16 @@ def authentication():
         # make sure this request is for a tenant served by this authenticator
         if g.request_tenant_id not in conf.tenants:
             raise common_errors.PermissionsError(
-                f"The request is for a tenant ({g.request_tenant_id}) that is not "
-                f"served by this authenticator."
+                f"The request is for a tenant ({g.request_tenant_id}) that is "
+                "not served by this authenticator."
             )
         return True
 
     # Special v3->v2 token generation endpoint.
     if "/v3/oauth2/v2/token" in request.url_rule.rule:
         logger.debug("v2 token URL")
-        # the v2/token endpoint takes a v3 token generated for a user and returns a v2 token for that user
+        # the v2/token endpoint takes a v3 token generated for a user
+        # and returns a v2 token for that user
 
         if "X-Tapis-Token" in request.headers:
             logger.debug(
@@ -431,7 +468,8 @@ def authentication():
         logger.debug(f"got tenant config: {config.serialize}")
         if not config.use_token_webapp:
             logger.info(
-                f"tenant {g.request_tenant_id} not configured for the token webapp. Raising error"
+                f"tenant {g.request_tenant_id} not configured for the token webapp. "
+                "Raising error"
             )
             raise common_errors.PermissionsError(
                 "This tenant is not configured to use the Token Webapp."
@@ -442,9 +480,11 @@ def authentication():
 
 def get_basic_auth_parts():
     """
-    Checks if the request contains the necessary headers for basic authentication, and if so, returns a dictionary
-    containing the tenant_id, username, and password. Otherwise, returns None.
-    NOTE: This method DOES NOT actually validate the password. That is the role of the caller.
+    Checks if the request contains the necessary headers for basic authentication,
+    and if so, returns a dictionary containing: tenant_id, username, and password.
+    Otherwise, returns None.
+    NOTE: This method DOES NOT actually validate the password.
+    That is the role of the caller.
     :return: (dict or None) - Either a python dictionary with the following keys:
         * tenant_id: The tenant_id to use to check this basic auth.
         * username: the "username" field of the Basic Auth header (decoded).
@@ -465,6 +505,6 @@ def authorization():
     Entry point for checking authorization for all requests to the authenticator.
     :return:
     """
-    # todo - it is currently an open question where authorization data should live for authenticator requests.
-    #
+    # TODO - it is currently an open question where authorization data
+    # should live for authenticator requests.
     return True

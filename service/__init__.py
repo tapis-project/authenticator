@@ -1,5 +1,4 @@
 import os
-import resource
 
 from tapisservice import errors
 from tapisservice.auth import get_service_tapis_client
@@ -12,10 +11,11 @@ logger = get_logger(__name__)
 
 MIGRATIONS_RUNNING = os.environ.get("MIGRATIONS_RUNNING", False)
 
-# there is a chicken and egg problem in that we need a tenants manager object to instantiate the tapis
-# client, but we need a tapis client to create the AuthenticatorTenants manager. so, we first
-# instantiate the tapis client here with the generic tenants manager from the common package, and then at the
-# bottom of this module we replace it with the AuthenticatorTenants
+# there is a chicken and egg problem in that we need a tenants manager object
+# to instantiate the tapisclient, but we need a tapis client to create
+# the AuthenticatorTenants manager. so, we first instantiate the tapis client
+# here with the generic tenants manager from the common package, and then
+# at thebottom of this module we replace it with the AuthenticatorTenants
 logger.debug("creating the authenticator tapis service client...")
 t = get_service_tapis_client(
     tenants=auth_tenants,
@@ -36,17 +36,23 @@ class AuthenticatorTenants(TenantCache):
         # Authenticators never serve tenants owned at a different site:
         if not tenant.site_id == conf.service_site_id:
             logger.debug(
-                f"skipping tenant_id: {tenant_id} as it is owned by site {tenant.site_id} and this authenicator is serving site {conf.service_site_id}."
+                f"skipping tenant_id: {tenant_id} "
+                f"as it is owned by site {tenant.site_id} and "
+                f"this authenicator is serving site {conf.service_site_id}."
             )
             return tenant
-        # if this is not a tenant that this authenticator is supposed to serve, then just return immediately
+        # if this is not a tenant that this authenticator is supposed to serve,
+        # then just return immediately
         if not conf.tenants[0] == "*":
-            if not tenant_id in conf.tenants:
+            if tenant_id not in conf.tenants:
                 logger.debug(
-                    f"skipping tenant_id: {tenant_id} as it is not in the list of tenants."
+                    f"skipping tenant_id: {tenant_id}"
+                    "as it is not in the list of tenants."
                 )
                 return tenant
-        # this code block here from a time when we supported not using the tenants service
+
+        # -------------------------------
+        # this code from a time when we supported not using the tenants service
         if not conf.use_tenants:
             if tenant_id == "dev":
                 tenant.ldap_url = conf.dev_ldap_url
@@ -56,18 +62,26 @@ class AuthenticatorTenants(TenantCache):
                 tenant.ldap_user_dn = conf.dev_ldap_user_dn
                 tenant.ldap_bind_dn = conf.dev_ldap_bind_dn
         # -------------------------------
-        # we only support testing the "dev" tenant ldap under the scenario of use_tenants == false.
+
+        # we only support testing the "dev" tenant ldap
+        # under the scenario of use_tenants == false.
         else:
-            # first, be sure to add the actual tenant_id to the conf.tenants attribute, because it may only have
-            # a "*" and we need to know all the tenants we are actually serving:
-            if not tenant_id in conf.tenants:
+            # first, be sure to add the actual tenant_id to the conf.tenants
+            # attribute, because it may only have  a "*" and we need to know
+            # all the tenants we are actually serving:
+            if tenant_id not in conf.tenants:
                 conf.tenants.append(tenant_id)
-            # todo - the "dev_ldap_tenants_base_dn" property describes where to store the organizational units (OUs) for
-            #  the tenants. this property is unique to the dev LDAP where the authenticator has write access and can
-            #  create OUs for each tenant. thus, it is not stored in /returned by the tenants service, so we hard code
-            #  it based on a service config for now,
+            # todo - the "dev_ldap_tenants_base_dn" property describes where
+            #  to store the organizational units (OUs) for
+            #  the tenants. this property is unique to the dev LDAP where
+            #  the authenticator has write access and can create OUs for each
+            #  tenant. thus, it is not stored in /returned by the tenants
+            #  service, so we hard code it based on a service config for now,
             if not conf.dev_ldap_tenant_id and conf.populate_dev_ldap:
-                msg = "The dev_ldap_tenant_id config was NOT set but populate_dev_ldap was set. Giving up..."
+                msg = (
+                    "The dev_ldap_tenant_id config was NOT set but"
+                    "populate_dev_ldap was set. Giving up..."
+                )
                 logger.error(msg)
                 raise errors.BaseTapisError(msg)
             if tenant_id == conf.dev_ldap_tenant_id:
@@ -79,30 +93,34 @@ class AuthenticatorTenants(TenantCache):
                 )
             except Exception as e:
                 logger.error(
-                    f"Got exception trying to look up tenant info for tenant: {tenant_id}; e: {e}"
+                    "Got exception trying to look up tenant info for tenant: "
+                    f"{tenant_id}; e: {e}"
                 )
                 raise e
-            # tenants with a custom IdP will not necessarily have a user_ldap_connection_id attribute...
+            # tenants with a custom IdP will not necessarily
+            # have a user_ldap_connection_id attribute...
             if (
                 hasattr(tenant_response, "user_ldap_connection_id")
                 and tenant_response.user_ldap_connection_id
             ):
+                ldap_connection_id = tenant_response.user_ldap_connection_id
                 logger.debug(
-                    f"got a user_ldap_connection_id: {tenant_response.user_ldap_connection_id} for "
-                    f"tenant: {tenant_id}. Now looking up LDAP data..."
+                    f"got a user_ldap_connection_id: {ldap_connection_id}"
+                    f" for tenant: {tenant_id}. Now looking up LDAP data..."
                 )
                 try:
                     ldap_response = t.tenants.get_ldap(
-                        ldap_id=tenant_response.user_ldap_connection_id,
+                        ldap_id=ldap_connection_id,
                         _tapis_set_x_headers_from_service=True,
                     )
                 except Exception as e:
                     logger.error(
-                        f"Got exception trying to look up ldap info for "
-                        f"ldap_id: {tenant_response.user_ldap_connection_id}; e: {e}"
+                        "Got exception trying to look up ldap info for "
+                        f"ldap_id: {ldap_connection_id}; e: {e}"
                     )
                     raise e
-                # The user_dn for the "dev" ldap is always "ou=tenants.dev,dc=tapis" on the tenant's ldap table, but
+                # The user_dn for the "dev" ldap is always
+                # "ou=tenants.dev,dc=tapis" on the tenant's ldap table, but
                 # we need to replace ".dev" with the actual
                 ldap_user_dn = ldap_response.user_dn
                 if tenant_id == conf.dev_ldap_tenant_id:
@@ -134,7 +152,10 @@ class AuthenticatorTenants(TenantCache):
                 and tenant_response.user_ldap_connection_id
             ):
                 if not getattr(ldap_response, "bind_credential"):
-                    msg = f"Error -- ldap object missing bind credential; description: {ldap_response}."
+                    msg = (
+                        "Error -- ldap object missing bind credential; "
+                        f"description: {ldap_response}."
+                    )
                     logger.error(msg)
                     raise errors.BaseTapisError(msg)
                 tenant.ldap_bind_credential = get_ldap_bind_from_sk(
@@ -153,7 +174,7 @@ def get_ldap_bind_from_sk(bind_credential_name):
         f"top of get_ldap_bind_from_sk; bind_credential_name: {bind_credential_name}"
     )
     if not bind_credential_name:
-        msg = f"Error --get_ldap_bind_from_sk did not get a bind_credential_name."
+        msg = "Error --get_ldap_bind_from_sk did not get a bind_credential_name."
         logger.error(msg)
         raise errors.BaseTapisError(msg)
     try:
@@ -165,16 +186,23 @@ def get_ldap_bind_from_sk(bind_credential_name):
             _tapis_set_x_headers_from_service=True,
         )
     except Exception as e:
-        msg = f"Got exception trying to retrieve ldap bind secret from SK; exception: {e}."
+        msg = (
+            "Got exception trying to retrieve ldap bind secret from SK; "
+            f"exception: {e}."
+        )
         logger.error(msg)
         raise errors.BaseTapisError(msg)
-    # the SK stores secrets in the secretMap attribute, which is a mapping of user-provided string attributes
-    # to string values. for the ldap bind secrets, the convention is that the secretMap should contain one
-    # key, password, containing the actual password
+    # The SK stores secrets in the secretMap attribute, which is
+    # a mapping of user-provided string attributes to string values.
+    # For the ldap bind secrets, the convention is that the secretMap
+    # should contain one key, password, containing the actual password
     try:
         bind_credential = ldap_bind_secret.secretMap.password
     except Exception as e:
-        msg = f"got exception trying to retrieve the ldap_bind_password from the SK secret; e: {e}"
+        msg = (
+            "got exception trying to retrieve the ldap_bind_password "
+            f"from the SK secret; e: {e}"
+        )
         logger.error(msg)
         raise errors.BaseTapisError(msg)
     return bind_credential
@@ -184,15 +212,16 @@ def store_ldap_bind_secret_in_sk(
     ldap_connection_id, password, tenant="admin", user="authenticator"
 ):
     """
-    This utility documents how to create a new LDAP bind secret in SK. It is not actually used by authentcitor
-    but it can be used by another utility for bootstrapping the creation of a tenant that will have a user
-    LDAP.
+    This utility documents how to create a new LDAP bind secret in SK.
+    It is not actually used by authentcitor but it can be used by another utility
+    for bootstrapping the creation of a tenant that will have a user LDAP.
 
     :param ldap_connection_id: the id of the ldap object.
     :param password: The password for the ldap bind.
-    :param tenant: The tenant_id in which the secret belongs; should be the same as the tenant id of the
-                   authetictor service that owns the secret.
-    :param user: The name of the service that owns the secret; defaults to "authenticator".
+    :param tenant: The tenant_id in which the secret belongs; should be the same as
+                   the tenant id of the authetictor service that owns the secret.
+    :param user: The name of the service that owns the secret;
+                   defaults to "authenticator".
     :return:
     """
     try:
