@@ -1,0 +1,28 @@
+[project]
+name = "authenticator"
+version = "1.9.0"
+description = "TACC Authenticator Service"
+requires_python = ">=3.8"
+dependencies = [
+    "hashids==1.2.0",
+    "ldap3",
+    "requests",
+    "flask-wtf",
+    "jwcrypto"
+]
+readme = "README.md"
+license-files = ["LICENSE"]
+
+[project.urls]
+Live-Docs = "https://tapis-project.github.io/live-docs/"
+Documentation = "https://tapis.readthedocs.io/en/latest/technical/index.html"
+Repository = "https://github.com/tapis-project/authenticator"
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+fixable = ["ALL"]
+
+[tool.isort]
+profile = "black"

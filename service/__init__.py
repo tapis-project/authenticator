@@ -25,7 +25,6 @@ t = get_service_tapis_client(
 
 
 class AuthenticatorTenants(TenantCache):
-
     def extend_tenant(self, tenant):
         """
         Add the LDAP metadata to the tenant description

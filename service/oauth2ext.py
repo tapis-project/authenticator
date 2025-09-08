@@ -329,8 +329,7 @@ class OAuth2ProviderExtension(object):
             )
             logger.error(msg)
             raise errors.ResourceError(
-                f"Program error; contact system administrators. "
-                f"(Debug message: {msg})"
+                f"Program error; contact system administrators. (Debug message: {msg})"
             )
         # CII OAuth server returns the access token in a URL query parameter, "token"
         self.access_token = request.args.get("token")

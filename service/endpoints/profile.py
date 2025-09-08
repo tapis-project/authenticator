@@ -76,8 +76,7 @@ class ProfilesResource(Resource):
             offset = int(request.args.get("offset"))
         except Exception as e:
             logger.debug(
-                f"get exception parsing offset; exception: {e}; "
-                "setting offset to none."
+                f"get exception parsing offset; exception: {e}; setting offset to none."
             )
         users, offset = list_tenant_users(
             tenant_id=tenant_id, limit=limit, offset=offset

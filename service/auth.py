@@ -322,7 +322,6 @@ def authentication():
             )
             return True
         else:
-
             logger.debug("oauth2 clients page, no basic auth header.")
             # check for a Tapis token
             auth.authentication()

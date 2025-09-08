@@ -997,7 +997,6 @@ class TokenRequestBody(object):
 
 
 class Token(object):
-
     token = None
 
     def __init__(
