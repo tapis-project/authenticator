@@ -5,10 +5,10 @@ description = "TACC Authenticator Service"
 requires_python = ">=3.8"
 dependencies = [
     "hashids==1.2.0",
-    "ldap3",
-    "requests",
-    "flask-wtf",
-    "jwcrypto"
+    "ldap3>=2.9.1",
+    "requests>=2.32.4",
+    "flask-wtf>=1.2.1",
+    "jwcrypto>=1.5.6"
 ]
 readme = "README.md"
 license-files = ["LICENSE"]
