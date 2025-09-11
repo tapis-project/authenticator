@@ -259,7 +259,7 @@ paths:
                 properties:
                   result:
                     type: string
-                    nullable: true
+                    nullable: false
                     enum: [success, failure]
 
 
