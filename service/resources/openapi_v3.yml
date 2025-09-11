@@ -71,9 +71,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/OAuth2Metadata'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/OAuth2Metadata'
 
   /v3/oauth2/admin/config:
     get:
@@ -91,9 +92,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/TenantConfig'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/TenantConfig'
     put:
       tags:
         - Admin
@@ -146,9 +148,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/arrayOfClients'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/arrayOfClients'
     post:
       tags:
         - Clients
@@ -169,9 +172,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/Client'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/Client'
 
   /v3/oauth2/clients/{client_id}:
     get:
@@ -197,9 +201,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/Client'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/Client'
     put:
       tags:
       - Clients
@@ -229,9 +234,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/Client'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/Client'
     delete:
       tags:
       - Clients
@@ -256,11 +262,12 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    type: string
-                    nullable: false
-                    enum: [success, failure]
+                  - type: object
+                    properties:
+                      result:
+                        type: string
+                        nullable: false
+                        enum: [success, failure]
 
 
   /v3/oauth2/tokens:
@@ -287,9 +294,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/TokenResponse'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/TokenResponse'
 
   /v3/oauth2/v2/token:
     post:
@@ -314,9 +322,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/V2TokenResponse'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/V2TokenResponse'
 
   /v3/oauth2/tokens/revoke:
     post:
@@ -339,6 +348,7 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
+                  - type: object
 
 
   /v3/oauth2/userinfo:
@@ -357,9 +367,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/Profile'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/Profile'
 
   /v3/oauth2/profiles:
     get:
@@ -387,9 +398,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/arrayOfProfiles'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/arrayOfProfiles'
 
   /v3/oauth2/profiles/{username}:
     get:
@@ -413,9 +425,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/Profile'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/Profile'
   
   /v3/oauth2/device/code:
     post:
@@ -438,9 +451,10 @@ paths:
               schema:
                 allOf:
                   - $ref: '#/components/schemas/BasicResponse'
-                properties:
-                  result:
-                    $ref: '#/components/schemas/DeviceCodeResposne'
+                  - type: object
+                    properties:
+                      result:
+                        $ref: '#/components/schemas/DeviceCodeResposne'
 
 components:
   securitySchemes:
