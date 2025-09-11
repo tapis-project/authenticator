@@ -177,8 +177,10 @@ class DeviceFlowResource(Resource):
                     device_code.status = status
                     device_code.username = session.get("username")
                     db.session.commit()
-                except Exception:
-                    logger.error("Error trying to update device code entry; error: {e}")
+                except Exception as e:
+                    logger.error(
+                        f"Error trying to update device code entry; error: {e}"
+                    )
                     raise errors.ResourceError(
                         "Unable to update device, cannot continue device flow"
                     )

@@ -110,11 +110,11 @@ def add_tapis_ou(ou):
     conn = get_tapis_ldap_connection()
     try:
         result = conn.add(ou.dn, ou.object_class)
-    except Exception:
+    except Exception as e:
         msg = (
             "got an error trying to add an ou. "
-            "Exception: {e}; ou.dn: {ou.dn}; "
-            "ou.object_class: {ou.object_class}"
+            f"Exception: {e}; ou.dn: {ou.dn}; "
+            f"ou.object_class: {ou.object_class}"
         )
         logger.error(msg)
     if not result:
