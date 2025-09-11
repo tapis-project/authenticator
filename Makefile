@@ -21,6 +21,9 @@ api=${API_NAME}
 
 cwd=$(shell pwd)
 
+# the name of the docker compose command; for older systems that, set cmp=docker-compose
+cmp ?= docker compose
+
 
 # ----- build images
 
@@ -37,11 +40,11 @@ build: build.api build.migrations build.test
 
 # ----- run tests
 test: build.test
-	cd $(cwd); touch service.log; chmod a+w service.log; docker-compose run -e MFA_GEN_CODE=$(MFA_GEN_CODE) $(api)-tests;
+	cd $(cwd); touch service.log; chmod a+w service.log; $(cmp) run -e MFA_GEN_CODE=$(MFA_GEN_CODE) $(api)-tests;
 
 # ----- shutdown the currently running services
 down:
-	docker-compose down
+	$(cmp) down
 
 # ----- wipe the local environment by removing all data and containers
 clean: down
@@ -49,18 +52,18 @@ clean: down
 
 # ----- start databases
 run_dbs: build.api down
-	cd $(cwd); docker-compose --compatibility up -d postgres; docker-compose up -d authenticator-ldap
+	cd $(cwd); $(cmp) --compatibility up -d postgres; $(cmp) up -d authenticator-ldap
 
 # ----- connect to db as root
 connect_db:
-	docker-compose exec postgres psql -Upostgres
+	$(cmp) exec postgres psql -Upostgres
 
 # ----- initialize databases; run this target once per database installation
 init_dbs: run_dbs
 	echo "wait for db to start up..."
 	sleep 8
 	docker cp new_db.sql $(api)_postgres_1:/db.sql
-	docker-compose exec -T postgres psql -Upostgres -f /db.sql
+	$(cmp) exec -T postgres psql -Upostgres -f /db.sql
 
 # ----- wipe database and associated data
 #wipe: clean
@@ -68,4 +71,4 @@ init_dbs: run_dbs
 
 # ----- run migrations
 migrate.upgrade: build.migrations
-	docker-compose run --rm migrations upgrade
+	$(cmp) run --rm migrations upgrade

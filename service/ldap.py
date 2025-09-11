@@ -479,6 +479,11 @@ def check_username_password(tenant_id, username, password):
             "Invalid username. Only lowercase letters are allowed."
         )
 
+    if " " in username:
+        logger.debug(f"Space contained in username: {username}")
+        raise InvalidPasswordError(
+            "Invalid username. Spaces are not allowed in usernames."
+        )
     bind_dn = get_dn(tenant_id, username)
     logger.debug(f"got bind_dn: {bind_dn}")
     try:

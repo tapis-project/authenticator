@@ -1,5 +1,10 @@
 # Tapis Authenticator
 
+[![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/tapis-project/authenticator?label=git%20tag)](https://github.com/tapis-project/authenticator/tags)
+[![Docker Image](https://img.shields.io/docker/v/tapis/authenticator?label=img&sort=semver)](https://hub.docker.com/r/tapis/authenticator)
+[![docs](https://img.shields.io/badge/docs-grey)](https://tapis.readthedocs.io/en/latest/technical/authentication.html#id2)
+[![live-docs](https://img.shields.io/badge/live--docs-grey)](https://tapis-project.github.io/live-docs/?service=Authenticator)
+
 REST API and web server providing authentication for a Tapis v3 instance.
 
 ## Usage
@@ -355,7 +360,7 @@ Your client application code should handle this GET request by making a request 
 the authorization code for an OAuth token.
 
 ```
-4) POST http://localhost:5000/v3/oauth2/token
+4) POST http://localhost:5000/v3/oauth2/tokens
         grant_type=authorization_code
         code=<some_code>
         redirect_uri=<your_redirct_uri>

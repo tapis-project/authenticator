@@ -1,19 +1,21 @@
 <!DOCTYPE html>
+
 <html lang="en">
-    <head>
-        <title>Tapis Authentication</title>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        {% block assets %}
-            <style>
+<head>
+  <title>Tapis Authentication</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% block assets %}
+  <style>
     @layer foundation, base, project;
     @import url('https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/css/bootstrap.min.css') layer(foundation);
-            </style>
-            <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
-            <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
-        {% endblock %}
-        {% block head_extra %}
-            <style>
+  </style>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.0/js/bootstrap.min.js"></script>
+  {% endblock %}
+
+  {% block head_extra %}
+  <style>
     .footer {
       position: fixed;
       left: 0;
@@ -21,79 +23,25 @@
       width: 100%;
       text-align: center;
     }
-            </style>
-        {% endblock %}
-    </head>
-    <!--<html>-->
-    <!--<head>-->
-    <!--<meta name="viewport" content="width=device-width, initial-scale=1">-->
-    <!--<style>-->
-    <!--body {font-family: Arial, Helvetica, sans-serif;}-->
-    <!--form {border: 3px solid #f1f1f1;}-->
-    <!--input[type=text], input[type=password] {-->
-    <!--  width: 100%;-->
-    <!--  padding: 12px 20px;-->
-    <!--  margin: 8px 0;-->
-    <!--  display: inline-block;-->
-    <!--  border: 1px solid #ccc;-->
-    <!--  box-sizing: border-box;-->
-    <!--}-->
-    <!--button {-->
-    <!--  background-color: #000033;-->
-    <!--  color: white;-->
-    <!--  padding: 14px 20px;-->
-    <!--  margin: 8px 0;-->
-    <!--  border: none;-->
-    <!--  cursor: pointer;-->
-    <!--  width: 100%;-->
-    <!--}-->
-    <!--button:hover {-->
-    <!--  opacity: 0.8;-->
-    <!--}-->
-    <!--.cancelbtn {-->
-    <!--  width: auto;-->
-    <!--  padding: 10px 18px;-->
-    <!--  background-color: #f44336;-->
-    <!--}-->
-    <!--.imgcontainer {-->
-    <!--  text-align: center;-->
-    <!--  margin: 24px 0 12px 0;-->
-    <!--}-->
-    <!--img.avatar {-->
-    <!--  width: 40%;-->
-    <!--/*  border-radius: 50%; */-->
-    <!--}-->
-    <!--.container {-->
-    <!--  padding: 16px;-->
-    <!--}-->
-    <!--span.psw {-->
-    <!--  float: right;-->
-    <!--  padding-top: 16px;-->
-    <!--}-->
-    <!--/* Change styles for span and cancel button on extra small screens */-->
-    <!--@media screen and (max-width: 300px) {-->
-    <!--  span.psw {-->
-    <!--     display: block;-->
-    <!--     float: none;-->
-    <!--  }-->
-    <!--  .cancelbtn {-->
-    <!--     width: 100%;-->
-    <!--  }-->
-    <!--}-->
-    <!--</style>-->
-    <!--</head>-->
-    <body>
-        {% block banner %}
-            {% with tenant_id=tenant_id, is_banner=true %}
-                {% include "./branding.html" %}
-            {% endwith %}
-        {% endblock %}
-        {% block content %}{% endblock %}
-        {% block footer %}
-            <footer>
-                <div class="footer">
-                    <p>Tapis project funded by NSF OAC grants #1931439, #1931575 and #2232259.</p>
-                </div>
-            </footer>
-        {% endblock %}
-    </body>
+    </style>
+  {% endblock %}
+</head>
+
+{% block banner %}
+  {% with tenant_id=tenant_id, is_banner=true %}
+    {% include "./branding.html" %}
+  {% endwith %}
+{% endblock %}
+
+{% block content %}
+{% endblock %}
+
+{% block footer %}
+<footer class="s-footer" style="top: 100vh; position: sticky;">
+  <p>Tapis project funded by NSF OAC grants
+    <a href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931439" rel="noreferrer" target="_blank">#1931439</a>,
+    <a href="https://www.nsf.gov/awardsearch/showAward?AWD_ID=1931575" rel="noreferrer" target="_blank">#1931575</a>
+    and #2232259.
+  </p>
+</footer>
+{% endblock %}

@@ -2,6 +2,31 @@
 All notable changes to this project will be documented in this file.
 
 
+## 1.9.1 - TBD
+### Breaking Changes:
+- None
+
+### New features:
+- None
+
+### Bug fixes:
+- Fix a bug where authenticator allowed username with spaces which are usually ignored by most LDAP servers. This resulted
+  in the same user getting JWTs with different subjects depending on whether a space was included in the username.
+  See issue #118.
+
+
+## 1.9.0 - 2025-07-07
+### Breaking Changes:
+- None
+
+### New features:
+- Implements the redirect_url for logout
+
+### Bug Fixes:
+- Linting
+- Compatability with older docker compose versions
+
+
 ## 1.8.4 - 2025-05-30
 ### Breaking Changes:
 - None
