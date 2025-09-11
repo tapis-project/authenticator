@@ -260,7 +260,7 @@ paths:
                   result:
                     type: string
                     nullable: true
-                    enum: [null]
+                    enum: [success, failure]
 
 
   /v3/oauth2/tokens:
