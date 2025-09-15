@@ -27,10 +27,7 @@ __all__ = [
     "WebappTokenGen",
 ]
 
-from profile import ProfileResource, ProfilesResource, UserInfoResource
-from token import RevokeTokensResource, TokensResource, V2TokenResource
-
-from auth import (
+from authze import (
     AuthorizeResource,
     LoginResource,
     LogoutResource,
@@ -51,3 +48,6 @@ from webapp import (
     WebappTokenAndRedirect,
     WebappTokenGen,
 )
+
+from .profile import ProfileResource, ProfilesResource, UserInfoResource
+from .token import RevokeTokensResource, TokensResource, V2TokenResource
