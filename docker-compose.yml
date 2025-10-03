@@ -32,6 +32,10 @@ services:
           LDAP_ROOTPASS: "jIWPb59CuNM4TwxkkSIk37A"
           # associate site in test
         #   LDAP_ROOTPASS: "Df3CK8Rw79Caxhi1U8kofFw"
+        ulimits:
+            nofile:
+                soft: 1024
+                hard: 4096
 
     migrations:
         image: tapis/authenticator-migrations

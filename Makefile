@@ -52,7 +52,7 @@ clean: down
 
 # ----- start databases
 run_dbs: build.api down
-	cd $(cwd); $(cmp) --compatibility up -d postgres; $(cmp) up -d authenticator-ldap
+	cd $(cwd); $(cmp) up postgres -d; $(cmp) up -d authenticator-ldap
 
 # ----- connect to db as root
 connect_db:

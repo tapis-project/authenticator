@@ -16,6 +16,7 @@ from flask import (
     session,
     url_for,
     jsonify,
+    Flask
 )
 from flask_restful import Resource
 from openapi_core import openapi_request_validator
@@ -39,6 +40,7 @@ from service.models import (
     AccessTokens,
     RefreshTokens,
     Client,
+    User,
     TokenRequestBody,
     Token,
     AuthorizationCode,
@@ -1218,6 +1220,7 @@ class AuthorizeResource(Resource):
         if session.get("idp_id"):
             client_id, client_redirect_uri, client_state, client, response_type = (
                 check_client(use_session=True)
+
             )
         else:
             client_id, client_redirect_uri, client_state, client, response_type = (
@@ -1345,6 +1348,12 @@ class AuthorizeResource(Resource):
             display_name = client.display_name
         except Exception as e:
             logger.debug(f"No client available; e: {e}")
+        username = session['username']
+        is_always_allowed = False
+        if User.query.filter_by(username=username, client_id=client_id).first() is not None:
+            is_always_allowed = True
+        
+        logger.debug(f'always allowed:: {is_always_allowed}')
         context = {
             "error": "",
             "username": session["username"],
@@ -1356,8 +1365,11 @@ class AuthorizeResource(Resource):
             "client_state": client_state,
             "device_login": session.get("device_login", None),
             "user_code": request.args.get("user_code", None),
-        }
+            "always_allowed": is_always_allowed
+        }     
 
+        if is_always_allowed == True:
+            return make_response(render_template("authorize.html", **context))
         return make_response(render_template("authorize.html", **context), 200, headers)
 
     def post(self):
@@ -1392,6 +1404,15 @@ class AuthorizeResource(Resource):
             return make_response(
                 render_template("authorize.html", **context), 200, headers
             )
+        else:
+            logger.debug("user did approve.")
+        always_allow = request.form.get("always-allow")
+        logger.debug(f'post always allow:: {always_allow}')
+        if always_allow:
+            logger.debug("user has selected to always allow authorization for client")
+            
+            db.session.add(User(username=session['username'], client_id=request.form.get('client_id'), always_allow=True))
+            db.session.commit()
 
         state = request.form.get("client_state")
         client_response_type = request.form.get("client_response_type")
@@ -1609,6 +1630,13 @@ class AuthorizeResource(Resource):
             if session.get("idp_id"):
                 clear_orig_client_data()
             return make_response(render_template("success.html"), 200, headers)
+
+
+def autosubmit_filter(value):
+    print(f'running custom filter!!!')
+Flask(__name__).jinja_env.filters['autosubmit_filter'] = autosubmit_filter
+print('post registering filter.')
+print(Flask(__name__).jinja_env)
 
 
 class OAuth2ProviderExtCallback(Resource):
@@ -2285,7 +2313,8 @@ def get_tokenapp_client(tenant_id=None):
     client_data = token_webapp_clients[tenant_id]
     # if the authenticator is running locally, get the "local" client data:
     if "localhost" in request.base_url:
-        client_data = token_webapp_clients[f"local.{tenant_id}"]
+        # client_data = token_webapp_clients[f"local.{tenant_id}"]
+        client_data = token_webapp_clients
     return client_data
 
 
@@ -2409,7 +2438,8 @@ class WebappTokenAndRedirect(Resource):
         # http://localhost:5000/v3/oauth2/authorize?client_id=test_client&redirect_uri=http://localhost:5000/oauth2/webapp/callback&response_type=code
         # todo - in general, do not want to hard-code "dev.develop..."
         tokenapp_client = get_tokenapp_client()
-        client_id = tokenapp_client["client_id"]
+        # client_id = tokenapp_client["client_id"]
+        client_id = 'testclient'
         client_redirect_uri = tokenapp_client["callback_url"]
         state = secrets.token_hex(24)
         session["state"] = state
@@ -2427,8 +2457,10 @@ class WebappTokenGen(Resource):
     def get(self):
         logger.debug("top of GET /v3/oauth2/webapp/callback")
         client_data = get_tokenapp_client()
-        client_id = client_data["client_id"]
-        client_key = client_data["client_key"]
+        # client_id = client_data["client_id"]
+        client_id = 'testclient'
+        # client_key = client_data["client_key"]
+        client_key = 'testclient'
         client_redirect_uri = client_data["callback_url"]
         # the user should already be authenticated and in the session --
         username = session.get("username")
@@ -2445,6 +2477,9 @@ class WebappTokenGen(Resource):
         # get additional query parameters from request ---
         state = request.args.get("state")
         session_state = session.get("state")
+        logger.debug(f'state is {state} of type {type(state)}, session state is {session_state} of type {type(session_state)}')
+        if state in ['None', 'none']:
+            state = None
         if not state == session_state:
             logger.error(
                 f"state received ({state}) did not match session state ({session_state})"
@@ -2452,7 +2487,9 @@ class WebappTokenGen(Resource):
             raise errors.ResourceError(
                 msg=f"Unauthorized access attempt: state mismatch."
             )
+        logger.debug(f'state of {state} matches client_state {session_state}.')
         code = request.args.get("code")
+        logger.debug(f'attempting to authorize client {client_id} with code {code}')
 
         #  POST to oauth2/tokens (passing code, client id, client secret, and redirect uri)
         logger.debug(f"request.base_url: {request.base_url}")
@@ -2481,7 +2518,8 @@ class WebappTokenGen(Resource):
         try:
             logger.debug(f"making request to {url}")
             r = requests.post(
-                url, json=content, auth=(client_id, client_key), headers=headers
+                # url, json=content, auth=(client_id, client_key), headers=headers
+                url, json=content, auth=(client_id, 'testclient'), headers=headers
             )
         except Exception as e:
             logger.error(
@@ -2491,6 +2529,8 @@ class WebappTokenGen(Resource):
                 "Failure to generate an access token; please try again later."
             )
         logger.debug(f"made request; got response: {r}")
+        if r.status_code > 200:
+            logger.error(f'response was a non-200 code: {r.status_code}. response: {r.json()}')
         try:
             json_resp = json.loads(r.text)
         except Exception as e:

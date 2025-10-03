@@ -37,12 +37,22 @@
     <input type="hidden" name="client_display_name" value="{{ client_display_name }}">
     <input type="hidden" name="client_state" value="{{ client_state }}">
     <input type="hidden" name="client_response_type" value="{{ client_response_type }}">
+    <input type="hidden" name="is_always_allowed" value="{{ always_allowed }}">
     {% if user_code is not none %}
     <input type="hidden" name="user_code" value="{{ user_code }}">
+    {% endif %}
+    {% if always_allowed %}
+      <a>{{ always_allowed | autosubmit_filter }}
     {% endif %}
     <footer id="button-container">
       <button type="submit" name="approve" value="true" required>Connect</button>
     </footer>
+    <div id="always-allow-field">
+      <label aria-labelledby="always-allow-label">
+        Always allow? 
+        <input type="checkbox" id="always-allow" name="always-allow">
+      </label>
+    </div>
   </form>
 </main>
 {% endblock %}

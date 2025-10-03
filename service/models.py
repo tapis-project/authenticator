@@ -278,6 +278,14 @@ except Exception as e:
         tenant_configs_cache = None
 
 
+
+class Users(db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    client_id = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    username = db.Column(db.String(50), unique=False, nullable=False, index=True)
+    always_allow = db.Column(db.Boolean(), nullable=False)
+
 class Client(db.Model):
     __tablename__ = 'clients'
 
@@ -294,6 +302,7 @@ class Client(db.Model):
     # Ideally, this would be nullable=False, but due to a bug, we were unable to set nullable to False
     # Attempts to set nullable to False caused it to hang
     active = db.Column(db.Boolean, default=True, nullable=True)
+    
 
     HASH_SALT = 'hQb9xTr7j8vSu'
 
@@ -572,7 +581,6 @@ class DeviceCode(db.Model):
             raise InvalidDeviceCodeError(msg="device code could not be deleted.")
         return True
 
-
 class AccessTokens(db.Model):
     __tablename__ = 'access_tokens'
     """
@@ -612,7 +620,6 @@ class AccessTokens(db.Model):
     # the last time this record was updated
     last_update_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     
-
 class RefreshTokens(db.Model):
     __tablename__ = 'refresh_tokens'
     """
@@ -649,7 +656,8 @@ class RefreshTokens(db.Model):
     
     # the last time this record was updated
     last_update_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
-    
+
+
 
 class LdapUser(object):
     """
