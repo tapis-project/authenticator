@@ -60,6 +60,10 @@
           "type": "string",
           "description": "A single filter clause to append to the user search filter, such as (host=foo.com); note that the string must be encased in parentheses."
         },
+        "unix_groups_supplemental_filter": {
+          "type": "string",
+          "description": "A single filter clause to append to the user search filter, such as (gid=00001); note that the string must be encased in parentheses."
+        },
          "user_search_filter": {
            "type": "string",
            "description": "The entire user search filter, including the prefix and one or more supplemental filters. Use this instead of the user_search_prefix and user_search_suplemental_filter to support more complex filters. This must include the entire search filter, including & and parentheses. For example, '(&(cn=*)(host=foo.com))' or '(&(cn=*)(host=foo.org)(host=bar.org))'."
