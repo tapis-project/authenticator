@@ -228,6 +228,7 @@ def list_tenant_users(tenant_id, limit=None, offset=0):
         limit = custom_ldap_config.get("default_page_limit")
     if not limit:
         limit = conf.default_page_limit
+    logger.debug(f'got custom ldap config:: {custom_ldap_config}')
 
     cookie = None
     # there are multiple ways to modify the ldap search using the custom_ldap_config. If user_search_filter is provided,
@@ -366,6 +367,7 @@ def get_tenant_user(tenant_id, username):
     custom_ldap_config = get_custom_ldap_config(tenant_id)
     user_search_filter = custom_ldap_config.get("user_search_filter")
     logger.debug(f"user_search_filter from custom ldap config: {user_search_filter}")
+    logger.debug(f'got custom ldap config:: {custom_ldap_config}')
     # if user_search_filter is not specified, look for a user_search_prefix and/or user_search_supplemental_filter
     if not user_search_filter:
         # if user_search_prefix is not set, we default to using '(cn=*)'
@@ -381,12 +383,17 @@ def get_tenant_user(tenant_id, username):
         logger.debug(
             f"user_search_supplemental_filter from custom ldap config: {user_search_supplemental_filter}"
         )
-        if user_search_supplemental_filter:
-            user_search_filter = (
-                f"(&{user_search_prefix}{user_search_supplemental_filter})"
-            )
-        else:
-            user_search_filter = user_search_prefix
+        unix_groups_supplemental_filter = custom_ldap_config.get(
+            "unix_groups_supplemental_filter"
+        )
+        logger.debug(
+            f"unix_groups_supplemental_filter from custom ldap config: {unix_groups_supplemental_filter}"
+        )
+        user_search_filter = f"(&{user_search_prefix}{user_search_supplemental_filter if user_search_supplemental_filter else ''}{unix_groups_supplemental_filter if unix_groups_supplemental_filter else ''})"
+        # user_search_filter = user_search_prefix
+        # if user_search_supplemental_filter or unix_groups_supplemental_filter:
+            # user_search_filter = f"(&{user_search_prefix}{user_search_supplemental_filter if user_search_supplemental_filter else ''}{unix_groups_supplemental_filter if unix_groups_supplemental_filter else ''})"
+            
     # the user_search_filter is formatted with a wildcard ( star (*) character) for retrieving all profiles, but
     # here we only want to retrieve a single profile, so we need to replace it with the username:
     user_search_filter = user_search_filter.replace("*", username)
