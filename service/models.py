@@ -650,23 +650,6 @@ class RefreshTokens(db.Model):
     # the last time this record was updated
     last_update_time = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
     
-class User(db.Model):
-    __tablename__ = 'users'
-
-    id = db.Column(db.Integer, primary_key=True)
-    client_id = db.Column(db.String(80), unique=False, nullable=False, index=True)
-    username = db.Column(db.String(50), unique=False, nullable=False, index=True)
-    always_allow = db.Column(db.Boolean, nullable=False)
-
-    @property
-    def serialize(self):
-        return {
-            "client_id": self.client_id,
-            "username": self.username,
-            "create_time": self.create_time,
-            "last_update_time": self.last_update_time,
-            "always_allow": self.always_allow,
-        }
 
 class LdapUser(object):
     """
@@ -691,6 +674,7 @@ class LdapUser(object):
 
     # posixAccount -----
     uid = None
+    gid = None
     username = None
     password = None
 
@@ -704,6 +688,7 @@ class LdapUser(object):
                  createTimestamp=None,
                  uidNumber=None,
                  uid=None,
+                 gidNumber=None,
                  userPassword=None):
         """
         Create an LdapUser object corresponding to an entry in an LDAP server.
@@ -716,6 +701,8 @@ class LdapUser(object):
         :param createTimestamp: 
         :param uidNumber: 
         :param uid: 
+        :param gid:
+        :param gidNumber:
         :param userPassword: 
         """
         self.dn = dn
@@ -726,6 +713,7 @@ class LdapUser(object):
         self.mobile_phone = mobile
         self.create_time = createTimestamp
         self.uid = uidNumber
+        self.gid = gidNumber
         self.username = uid
         self.password = userPassword
 
@@ -747,6 +735,7 @@ class LdapUser(object):
         # the cn is supposed to be the uid/username
         # however, some tenants have cn configured incorrectly
         # we can look for uid instead
+        # logger.debug(f'entry from ldap record:: {entry}')
         if 'uid' in entry:
             logger.debug(f"Found uid in entry: {entry['uid']}")
             attrs['uid'] = entry['uid'][0]
@@ -761,7 +750,7 @@ class LdapUser(object):
             attrs['dn'] = f'cn={cn},{ldap_user_dn}'
         # the remaining params are computed directly in the same way -- as the first entry in an array of bytes
         params = ['givenName', 'sn', 'mail', 'telephoneNumber', 'mobile', 'createTimestamp',
-                  'uidNumber', 'userPassword']
+                  'uidNumber', 'gidNumber', 'userPassword']
         for param in params:
             if param in entry and entry[param][0]:
                 # some parans are returned as bytes and others as strings:
@@ -825,6 +814,8 @@ class LdapUser(object):
             result['uidNumber'] = self.uid
         if self.username:
             result['uid'] = self.username
+        if self.gid:
+            result['gidNumber'] = self.gid
         if self.password:
             result['userPassword'] = self.password
         return result
@@ -841,6 +832,7 @@ class LdapUser(object):
             'create_time': self.create_time,
             'username': self.username,
             'uid': self.uid,
+            'gid': self.gid
         }
 
 

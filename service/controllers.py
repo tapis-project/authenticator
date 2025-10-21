@@ -33,8 +33,6 @@ from tapisservice.auth import validate_token, insecure_decode_jwt_to_claims
 
 from service import t
 from service.errors import InvalidPasswordError
-from service.helpers import handle_response_type, generate_authorization_code
-from service.session import logout, clear_orig_client_data, logout_from_webapp
 from service.models import (
     db,
     TenantConfig,
@@ -47,11 +45,10 @@ from service.models import (
     DeviceCode,
     token_webapp_clients,
     tenant_configs_cache,
-    User
 )
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 from service.oauth2ext import OAuth2ProviderExtension
-from service.mfa import needs_mfa, call_mfa, check_mfa_expired, check_sms, send_sms, check_and_redirect_mfa
+from service.mfa import needs_mfa, call_mfa, check_mfa_expired, check_sms, send_sms
 
 
 # get the logger instance -
@@ -1268,14 +1265,24 @@ class AuthorizeResource(Resource):
         config = tenant_configs_cache.get_config(tenant_id)
         allowable_grant_types = json.loads(config.allowable_grant_types)
         mfa_config = json.loads(config.mfa_config)
-        user_code=request.args.get("user_code", None)
 
-        mfa_response = check_and_redirect_mfa(
-            mfa_config, client_id, client_redirect_uri, client_state, response_type, user_code
-        )
-
-        if mfa_response:
-            return mfa_response
+        if mfa_config:
+            if session.get("mfa_required") == True:
+                if check_mfa_expired(mfa_config, session.get("mfa_timestamp", None)):
+                    session["mfa_validated"] = False
+                if session.get("mfa_validated") == False:
+                    logger.debug("Authorize Resource: Redirecting to MFA")
+                    return redirect(
+                        url_for(
+                            "mfaresource",
+                            client_id=client_id,
+                            redirect_uri=client_redirect_uri,
+                            state=client_state,
+                            response_type=response_type,
+                            user_code=request.args.get("user_code", None),
+                            source="authorize",
+                        )
+                    )
 
         if response_type == "token":
             if "implicit" not in allowable_grant_types:
@@ -1360,7 +1367,6 @@ class AuthorizeResource(Resource):
                     response_type=response_type,
                 )
             )
-        username = session["username"]
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get("tenant_id")
@@ -1373,7 +1379,7 @@ class AuthorizeResource(Resource):
             logger.debug(f"No client available; e: {e}")
         context = {
             "error": "",
-            "username": username,
+            "username": session["username"],
             "tenant_id": tenant_id,
             "client_display_name": display_name,
             "client_id": client_id,
@@ -1381,29 +1387,8 @@ class AuthorizeResource(Resource):
             "client_response_type": response_type,
             "client_state": client_state,
             "device_login": session.get("device_login", None),
-            "user_code": user_code,
+            "user_code": request.args.get("user_code", None),
         }
-
-        auto_approve = User.query.filter_by(username=username, client_id=client_id).first()
-        if auto_approve is not None:
-            auto_approve = True
-
-        # Add check here for auto approve
-        logger.debug(f'Checking for auto approve ... ')
-        if auto_approve and not is_device_flow:
-            logger.debug(f'Found. Skipping authoriziation page.')
-            generate_authorization_code(tenant_id, username, client_id, client)
-            auto_redirect = handle_response_type(
-                response_type,
-                allowable_grant_types,
-                tenant_id,
-                username,
-                client_id,
-                client,
-                client_state
-            )
-            return auto_redirect
-        logger.debug(f'Not found. Proceeding to authentication page')
 
         return make_response(render_template("authorize.html", **context), 200, headers)
 
@@ -1418,8 +1403,7 @@ class AuthorizeResource(Resource):
             raise errors.ResourceError(
                 "Tenant ID missing from session. Please logout and select a tenant."
             )
-        client_display_name = request.form.get("client_display_name") 
-        username = None
+        client_display_name = request.form.get("client_display_name")
         try:
             username = session["username"]
         except KeyError:
@@ -1441,8 +1425,6 @@ class AuthorizeResource(Resource):
                 render_template("authorize.html", **context), 200, headers
             )
 
-        # TODO - move all request form gets to top, remove duplicates
-        always_allow = request.form.get("always_allow")
         state = request.form.get("client_state")
         client_response_type = request.form.get("client_response_type")
         client_id = request.form.get("client_id", None)
@@ -1456,33 +1438,123 @@ class AuthorizeResource(Resource):
             logger.debug(f"client not found in db. client_id: {client_id}")
             raise errors.ResourceError(f"Invalid client: {client_id}")
 
-        # add alawys_allow rule if user has selected
-        if always_allow:
-            logger.debug(f'{username} has selected to always allow {client}')
-            # check if there is already a record for some reason 
-            record_exists = User.query.filter_by(username=username, client_id=client_id).first()
-            logger.debug(f'record exists status: {record_exists} and has type: {type(record_exists)}')
-            if not record_exists:
-                db.session.add(User(client_id=client_id, username=username, always_allow=True))
-            else:
-                logger.debug(f'record to always allow {username}: {client} already exists, skipping creation')
-
-
         # check original response_type passed in by the client and make sure grant type supported by the tenant --
         config = tenant_configs_cache.get_config(tenant_id)
         allowable_grant_types = json.loads(config.allowable_grant_types)
         mfa_config = json.loads(config.mfa_config)
-        user_code = request.args.get("user_code", None)
 
-        mfa_response = check_and_redirect_mfa(
-            mfa_config, client_id, client.callback_url, state, client_response_type, user_code
-        )
+        if mfa_config:
+            if session.get("mfa_required") == True:
+                if check_mfa_expired(mfa_config, session.get("mfa_timestamp", None)):
+                    session["mfa_validated"] = False
+                if session.get("mfa_validated") == False:
+                    logger.debug("Authorize Resource: Redirecting to MFA")
+                    return redirect(
+                        url_for(
+                            "mfaresource",
+                            client_id=client_id,
+                            redirect_uri=client_redirect_uri,
+                            state=client_state,
+                            response_type=client_response_type,
+                            user_code=request.args.get("user_code", None),
+                            source="authorize",
+                        )
+                    )
 
-        if mfa_response:
-            return mfa_response
+        # implicit grant type -------------------------------------------------------
+        if client_response_type == "token":
+            if "implicit" not in allowable_grant_types:
+                raise errors.ResourceError(
+                    f"The implicit grant type is not allowed for this "
+                    f"tenant. Allowable grant types: {allowable_grant_types}"
+                )
+            # create the access token for the client -------
+            # call /v3/tokens to generate access token
+            url = f"{g.request_tenant_base_url}/v3/tokens"
+            access_token_ttl = config.default_access_token_ttl
+            content = {
+                "token_tenant_id": f"{tenant_id}",
+                "account_type": "user",
+                "token_username": f"{username}",
+                "claims": {
+                    "tapis/client_id": client_id,
+                    "tapis/grant_type": "implicit",
+                },
+                "access_token_ttl": access_token_ttl,
+                "generate_refresh_token": False,
+                "tapis/redirect_uri": client.callback_url,
+            }
+            # if the idp_id is in the session, set it as an additional claim
+            if session.get("idp_id"):
+                content["claims"]["tapis/idp_id"] = session.get("idp_id")
+            try:
+                logger.debug(
+                    f"calling tokens API to create a token for implicit grant type; content: {content}"
+                )
+                tokens = t.tokens.create_token(**content, use_basic_auth=False)
+                logger.debug(f"got tokens response: {tokens}")
+            except Exception as e:
+                logger.error(
+                    f"Got exception trying to POST to /v3/tokens endpoint. Exception: {e};"
+                    f"content: {content}"
+                )
+                raise errors.ResourceError(
+                    "Failure to generate an access token; please try again later."
+                )
+            try:
+                access_token = tokens.access_token.access_token
+                expires_in = tokens.access_token.expires_in
+            except Exception as e:
+                logger.error(
+                    f"Got exception trying to parse token from response from tokens API; e: {e}"
+                )
+                raise errors.ResourceError(
+                    "Failure to generate an access token; please try again later."
+                )
+            url = f"{client.callback_url}?access_token={access_token}&state={state}&expires_in={expires_in}&token_type=Bearer"
+            logger.debug(f"issuing redirect to {client.callback_url}")
+            if session.get("idp_id"):
+                clear_orig_client_data()
+            return redirect(url)
 
-        # TODO - Move this to the handle_response_type function
-        if client_response_type == "device_code":
+        # authorization_code grant type ---------------------------------------------
+        elif client_response_type == "code":
+            if "authorization_code" not in allowable_grant_types:
+                raise errors.ResourceError(
+                    f"The authorization_code grant type is not allowed for this "
+                    f"tenant. Allowable grant types: {allowable_grant_types}"
+                )
+
+            # create the authorization code for the client -
+            authz_code = AuthorizationCode(
+                tenant_id=tenant_id,
+                username=username,
+                client_id=client_id,
+                client_key=client.client_key,
+                tapis_idp_id=session.get("idp_id"),
+                redirect_url=client.callback_url,
+                code=AuthorizationCode.generate_code(),
+                expiry_time=AuthorizationCode.compute_expiry(),
+            )
+            logger.debug("authorization code created.")
+            try:
+                db.session.add(authz_code)
+                db.session.commit()
+            except Exception as e:
+                logger.error(
+                    f"Got exception trying to add and commit the auth code. e: {e}; type(e): {type(e)}"
+                )
+                raise errors.ResourceError(
+                    "Internal error saving authorization code. Please try again later."
+                )
+            # issue redirect to client callback_url with authorization code:
+            url = f"{client.callback_url}?code={authz_code}&state={state}"
+            logger.debug(f"issuing redirect to {client.callback_url}")
+            if session.get("idp_id"):
+                clear_orig_client_data()
+            return redirect(url)
+
+        elif client_response_type == "device_code":
             if "device_code" not in allowable_grant_types:
                 raise errors.ResourceError(
                     f"The authorization_code grant type is not allowed for this "
@@ -1501,8 +1573,7 @@ class AuthorizeResource(Resource):
             except Exception as e:
                 logger.debug(f"Error grabbing code: {code}; error: {e}")
                 error = e
-                # TODO - already done up top, remove
-                # client_state = request.form.get("client_state")
+                client_state = request.form.get("client_state")
                 context = {
                     "error": error,
                     "username": session["username"],
@@ -1511,7 +1582,7 @@ class AuthorizeResource(Resource):
                     "client_id": client_id,
                     "client_redirect_uri": client_redirect_uri,
                     "client_response_type": "device_code",
-                    "client_state": state,
+                    "client_state": client_state,
                     "user_code": code,
                     "device_login": session.get("device_login", ""),
                 }
@@ -1526,8 +1597,7 @@ class AuthorizeResource(Resource):
             try:
                 int(ttl)
             except ValueError:
-                # TODO - already done up top, remove
-                # client_state = request.form.get("client_state")
+                client_state = request.form.get("client_state")
                 context = {
                     "error": "Please enter an integer",
                     "username": session["username"],
@@ -1536,7 +1606,7 @@ class AuthorizeResource(Resource):
                     "client_id": client_id,
                     "client_redirect_uri": client_redirect_uri,
                     "client_response_type": "device_code",
-                    "client_state": state,
+                    "client_state": client_state,
                     "user_code": code,
                     "device_login": session.get("device_login", ""),
                 }
@@ -1560,7 +1630,7 @@ class AuthorizeResource(Resource):
                     "client_id": client_id,
                     "client_redirect_uri": client_redirect_uri,
                     "client_response_type": "device_code",
-                    "client_state": state,
+                    "client_state": client_state,
                     "user_code": code,
                     "device_login": session.get("device_login", ""),
                 }
@@ -1571,17 +1641,6 @@ class AuthorizeResource(Resource):
             if session.get("idp_id"):
                 clear_orig_client_data()
             return make_response(render_template("success.html"), 200, headers)
-
-        else:
-            return handle_response_type(
-                client_response_type,
-                allowable_grant_types,
-                tenant_id,
-                username,
-                client_id,
-                client,
-                state
-            )
 
 
 class OAuth2ProviderExtCallback(Resource):
@@ -2262,6 +2321,38 @@ def get_tokenapp_client(tenant_id=None):
     return client_data
 
 
+def logout():
+    """
+    Helper function to reset the session whenever a logout needs to occur.
+    """
+    session.pop("username", None)
+    session.pop("tenant_id", None)
+    session.pop("access_token", None)
+    session.pop("device_login", None)
+    session.pop("mfa_required", None)
+    session.pop("mfa_validated", None)
+    session.pop("state", None)
+    session.pop("idp_id", None)
+    session.pop("orig_client_id", None)
+    session.pop("orig_client_redirect_uri", None)
+    session.pop("orig_client_response_type", None)
+    session.pop("orig_client_state", None)
+
+
+def clear_orig_client_data():
+    session.pop("orig_client_id", None)
+    session.pop("orig_client_redirect_uri", None)
+    session.pop("orig_client_response_type", None)
+    session.pop("orig_client_state", None)
+
+
+def logout_from_webapp():
+    """
+    Helper function that just removes the Token Webapp's attributes from the session.
+    """
+    session.pop("access_token", None)
+
+
 class WebappTokenAndRedirect(Resource):
     """
     This resource implements the GET method for the primary /oauth2/webapp URL path of the Token Web app. This method
@@ -2384,8 +2475,7 @@ class WebappTokenGen(Resource):
         tenant_id = g.request_tenant_id
         logger.debug(f"client_id: {client_id}; tenant_id: {tenant_id}")
         # get additional query parameters from request ---
-        # state = request.args.get("state")
-        state = None
+        state = request.args.get("state")
         session_state = session.get("state")
         if not state == session_state:
             logger.error(
@@ -2395,7 +2485,6 @@ class WebappTokenGen(Resource):
                 msg=f"Unauthorized access attempt: state mismatch."
             )
         code = request.args.get("code")
-        logger.debug(f'got code from request:: {code}')
 
         #  POST to oauth2/tokens (passing code, client id, client secret, and redirect uri)
         logger.debug(f"request.base_url: {request.base_url}")

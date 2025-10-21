@@ -56,8 +56,9 @@ object, defined within the authenticator database itself. These customization op
  * user_search_filter
  * user_search_prefix
  * user_search_supplemental_filter
+ * unix_groups_supplemental_filter
 
-If user_search_filter is used, it is used exclusively, while user_search_prefix and user_search_supplemental_filter 
+If user_search_filter is used, it is used exclusively, while user_search_prefix, user_search_supplemental_filter, and unix_groups_supplemental_filter
 can be used together.
 
 
