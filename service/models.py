@@ -735,7 +735,7 @@ class LdapUser(object):
         # the cn is supposed to be the uid/username
         # however, some tenants have cn configured incorrectly
         # we can look for uid instead
-        logger.debug(f'entry from ldap record:: {entry}')
+        # logger.debug(f'entry from ldap record:: {entry}')
         if 'uid' in entry:
             logger.debug(f"Found uid in entry: {entry['uid']}")
             attrs['uid'] = entry['uid'][0]
