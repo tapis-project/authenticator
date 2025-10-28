@@ -841,7 +841,7 @@ class LdapUser(object):
             'mobile_phone': self.mobile_phone,
             'create_time': self.create_time,
             'username': self.username,
-            'uid': self.uid
+            'uid': self.uid,
         }
 
 
