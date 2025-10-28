@@ -814,6 +814,89 @@ def test_password_grant_no_client(client, init_db):
     # when not using an oauth client, refresh tokens are not returned:
     assert "refresh_token" not in response.json["result"]
 
+def test_password_grant_not_in_group(client, init_db):
+    # configure custom ldap unix groups filter for tenantconfig 
+    # _tenant_id = f'{TEST_TENANT_ID}_group_filter'
+    # with app.app_context():
+    #     config = {
+    #         "tenant_id": _tenant_id,
+    #         "allowable_grant_types": json.dumps(
+    #             [
+    #                 "password",
+    #                 "implicit",
+    #                 "authorization_code",
+    #                 "refresh_token",
+    #                 "device_code",
+    #             ]
+    #         ),
+    #         "use_ldap": True,
+    #         "use_token_webapp": True,
+    #         "mfa_config": json.dumps({}),
+    #         # 4 hours
+    #         "default_access_token_ttl": 14400,
+    #         # 1 year
+    #         "default_refresh_token_ttl": 31536000,
+    #         "max_access_token_ttl": 31536000,
+    #         # 2 years
+    #         "max_refresh_token_ttl": 63072000,
+    #         # SambaNova group identified for testing by Chris Jordan 10/3/2025
+    #         "custom_idp_configuration": json.dumps({"ldap": {"unix_groups_supplemental_filter": "(cn=G-827613)"}}),
+    #         "token_url": "http://localhost:5000/v3/oauth2/tokens",
+    #         "impers_oauth_client_id": "",
+    #         "impers_oauth_client_secret": "",
+    #         "impersadmin_username": "",
+    #         "impersadmin_password": "",
+    #     }
+    #     print(f'about to add tenant to db:: ')
+    #     print(config)
+    #     models.add_tenant_to_db(config)
+    # # run normal test
+    # payload = {
+    #     "grant_type": "password",
+    #     "username": TEST_USERNAME,
+    #     "password": TEST_PASSWORD,
+    # }
+    # response = client.post(
+    #     "http://localhost:5000/v3/oauth2/tokens",
+    #     data=json.dumps(payload),
+    #     content_type="application/json",
+    #     headers={"X-Tapis-Local-Tenant": _tenant_id}
+    # )
+    # assert response.status_code == 400
+    # assert f"Invalid username; user {TEST_USERNAME} does not have access to the {_tenant_id} tenant." in response.json["message"]
+    # # remove custom ldap filter 
+    # models.delete_tenant_from_db(_tenant_id)
+    
+    # TODO!!! 
+    # Adding a custom tenant isn't working. 
+    # Seems like it's having trouble actually adding it to the db, even though it's using the same method as the setup function.
+    # These test might have to be run manually, unfortunately. 
+
+    pass
+
+def test_password_grant_user_not_in_tenant(client, init_db):
+    # run normal test
+    payload = {
+        "grant_type": "password",
+        "username": TEST_USERNAME,
+        "password": TEST_PASSWORD,
+    }
+    response = client.post(
+        "http://localhost:5000/v3/oauth2/tokens",
+        data=json.dumps(payload),
+        content_type="application/json",
+        headers={"X-Tapis-Local-Tenant": 'tacc'} # TEST_USERNAME should never be in the tacc tenant
+    )
+    assert response.status_code == 400
+    assert f"Invalid username/password combination" in response.json["message"]
+
+def test_password_grant_user_in_group(client, init_db):
+    # TODO!!!
+    # not sure how to test in this context, since the testusers aren't given group memberships.
+    #   Would probably have to create the custom tenant like in test_password_grant_not_in_group,
+    #   then edit the ldap entry for a user to have a group. Since these accounts are stored in the ldap
+    #   as inetOrgPerson instead of posixAccount types, I'm not sure this is possible.
+    pass
 
 # Create a v2 bearer token from a Tapis v3 JWT
 # def test_get_v2_bearer_token(client, tapis_jwt):
