@@ -367,7 +367,6 @@ def get_tenant_user(tenant_id, username):
     custom_ldap_config = get_custom_ldap_config(tenant_id)
     user_search_filter = custom_ldap_config.get("user_search_filter")
     logger.debug(f"user_search_filter from custom ldap config: {user_search_filter}")
-    logger.debug(f'got custom ldap config:: {custom_ldap_config}')
     # if user_search_filter is not specified, look for a user_search_prefix and/or user_search_supplemental_filter
     if not user_search_filter:
         # if user_search_prefix is not set, we default to using '(cn=*)'
@@ -476,13 +475,16 @@ def check_username_password(tenant_id, username, password):
         get_tenant_user(tenant_id, username)
     except Exception as e:
         logger.debug(
-            f"got exception trying to check that user {username} was in the ldap user search filter via"
+
+            msg=f"got exception trying to check that user {username} was in the ldap user search filter via "
             f"a call to get_tenant_user; e: {e}"
-        )
+
+            )
         raise InvalidTenantUserError(
-            f"Invalid username; user {username} does not have access to the {tenant_id} "
-            f"tenant."
-        )
+
+            msg=f"Invalid username; user {username} does not have access to the {tenant_id} tenant."
+            
+            )
     return True
 
 

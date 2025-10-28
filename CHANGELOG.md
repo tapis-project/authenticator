@@ -1,6 +1,17 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 25Q4
+### Breaking Changes:
+- Modified DB schema to allow for automatic client authorization. 
+
+### New features:
+- Added ability for a user to 'always allow' authorization for a client.
+- Added ability to filter login to tenant based on unix group. See issue #119
+
+### Bug fixes:
+- None
+
 
 ## 1.9.1 - TBD
 ### Breaking Changes:

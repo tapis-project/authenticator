@@ -849,7 +849,6 @@ class LdapUser(object):
             'create_time': self.create_time,
             'username': self.username,
             'uid': self.uid,
-            'gid': self.gid
         }
 
 
