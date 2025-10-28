@@ -45,6 +45,7 @@ from service.models import (
     DeviceCode,
     token_webapp_clients,
     tenant_configs_cache,
+    Users
 )
 from service.ldap import list_tenant_users, get_tenant_user, check_username_password
 from service.oauth2ext import OAuth2ProviderExtension
@@ -1387,8 +1388,29 @@ class AuthorizeResource(Resource):
             "client_response_type": response_type,
             "client_state": client_state,
             "device_login": session.get("device_login", None),
-            "user_code": request.args.get("user_code", None),
+            "user_code": user_code,
         }
+
+        auto_approve = Users.query.filter_by(username=username, client_id=client_id).first()
+        if auto_approve is not None:
+            auto_approve = True
+
+        # Add check here for auto approve
+        logger.debug(f'Checking for auto approve ... ')
+        if auto_approve and not is_device_flow:
+            logger.debug(f'Found. Skipping authoriziation page.')
+            generate_authorization_code(tenant_id, username, client_id, client)
+            auto_redirect = handle_response_type(
+                response_type,
+                allowable_grant_types,
+                tenant_id,
+                username,
+                client_id,
+                client,
+                client_state
+            )
+            return auto_redirect
+        logger.debug(f'Not found. Proceeding to authentication page')
 
         return make_response(render_template("authorize.html", **context), 200, headers)
 
@@ -1437,6 +1459,18 @@ class AuthorizeResource(Resource):
         if not client:
             logger.debug(f"client not found in db. client_id: {client_id}")
             raise errors.ResourceError(f"Invalid client: {client_id}")
+
+        # add alawys_allow rule if user has selected
+        if always_allow:
+            logger.debug(f'{username} has selected to always allow {client}')
+            # check if there is already a record for some reason 
+            record_exists = Users.query.filter_by(username=username, client_id=client_id).first()
+            logger.debug(f'record exists status: {record_exists} and has type: {type(record_exists)}')
+            if not record_exists:
+                db.session.add(Users(client_id=client_id, username=username, always_allow=True))
+            else:
+                logger.debug(f'record to always allow {username}: {client} already exists, skipping creation')
+
 
         # check original response_type passed in by the client and make sure grant type supported by the tenant --
         config = tenant_configs_cache.get_config(tenant_id)

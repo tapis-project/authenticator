@@ -1,4 +1,4 @@
-from ldap3 import Server, Connection
+from ldap3 import Server, Connection, ObjectDef, Reader, ALL_ATTRIBUTES, ALL_OPERATIONAL_ATTRIBUTES
 from ldap3.core.exceptions import LDAPBindError
 import json
 
@@ -383,17 +383,12 @@ def get_tenant_user(tenant_id, username):
         logger.debug(
             f"user_search_supplemental_filter from custom ldap config: {user_search_supplemental_filter}"
         )
-        unix_groups_supplemental_filter = custom_ldap_config.get(
-            "unix_groups_supplemental_filter"
-        )
-        logger.debug(
-            f"unix_groups_supplemental_filter from custom ldap config: {unix_groups_supplemental_filter}"
-        )
-        user_search_filter = f"(&{user_search_prefix}{user_search_supplemental_filter if user_search_supplemental_filter else ''}{unix_groups_supplemental_filter if unix_groups_supplemental_filter else ''})"
-        # user_search_filter = user_search_prefix
-        # if user_search_supplemental_filter or unix_groups_supplemental_filter:
-            # user_search_filter = f"(&{user_search_prefix}{user_search_supplemental_filter if user_search_supplemental_filter else ''}{unix_groups_supplemental_filter if unix_groups_supplemental_filter else ''})"
-            
+        if user_search_supplemental_filter:
+            user_search_filter = (
+                f"(&{user_search_prefix}{user_search_supplemental_filter})"
+            )
+        else:
+            user_search_filter = user_search_prefix
     # the user_search_filter is formatted with a wildcard ( star (*) character) for retrieving all profiles, but
     # here we only want to retrieve a single profile, so we need to replace it with the username:
     user_search_filter = user_search_filter.replace("*", username)
@@ -412,6 +407,31 @@ def get_tenant_user(tenant_id, username):
         raise DAOError(msg)
     result = []
     logger.debug(f"conn.entries: {conn.entries}")
+
+    
+    # we also need to check if the user is in the posix group 
+    # set in the unix_groups_supplemental_filter for the tenantconfig 
+    unix_groups_supplemental_filter = custom_ldap_config.get(
+        "unix_groups_supplemental_filter"
+    )
+    logger.debug(
+        f"unix_groups_supplemental_filter from custom ldap config: {unix_groups_supplemental_filter}"
+    )
+    if unix_groups_supplemental_filter:
+        group_dn = tenant_base_dn.replace('People', 'Groups')
+        unix_group_filter = f"(&(uniqueMember=uid={username},{tenant_base_dn}){unix_groups_supplemental_filter})"
+        logger.debug(f'searching group membership with dn:: {group_dn} and filter:: {unix_group_filter}')
+        result = conn.search(f"{group_dn}", unix_group_filter, attributes=["*"])
+        if not result:
+            # it is possible to get a "success" result when there are no users in the OU -
+            if hasattr(conn.result, "description") and conn.result.description == "success":
+                return [], None
+            msg = f"Error retrieving group membership; debug information: {conn.result}"
+            logger.error(msg)
+            raise DAOError(msg)
+        result = []
+        logger.debug(f'conn.entries:: {conn.entries}')
+
     user = LdapUser.from_ldap3_entry(
         tenant_id, conn.entries[0].entry_attributes_as_dict
     )
@@ -475,14 +495,8 @@ def check_username_password(tenant_id, username, password):
     try:
         get_tenant_user(tenant_id, username)
     except Exception as e:
-        logger.debug(
-            f"got exception trying to check that user {username} was in the ldap user search filter via"
-            f"a call to get_tenant_user; e: {e}"
-        )
-        raise InvalidTenantUserError(
-            f"Invalid username; user {username} does not have access to the {tenant_id} "
-            f"tenant."
-        )
+        logger.debug(msg=f"got exception trying to check that user {username} was in the ldap user search filter via a call to get_tenant_user; e: {e}")
+        raise InvalidTenantUserError(msg=f"Invalid username; user {username} does not have access to the {tenant_id} tenant.")
     return True
 
 
