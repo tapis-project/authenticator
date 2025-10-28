@@ -1,9 +1,0 @@
-make clean
-make build
-make init_dbs
-make migrate.upgrade
-docker compose up -d authenticator
-
-# wait 5 seconds just in case
-#sleep 5 
-#dexec authenticator_postgres_1 bash -c 'psql -Uauthenticator -c "SELECT * FROM tenantconfig;"'
