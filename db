@@ -1,0 +1,7 @@
+#!/bin/bash
+
+#instruction=UPDATE tenantconfig SET custom_idp_configuration='{"ldap": {"unix_groups_supplemental_filter": "(gidNumber=827613)"}}' WHERE tenant_id='tacc';
+
+#echo 'running instruction:: ' $instruction
+
+docker exec -it  authenticator_postgres_1 bash -c 'psql -Uauthenticator -x'
