@@ -42,6 +42,10 @@ paths:
                 $ref: '#/components/schemas/BasicResponse'
         '500':
           description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BasicResponse'
   /v3/oauth2/ready:
     get:
       tags:
@@ -57,6 +61,10 @@ paths:
                 $ref: '#/components/schemas/BasicResponse'
         '500':
           description: Server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BasicResponse'
   /v3/oauth2/.well-known/oauth-authorization-server:
     get:
       tags:
@@ -136,6 +144,11 @@ paths:
         description: index (offset) to start list.
         schema:
           type: integer
+      - name: show_inactive
+        in: query
+        description: if true, include inactive clients in the results.
+        schema:
+          type: boolean
       security:
         - TapisJWT: []
       responses:
@@ -258,9 +271,7 @@ paths:
                   - $ref: '#/components/schemas/BasicResponse'
                 properties:
                   result:
-                    type: string
-                    nullable: true
-                    enum: [null]
+                    $ref: '#/components/schemas/Client'
 
 
   /v3/oauth2/tokens:
@@ -382,6 +393,11 @@ paths:
       responses:
         '200':
           description: OK
+          headers:
+            X-Tapis-Offset:
+              description: The offset value used for the next page of results.
+              schema:
+                type: integer
           content:
             application/json:
               schema:
@@ -440,7 +456,7 @@ paths:
                   - $ref: '#/components/schemas/BasicResponse'
                 properties:
                   result:
-                    $ref: '#/components/schemas/DeviceCodeResposne'
+                    $ref: '#/components/schemas/DeviceCodeResponse'
 
 components:
   securitySchemes:
@@ -670,6 +686,12 @@ components:
         client_key:
           type: string
           description: A secret key for authenticating the client.
+        owner:
+          type: string
+          description: The username of the user who owns this client.
+        tenant_id:
+          type: string
+          description: The tenant this client belongs to.
         callback_url:
           type: string
           description: URL for application to receive OAuth callbacks for executing flows such as authorization_code.
@@ -685,6 +707,9 @@ components:
         description:
           type: string
           description: A description of this client.
+        active:
+          type: boolean
+          description: Whether this client is active. Inactive clients cannot be used.
 
     UpdateClient:
       type: object
@@ -750,7 +775,7 @@ components:
           type: string
           description: Unique identifier for the token
 
-    DeviceCodeResposne:
+    DeviceCodeResponse:
       type: object
       required: [device_code, user_code, client_id, expires_in, verification_uri]
       properties:
@@ -765,7 +790,8 @@ components:
           description: The client_id of the client
         expires_in:
           type: string
-          description: The expiration for the user code
+          format: date-time
+          description: The datetime at which the device code expires
         verification_uri:
           type: string
           description: The url the user should go to to enter their user code
@@ -777,17 +803,43 @@ components:
 
     Profile:
       type: object
-      description: The profile associated with a Tapis identity. NOTE -the fields in the Profile object are populated on a best-effort basis and should not be relied upon. Only the username field is guaranteed to be populated. 
+      description: The profile associated with a Tapis identity. NOTE - fields are populated on a best-effort basis from the underlying LDAP directory and should not be relied upon. Only the username field is guaranteed to be populated.
       properties:
         username:
           type: string
-          description: The username associated with the profile.
+          description: The username (uid) associated with the profile.
+        dn:
+          type: string
+          description: The LDAP distinguished name for the user entry.
+          nullable: true
+        given_name:
+          type: string
+          description: The user's first/given name.
+          nullable: true
+        last_name:
+          type: string
+          description: The user's last/family name.
+          nullable: true
         email:
           type: string
           description: The email address associated with the profile.
-        name:
+          nullable: true
+        phone:
           type: string
-          description: The full name of the user.
+          description: The telephone number associated with the profile.
+          nullable: true
+        mobile_phone:
+          type: string
+          description: The mobile phone number associated with the profile.
+          nullable: true
+        create_time:
+          type: string
+          description: The timestamp when the LDAP entry was created.
+          nullable: true
+        uid:
+          type: string
+          description: The POSIX uid number associated with the user.
+          nullable: true
 
     arrayOfProfiles:
       type: array
