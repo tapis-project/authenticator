@@ -699,7 +699,7 @@ def test_password_grant_invalid_user_pass(client, init_db):
             content_type="application/json",
         )
         assert response.status_code == 400
-        assert "Invalid username/password combination." in response.json["message"]
+        assert "Invalid username/password combination or your account needs to be reactivated." in response.json["message"]
 
 
 def test_password_grant_invalid_uppercase_user(client, init_db):
@@ -721,7 +721,7 @@ def test_password_grant_invalid_uppercase_user(client, init_db):
             content_type="application/json",
         )
         assert response.status_code == 400
-        assert "Invalid username/password combination." in response.json["message"]
+        assert "Invalid username/password combination or your account needs to be reactivated." in response.json["message"]
 
 
 def test_password_grant_invalid_spaces_user(client, init_db):
@@ -743,7 +743,7 @@ def test_password_grant_invalid_spaces_user(client, init_db):
             content_type="application/json",
         )
         assert response.status_code == 400
-        assert "Invalid username/password combination." in response.json["message"]
+        assert "Invalid username/password combination or your account needs to be reactivated." in response.json["message"]
 
 
 def test_password_grant_valid(client, init_db):
@@ -890,7 +890,7 @@ def test_password_grant_user_not_in_tenant(client, init_db):
         headers={"X-Tapis-Local-Tenant": 'tacc'} # TEST_USERNAME should never be in the tacc tenant
     )
     assert response.status_code == 400
-    assert f"Invalid username/password combination" in response.json["message"]
+    assert "Invalid username/password combination or your account needs to be reactivated." in response.json["message"]
 
 
 def test_password_grant_user_in_group(client, init_db):
