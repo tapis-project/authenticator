@@ -1572,6 +1572,7 @@ class AuthorizeResource(Resource):
                 device_code.access_token_ttl = int(ttl) * 60 * 60 * 24
             if session.get("idp_id"):
                 device_code.tapis_idp_id = session.get("idp_id")
+            device_code.status = "Authorized"
             try:
                 logger.info(f"Updating device code: {device_code}")
                 db.session.commit()

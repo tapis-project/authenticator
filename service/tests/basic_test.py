@@ -222,7 +222,7 @@ def check_device_code_table(
     """
     print("Checking device_codes table")
     retrieved = models.DeviceCode.query.filter_by(user_code=user_code).first()
-    print(f"DEBUG: got device code object:: {retrieved}")
+    print(f"DEBUG: got device code object:: {retrieved.serialize}")
     if negative:
         assert retrieved is None
         return
@@ -1248,7 +1248,7 @@ def test_exchange_device_code(client):
             client_key=TEST_CLIENT_KEY,
             code=code,
             user_code=user_code,
-            status="Entered",
+            status="Authorized",
             verification_uri=verification_url,
             expiry_time=models.DeviceCode.compute_expiry(),
             access_token_ttl=models.DeviceCode.set_ttl(),
@@ -1268,7 +1268,7 @@ def test_exchange_device_code(client):
         raise Exception("Internal error saving device code. Please try again later.")
     # verify that it was added to the db correctly
     check_device_code_table(
-        TEST_CLIENT_ID, user_code, code, verification_url, "Entered"
+        TEST_CLIENT_ID, user_code, code, verification_url, "Authorized"
     )
 
     # call the tokens url with the device code

@@ -1,6 +1,17 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 26Q2
+### Breaking Changes:
+- None
+
+### New features:
+- Adding fields to spec securitySchemes and endpoint responses
+
+### Bug fixes:
+- None
+
+
 ## 26Q1
 ### Breaking Changes:
 - None

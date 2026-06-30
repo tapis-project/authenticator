@@ -547,7 +547,7 @@ class DeviceCode(db.Model):
         if not code_result:
             logger.debug(f"Device Code: {code_result} not found")
             raise InvalidDeviceCodeError(msg="device code not valid.")
-        if not code_result.status == "Entered":
+        if not code_result.status == "Authorized":
             logger.debug(f"Device Code: {code_result} not ready to be used")
             raise InvalidDeviceCodeError(msg="device code not ready.")
         # check for an expired code, plus a fudge factor for clock skew:
