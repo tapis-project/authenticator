@@ -32,6 +32,15 @@
      </div>
      <nav>
       <p>Having trouble?</p>
+      {% if tenant_id == 'designsafe' %}
+      <a
+        href="https://designsafe-ci.org/user-guide/account-help/"
+        rel="noreferrer"
+        target="_blank"
+      >
+        Account Help
+      </a>
+      {% else %}
       <a
         href="https://tacc.utexas.edu/about/help/"
         rel="noreferrer"
@@ -39,6 +48,7 @@
       >
         Account Help
       </a>
+      {% endif %}
     </nav>
 
  </form>
