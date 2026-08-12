@@ -127,16 +127,16 @@ class OAuth2ProviderExtension(object):
             self.oauth2_token_url = self.custom_idp_config_dict.get('globus').get('oauth2_token_url')
             # URL to look up user info from token
             self.user_info_url = self.custom_idp_config_dict.get('globus').get('user_info_url')
-        elif self.ext_type == 'vdj':
-            self.client_id = self.custom_idp_config_dict.get('vdj').get('client_id')
-            self.client_key = self.custom_idp_config_dict.get('vdj').get('client_secret')
+        elif self.ext_type == 'vdjserver':
+            self.client_id = self.custom_idp_config_dict.get('vdjserver').get('client_id')
+            self.client_key = self.custom_idp_config_dict.get('vdjserver').get('client_secret')
             # initial redirect URL; used to start the oauth flow and log in the user
-            self.identity_redirect_url = self.custom_idp_config_dict.get('vdj').get('identity_redirect_url')
+            self.identity_redirect_url = self.custom_idp_config_dict.get('vdjserver').get('identity_redirect_url')
             # URL to use to exchange the code for an qccess token
-            self.oauth2_token_url = self.custom_idp_config_dict.get('vdj').get('oauth2_token_url')
+            self.oauth2_token_url = self.custom_idp_config_dict.get('vdjserver').get('oauth2_token_url')
             # URL to look up user info from token
-            self.user_info_url = self.custom_idp_config_dict.get('vdj').get('user_info_url')
-            logger.debug("properties set of vdj")
+            self.user_info_url = self.custom_idp_config_dict.get('vdjserver').get('user_info_url')
+            logger.debug("properties set of vdjserver")
         elif self.ext_type == 'ldap':
             # NOTE: for the "ldap" type, we don't actually set any of the custom attributes, 
             # but we still need a check here to not fall into the ERROR else below.
