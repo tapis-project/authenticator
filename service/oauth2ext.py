@@ -330,6 +330,8 @@ class OAuth2ProviderExtension(object):
             if idp_id:
                 self.username = f"{self.username}@{idp_id}"
             return self.username
+        elif self.ext_type == 'vdjserver':
+            logger.debug(f'vdjserver jwt:: {self.access_token}')
         # elif self.ext_type == 'google':
         #     ...
         else:
