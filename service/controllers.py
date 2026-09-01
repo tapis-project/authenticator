@@ -772,19 +772,19 @@ class LoginResource(Resource):
     """
 
     def get(self):
-        logger.debug("Logging in")
+        logger.info("Top of GET LoginResource")
         logger.debug(f"Session: {session}")
         client_id, client_redirect_uri, client_state, client, response_type = (
             check_client()
         )
-        logger.debug(f"client_response_type: {response_type}")
+        logger.debug(f"client_id: {client_id}; client_response_type: {response_type}")
         # selecting a tenant id is required before logging in -
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get("tenant_id")
         if not tenant_id:
-            logger.debug(
-                f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}"
+            logger.info(
+                f"did not find tenant_id in session; issuing redirect to SetTenantResource. client_id: {client_id}"
             )
             return redirect(
                 url_for(
@@ -795,6 +795,7 @@ class LoginResource(Resource):
                     response_type="code",
                 )
             )
+        logger.debug(f"resolved tenant_id: {tenant_id}; rendering login page")
         headers = {"Content-Type": "text/html"}
         display_name = ""
         try:
@@ -814,11 +815,12 @@ class LoginResource(Resource):
 
     def post(self):
         # process the login form -
+        logger.info("Top of POST LoginResource")
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get("tenant_id")
         if not tenant_id:
-            logger.debug(
+            logger.info(
                 f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}"
             )
             raise errors.ResourceError(
@@ -839,10 +841,14 @@ class LoginResource(Resource):
         }
         username = request.form.get("username")
         if not username:
+            logger.info(f"Login submission missing username; tenant_id: {tenant_id}")
             context["error"] = "Username is required."
             return make_response(render_template("login.html", **context), 200, headers)
         password = request.form.get("password")
         if not password:
+            logger.info(
+                f"Login submission missing password; user: {username}; tenant_id: {tenant_id}"
+            )
             context["error"] = "Password is required."
             return make_response(render_template("login.html", **context), 200, headers)
         try:
@@ -850,8 +856,14 @@ class LoginResource(Resource):
                 tenant_id=tenant_id, username=username, password=password
             )
         except InvalidPasswordError:
+            logger.debug(
+                f"Invalid username/password for user: {username}; tenant_id: {tenant_id}"
+            )
             context["error"] = INVALID_USERNAME_PASSWORD_MESSAGE
             return make_response(render_template("login.html", **context), 200, headers)
+        logger.debug(
+            f"Username/password accepted for user: {username}; tenant_id: {tenant_id}"
+        )
         # the username and password were accepted; set the session and redirect to the authorization page.
         # first, check if this is a multi_idp situation
         idp_id = session.get("idp_id")
@@ -873,6 +885,9 @@ class LoginResource(Resource):
                     # either way, exit the loop because we've found the idp
                     break
             if append_idp_to_username:
+                logger.debug(
+                    f"appending idp_id {idp_id} to user for multi-idp tenant {tenant_id}"
+                )
                 username = f"{username}@{idp_id}"
 
         # response_type = 'code'
@@ -882,6 +897,9 @@ class LoginResource(Resource):
         session["username"] = username
         mfa_timestamp = session.get("mfa_timestamp", None)
         mfa_required = needs_mfa(tenant_id, mfa_timestamp)
+        logger.info(
+            f"MFA required: {mfa_required} for user: {username}; tenant_id: {tenant_id}"
+        )
         redirect_url = "authorizeresource"
         if mfa_required:
             redirect_url = "mfaresource"
@@ -896,6 +914,10 @@ class LoginResource(Resource):
             response_type = "device_code"
             if not mfa_required:
                 redirect_url = "deviceflowresource"
+        logger.info(
+            f"LoginResource redirecting user: {username} to {redirect_url}; "
+            f"response_type: {response_type}"
+        )
         return redirect(
             url_for(
                 redirect_url,
@@ -920,7 +942,7 @@ class MFAResource(Resource):
         if not tenant_id:
             tenant_id = session.get("tenant_id")
         if not tenant_id:
-            logger.debug(
+            logger.info(
                 f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}"
             )
             return redirect(
@@ -938,6 +960,9 @@ class MFAResource(Resource):
         except Exception as e:
             logger.debug(f"Error getting client display name. e: {e}")
 
+        logger.debug(
+            f"Rendering MFA page for user: {session.get('username')}; tenant_id: {tenant_id}"
+        )
         logger.info(f"Source: {request.args.get('source', None)}")
         logger.info(f"User Code: {request.args.get('user_code', None)}")
 
@@ -964,8 +989,10 @@ class MFAResource(Resource):
         )
 
         action = request.form.get("action", "submit")
+        logger.info(f"MFA action: {action}; username: {session.get('username')}")
 
         if action == "logout":
+            logger.debug(f"Logging out user: {session.get('username')} from MFAResource")
             logout()
             return redirect(
                 url_for(
@@ -982,7 +1009,7 @@ class MFAResource(Resource):
         if not tenant_id:
             tenant_id = session.get("tenant_id")
         if not tenant_id:
-            logger.debug(
+            logger.info(
                 f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}"
             )
             return redirect(
@@ -1003,8 +1030,12 @@ class MFAResource(Resource):
         logger.info(f"User Code: {user_code}")
 
         response = "Incorrect MFA token"
-        logger.debug("MFA CODE: %s" % mfa_token)
+        # note: never log the raw mfa_token value; it is a secret one-time credential.
+        logger.debug(f"MFA token submitted for user: {username}; tenant_id: {tenant_id}")
         validated = call_mfa(mfa_token, tenant_id, username)
+        logger.info(
+            f"MFA validation result: {bool(validated)} for user: {username}; tenant_id: {tenant_id}"
+        )
         display_name = ""
         redirect_url = "authorizeresource"
         try:
@@ -1020,6 +1051,10 @@ class MFAResource(Resource):
                 redirect_url = "webapptokenandredirect"
             session["mfa_validated"] = True
             session["mfa_timestamp"] = time.time()
+            logger.info(
+                f"MFAResource redirecting username: {username} to {redirect_url}; "
+                f"response_type: {response_type}"
+            )
             return redirect(
                 url_for(
                     redirect_url,
@@ -1033,6 +1068,9 @@ class MFAResource(Resource):
                 )
             )
         else:
+            logger.info(
+                f"MFA token rejected for user: {username}; tenant_id: {tenant_id}; re-rendering MFA page"
+            )
             context = {
                 "error": response,
                 "username": session.get("username"),
