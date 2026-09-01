@@ -197,6 +197,8 @@ class OAuth2ProviderExtension(object):
         # keycloak and globus require the "grant_type" parameter
         if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
             body["grant_type"] = "authorization_code"
+        if self.ext_type == 'tms':
+            body["grant_type"] = "code"
         logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}")
         try:
             rsp = requests.post(self.oauth2_token_url, data=body, headers={'Accept': 'application/json'})
@@ -251,17 +253,19 @@ class OAuth2ProviderExtension(object):
         """
         logger.debug("top of get_user_from_token")
         # todo -- each OAuth2 provider will have a different mechanism for determining the user's identity
-        if self.ext_type == 'github' or self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
+        if self.ext_type == 'github' or self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus' or self.ext_type == 'tms':
             if self.ext_type == 'github':
                 user_info_url = 'https://api.github.com/user'
             if self.ext_type == 'tacc_keycloak':
                 user_info_url = 'https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/userinfo'
             if self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
                 user_info_url = self.user_info_url
+            if self.ext_type == 'tms':
+                user_info_url = self.user_info_url
             if self.ext_type == 'github':
                 headers = {'Authorization': f'token {self.access_token}',
                         'Accept': 'application/vnd.github.v3+json'}
-            if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
+            if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus' or self.ext_type == 'tms':
                 headers = {'Authorization': f'Bearer {self.access_token}',}
             try:
                 rsp = requests.get(user_info_url, headers=headers)
