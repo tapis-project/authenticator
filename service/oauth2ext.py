@@ -136,6 +136,12 @@ class OAuth2ProviderExtension(object):
             self.oauth2_token_url = self.custom_idp_config_dict.get('tms').get('oauth2_token_url')
             # URL to look up user info from token
             self.user_info_url = self.custom_idp_config_dict.get('tms').get('user_info_url')
+            logger.debug("properties set of tms: ")
+            logger.debug(f"client_id: {self.client_id}")
+            logger.debug(f"client_key: {self.client_key}")
+            logger.debug(f"identity_redirect_url: {self.identity_redirect_url}")
+            logger.debug(f"oauth2_token_url: {self.oauth2_token_url}")
+            logger.debug(f"user_info_url: {self.user_info_url}")
         elif self.ext_type == 'ldap':
             # NOTE: for the "ldap" type, we don't actually set any of the custom attributes, 
             # but we still need a check here to not fall into the ERROR else below.
@@ -194,30 +200,36 @@ class OAuth2ProviderExtension(object):
             "code": self.authorization_code,
             "redirect_uri": self.callback_url
         }
+        headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
+        logger.debug(f'setting parameters for ext_type: {self.ext_type}')
         # keycloak and globus require the "grant_type" parameter
         if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
             body["grant_type"] = "authorization_code"
         if self.ext_type == 'tms':
             body["grant_type"] = "code"
-        logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}")
+            headers["Content-Type"] = "application/json"
+        logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}; headers: {headers}")
         try:
-            rsp = requests.post(self.oauth2_token_url, data=body, headers={'Accept': 'application/json'})
+            rsp = requests.post(self.oauth2_token_url, data=body, headers=headers)
         except Exception as e:
-            logger.error(f"Got exception from POST request to OAuth server attempting to exchange the"
-                         f"authorization code for a token. Debug data:"
-                         f"request body: {body}"
+            logger.error(f"Got exception from POST request to OAuth server attempting to exchange the "
+                         f"authorization code for a token. Debug data: "
+                         f"request body: {body} "
                          f"exception: {e}")
             raise errors.ServiceConfigError("Error requesting access token. Contact server administrator.")
-        logger.debug(f"successfully made POST to token url {self.oauth2_token_url}; rsp: {rsp};"
+        logger.debug(f"successfully made POST to token url {self.oauth2_token_url}; rsp: {rsp}; "
                      f"rsp.content: {rsp.content}")
         # todo -- it is possible different provider servers will not pass JSON
         try:
             self.access_token = rsp.json().get('access_token')
         except Exception as e:
-            logger.error(f"Got exception trying to process response from POST request to exchange the"
-                         f"authorization code for a token. Debug data:"
-                         f"request body: {body};"
-                         f"response: {rsp}"
+            logger.error(f"Got exception trying to process response from POST request to exchange the "
+                         f"authorization code for a token. Debug data: "
+                         f"request body: {body}; "
+                         f"response: {rsp} "
                          f"exception: {e}")
             raise errors.ServiceConfigError("Error parsing access token. Contact server administrator.")
         logger.debug(f"successfully got access_token: {self.access_token}")
