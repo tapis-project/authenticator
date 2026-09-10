@@ -201,30 +201,41 @@ class OAuth2ProviderExtension(object):
             "redirect_uri": self.callback_url
         }
         headers = {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            "Accept": "application/json",
+            "Content-Type": "application/json"
         }
         logger.debug(f'setting parameters for ext_type: {self.ext_type}')
         # keycloak and globus require the "grant_type" parameter
         if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
             body["grant_type"] = "authorization_code"
         if self.ext_type == 'tms':
-            body["grant_type"] = "code"
+            body["grant_type"] = "authorization_code"
             headers["Content-Type"] = "application/json"
+        # make sure the body is proper json
+        try:
+            valid_body = json.dumps(body)
+            logger.debug(f'Body validated as json: {valid_body}')
+        except Exception as e:
+            logger.error(f'Failed to validate request body as json. Debug data: {e}: body: {body}')
+
         logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}; headers: {headers}")
         try:
-            rsp = requests.post(self.oauth2_token_url, data=body, headers=headers)
+            rsp = requests.post(self.oauth2_token_url, data=json.dumps(body), headers=headers)
         except Exception as e:
             logger.error(f"Got exception from POST request to OAuth server attempting to exchange the "
                          f"authorization code for a token. Debug data: "
                          f"request body: {body} "
+                         f"response: {rsp.text} "
                          f"exception: {e}")
             raise errors.ServiceConfigError("Error requesting access token. Contact server administrator.")
         logger.debug(f"successfully made POST to token url {self.oauth2_token_url}; rsp: {rsp}; "
                      f"rsp.content: {rsp.content}")
         # todo -- it is possible different provider servers will not pass JSON
         try:
-            self.access_token = rsp.json().get('access_token')
+            if self.ext_type == 'tms':
+                self.access_token = rsp.json().get('result').get('access_token').get('access_token')
+            else:
+                self.access_token = rsp.json().get('access_token')
         except Exception as e:
             logger.error(f"Got exception trying to process response from POST request to exchange the "
                          f"authorization code for a token. Debug data: "
@@ -318,9 +329,15 @@ class OAuth2ProviderExtension(object):
                     raise errors.ServiceConfigError("Error determining user identity: username could not be determined. "
                                                     "Contact server administrator.")
                 self.username = username
-            logger.debug(f"Successfully determined user's identity: {self.username}")
+            elif self.ext_type == 'tms':
+                username = rsp.json().get('result').get('username')
+                # kprice 2026.9.10 
+                # the rsp from tms appends @globus_idp twice, so we strip it then add it back
+                # I really hate it but we have to change tms to fix it 
+                self.username = username.split('@')[0] + '@globus_idp'
             if idp_id:
                 self.username = f"{self.username}@{idp_id}"
+            logger.debug(f"Successfully determined user's identity: {self.username}")
             return self.username
 
         elif self.ext_type == 'cii':

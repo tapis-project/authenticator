@@ -377,7 +377,7 @@ the authorization code for an OAuth token.
 #### Work With Tokens
 
 The Authenticator supports OAuth2 flows for generating access (and in some cases, refresh) tokens.
-THe grant types require basic authentication with a valid Tapis OAuth client, however, one can 
+The grant types require basic authentication with a valid Tapis OAuth client, however, one can 
 use the password grant without a Tapis client to first get a token.
 
 
