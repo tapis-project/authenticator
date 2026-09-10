@@ -55,6 +55,7 @@ services:
             # - ./config-local-uh.json:/home/tapis/config.json
             # - ./config-local-sdsc.json:/home/tapis/config.json
             - ./service.log:/home/tapis/service.log
+            - ./service/templates:/home/tapis/service/templates
         networks:
             - authenticator
         depends_on:
