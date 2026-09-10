@@ -331,10 +331,7 @@ class OAuth2ProviderExtension(object):
                 self.username = username
             elif self.ext_type == 'tms':
                 username = rsp.json().get('result').get('username')
-                # kprice 2026.9.10 
-                # the rsp from tms appends @globus_idp twice, so we strip it then add it back
-                # I really hate it but we have to change tms to fix it 
-                self.username = username.split('@')[0] + '@globus_idp'
+                self.username = username
             if idp_id:
                 self.username = f"{self.username}@{idp_id}"
             logger.debug(f"Successfully determined user's identity: {self.username}")
