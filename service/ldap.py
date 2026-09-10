@@ -4,6 +4,7 @@ import json
 
 from service import tenants, MIGRATIONS_RUNNING
 from service.errors import InvalidPasswordError, InvalidTenantUserError
+from service.login_messages import INVALID_USERNAME_PASSWORD_MESSAGE
 from service.models import LdapOU, LdapUser, tenant_configs_cache
 
 from tapisservice.config import conf
@@ -493,7 +494,7 @@ def check_username_password(tenant_id, username, password):
         get_tenant_ldap_connection(tenant_id, bind_dn=bind_dn, bind_password=password)
     except LDAPBindError as e:
         logger.debug(f"got exception checking password: {e}; type(e): {type(e)}")
-        raise InvalidPasswordError("Invalid username/password combination.")
+        raise InvalidPasswordError(INVALID_USERNAME_PASSWORD_MESSAGE)
     # the bind above just checks that the username/password combination are in the underlying ldap; it does
     # not check that the user is in the user search filter for the tenant. for simplicty, we check that here
     try:
