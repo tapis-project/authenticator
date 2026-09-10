@@ -4,14 +4,7 @@
 <main class="s-form-page">
   <form action="" method="post" id="auth-form" class="s-form s-form--login">
     <h1>
-      <figure>
-      {% with tenant_id=tenant_id %}
-        {% include "./branding.html" %}
-      {% endwith %}
-      {% with tenant_id="tacc" %}
-        {% include "./branding.html" %}
-      {% endwith %}
-      </figure>
+      {% include "./content_figure.html" %}
       <span>Connect to Tapis</span>
     </h1>
     <p>The <var>{{ client_display_name }}</var> wants to use <a href="https://tapis-project.org/" target="_blank">Tapis</a> (TACC APIs) service to grant actions on behalf of <var>{{ username }}</var>.</p>
@@ -50,6 +43,7 @@
       </label>
     </div>
   </form>
+  {% include "./content_footer.html" %}
 </main>
 {% endblock %}
 
