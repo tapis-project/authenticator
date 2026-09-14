@@ -12,19 +12,25 @@ logger = get_logger(__name__)
 
 def needs_mfa(tenant_id, mfa_timestamp=None):
     if conf.turn_off_mfa:
+        logger.debug(f"MFA turned off; skipping MFA for tenant_id: {tenant_id}")
         return False
     tenant_config = tenant_configs_cache.get_config(tenant_id)
 
     try:
         mfa_config = json.loads(tenant_config.mfa_config)
         expired = check_mfa_expired(mfa_config, mfa_timestamp)
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Error loading mfa_config for tenant_id: {tenant_id}; e: {e}")
         return False
 
     # mfa_config is a JSON object; if the tenant is not configured for MFA, then
     # the mfa_config object will be an empty dict (i.e., {})
     if mfa_config and not expired:
+        logger.debug(f"MFA required for tenant_id: {tenant_id}")
         return True
+    logger.debug(
+        f"MFA not required for tenant_id: {tenant_id}; configured: {bool(mfa_config)}; expired: {expired}"
+    )
     return False
 
 
@@ -55,7 +61,6 @@ def check_sms(tenant_id, username):
             if config:
                 jwt = get_privacy_idea_jwt(config)
                 headers = {"Authorization": jwt}
-                # logger.debug(headers)
                 data = {"serial": username}
                 res = requests.get(
                     f"{config['privacy_idea_url']}/token?serial={username}",
@@ -63,10 +68,9 @@ def check_sms(tenant_id, username):
                     data=data,
                 )
                 result = res.json()["result"]
-                logger.debug(
-                    f"Serial request from Privacy Idea for {username}: {result}"
-                )
-                return res.json()["result"]["value"]["tokens"][0]["tokentype"] == "sms"
+                is_sms = result["value"]["tokens"][0]["tokentype"] == "sms"
+                logger.debug(f"SMS token check for {username}: is_sms={is_sms}")
+                return is_sms
     except Exception as e:
         logger.debug(f"Error checking SMS for {username}: {e}")
 
@@ -84,35 +88,41 @@ def send_sms(tenant_id, username):
             if config:
                 jwt = get_privacy_idea_jwt(config)
                 headers = {"Authorization": jwt}
-                logger.debug(headers)
                 data = {"serial": username}
                 res = requests.post(
                     f"{config['privacy_idea_url']}/validate/triggerchallenge",
                     headers=headers,
                     data=data,
                 )
-                return res.status_code == 200
+                sent = res.status_code == 200
+                logger.debug(f"SMS trigger for {username}: status_code={res.status_code}")
+                return sent
     except Exception as e:
         logger.debug(f"Error sending SMS to {username}: {e}")
 
 
 def call_mfa(token, tenant_id, username):
+    logger.debug(f"call_mfa: verifying MFA token for user: {username}; tenant_id: {tenant_id}")
     tenant_config = tenant_configs_cache.get_config(tenant_id)
 
     try:
         mfa_config = json.loads(tenant_config.mfa_config)
     except Exception as e:
+        logger.debug(f"Error loading mfa_config for tenant_id: {tenant_id}; e: {e}")
         return e
 
     if not mfa_config:
+        logger.debug(f"No mfa_config found for tenant_id: {tenant_id}")
         return ""
 
     if "tacc" in mfa_config:
         config = get_config_data(mfa_config)
         jwt = get_privacy_idea_jwt(config)
-        return verify_mfa_token(
+        valid = verify_mfa_token(
             config["privacy_idea_url"], jwt, token, username, config["realm"]
         )
+        logger.debug(f"call_mfa: verification result for user: {username}: {bool(valid)}")
+        return valid
 
 
 def get_config_data(config):
@@ -190,10 +200,15 @@ def check_and_redirect_mfa(
     if mfa_config:
         if session.get("mfa_required"):
             if check_mfa_expired(mfa_config, session.get("mfa_timestamp", None)):
+                logger.debug(
+                    f"MFA session expired for user: {session.get('username')}; re-validation required"
+                )
                 session["mfa_validated"] = False
 
             if not session.get("mfa_validated"):
-                logger.debug("Authorize Resource: Redirecting to MFA")
+                logger.info(
+                    f"Authorize Resource: Redirecting user: {session.get('username')} to MFA"
+                )
 
                 return redirect(
                     url_for(

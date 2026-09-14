@@ -14,9 +14,11 @@ repository and follow the steps in the subsequent section.
 ### Start the Server Locally
 First, make sure the following passwords are set correctly.
 
-1. Within ``config-local.json``, update the ``service_password`` to match the authenticator's service_password stored in the SK
+1. Within ``config-local.json``\*, update the ``service_password`` to match the authenticator's service_password stored in the SK
    in develop.
 2. Within ``docker-compose.yml``, update the ``LDAP_ROOTPASS`` to match the ``password`` key in the secret ``ldap.tapis-dev`` stored in SK.
+
+<sup>\* If local server is [on macOS, set `populate_dev_ldap: false`](https://github.com/tapis-project/authenticator/issues/37#issuecomment-4792714305). Caveat: Test accounts will not be provisioned.</sup>
 
 #### Working With Secrets in the Tapis Security Kernel (SK) ####
 We are now storing LDAP secrets within the Tapis Security Kernel (SK). This is the official Tapis service for
