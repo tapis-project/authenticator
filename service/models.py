@@ -23,6 +23,7 @@ logger = get_logger(__name__)
 from service import tenants
 
 app = Flask(__name__)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 # set the session expiry to a low level to force logins
 app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(minutes=15)
 
