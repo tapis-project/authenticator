@@ -329,6 +329,9 @@ class OAuth2ProviderExtension(object):
             if idp_id:
                 self.username = f"{self.username}@{idp_id}"
             return self.username
+        elif self.ext_type == 'nih_ras':
+            pass
+        # TODO: find the NIH 'userinfo' endpoint and call it here.
         # elif self.ext_type == 'google':
         #     ...
         else:
