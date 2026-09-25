@@ -14,7 +14,6 @@ from flask import (
     make_response,
     send_from_directory,
     session,
-    url_for,
     jsonify,
 )
 from flask_restful import Resource
@@ -34,7 +33,11 @@ from tapisservice.auth import validate_token, insecure_decode_jwt_to_claims
 from service import t
 from service.errors import InvalidPasswordError
 from service.login_messages import INVALID_USERNAME_PASSWORD_MESSAGE
-from service.helpers import handle_response_type, generate_authorization_code
+from service.helpers import (
+    handle_response_type,
+    generate_authorization_code,
+    redirect_to_route,
+)
 from service.session import logout, clear_orig_client_data, logout_from_webapp
 from service.models import (
     db,
@@ -718,7 +721,7 @@ class SetTenantResource(Resource):
         client_state = request.form.get("client_state")
         session["tenant_id"] = tenant_id
         tokenapp_client = get_tokenapp_client()
-        return redirect(url_for("webapptokenandredirect"))
+        return redirect_to_route("webapptokenandredirect")
         # return redirect(url_for('loginresource',
         #                         client_id=tokenapp_client['client_id'],
         #                         redirect_uri=tokenapp_client['callback_url'],
@@ -743,7 +746,7 @@ class SetIdentityProvider(Resource):
             logger.debug(
                 f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}"
             )
-            return redirect(url_for("settenantresource"))
+            return redirect_to_route("settenantresource")
         is_local_development = "localhost" in request.base_url
         # look up the oa2ext configuration for the tenant
         oa2ext = OAuth2ProviderExtension(
@@ -763,7 +766,7 @@ class SetIdentityProvider(Resource):
         idp_id = request.form.get("idp_id")
         logger.debug(f"setting session idp_id to: {idp_id}")
         session["idp_id"] = idp_id
-        return redirect(url_for("authorizeresource"))
+        return redirect_to_route("authorizeresource")
 
 
 class LoginResource(Resource):
@@ -786,14 +789,12 @@ class LoginResource(Resource):
             logger.info(
                 f"did not find tenant_id in session; issuing redirect to SetTenantResource. client_id: {client_id}"
             )
-            return redirect(
-                url_for(
-                    "settenantresource",
-                    client_id=client_id,
-                    redirect_uri=client_redirect_uri,
-                    state=client_state,
-                    response_type="code",
-                )
+            return redirect_to_route(
+                "settenantresource",
+                client_id=client_id,
+                redirect_uri=client_redirect_uri,
+                state=client_state,
+                response_type="code",
             )
         logger.debug(f"resolved tenant_id: {tenant_id}; rendering login page")
         headers = {"Content-Type": "text/html"}
@@ -918,15 +919,13 @@ class LoginResource(Resource):
             f"LoginResource redirecting user: {username} to {redirect_url}; "
             f"response_type: {response_type}"
         )
-        return redirect(
-            url_for(
-                redirect_url,
-                client_id=client_id,
-                redirect_uri=client_redirect_uri,
-                state=client_state,
-                client_display_name=client_display_name,
-                response_type=response_type,
-            )
+        return redirect_to_route(
+            redirect_url,
+            client_id=client_id,
+            redirect_uri=client_redirect_uri,
+            state=client_state,
+            client_display_name=client_display_name,
+            response_type=response_type,
         )
 
 
@@ -945,14 +944,12 @@ class MFAResource(Resource):
             logger.info(
                 f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}"
             )
-            return redirect(
-                url_for(
-                    "loginresource",
-                    client_id=client_id,
-                    redirect_uri=client_redirect_uri,
-                    state=client_state,
-                    response_type=response_type,
-                )
+            return redirect_to_route(
+                "loginresource",
+                client_id=client_id,
+                redirect_uri=client_redirect_uri,
+                state=client_state,
+                response_type=response_type,
             )
         display_name = ""
         try:
@@ -994,14 +991,12 @@ class MFAResource(Resource):
         if action == "logout":
             logger.debug(f"Logging out user: {session.get('username')} from MFAResource")
             logout()
-            return redirect(
-                url_for(
-                    "loginresource",
-                    client_id=client_id,
-                    redirect_uri=client_redirect_uri,
-                    state=client_state,
-                    response_type=response_type,
-                )
+            return redirect_to_route(
+                "loginresource",
+                client_id=client_id,
+                redirect_uri=client_redirect_uri,
+                state=client_state,
+                response_type=response_type,
             )
 
         tenant_id = g.request_tenant_id
@@ -1012,14 +1007,12 @@ class MFAResource(Resource):
             logger.info(
                 f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}"
             )
-            return redirect(
-                url_for(
-                    "loginresource",
-                    client_id=client_id,
-                    redirect_uri=client_redirect_uri,
-                    state=client_state,
-                    response_type=response_type,
-                )
+            return redirect_to_route(
+                "loginresource",
+                client_id=client_id,
+                redirect_uri=client_redirect_uri,
+                state=client_state,
+                response_type=response_type,
             )
         mfa_token_name = request.form.get("mfa_token_name")
         mfa_token = request.form.get(mfa_token_name)
@@ -1055,17 +1048,15 @@ class MFAResource(Resource):
                 f"MFAResource redirecting username: {username} to {redirect_url}; "
                 f"response_type: {response_type}"
             )
-            return redirect(
-                url_for(
-                    redirect_url,
-                    client_id=client_id,
-                    redirect_uri=client_redirect_uri,
-                    state=client_state,
-                    client_display_name=display_name,
-                    response_type=response_type,
-                    user_code=user_code,
-                    source=source,
-                )
+            return redirect_to_route(
+                redirect_url,
+                client_id=client_id,
+                redirect_uri=client_redirect_uri,
+                state=client_state,
+                client_display_name=display_name,
+                response_type=response_type,
+                user_code=user_code,
+                source=source,
             )
         else:
             logger.info(
@@ -1114,12 +1105,12 @@ class DeviceFlowResource(Resource):
             logger.debug(
                 f"did not find tenant_id in session; issuing redirect to AuthorizeResource. session: {session}"
             )
-            return redirect(url_for("authorizeresource", client_id=client_id))
+            return redirect_to_route("authorizeresource", client_id=client_id)
         if "username" not in session:
             logger.debug(
                 f"username not found in session: {session}; issuing redirect to authorize"
             )
-            return redirect(url_for("authorizeresource", client_id=client_id))
+            return redirect_to_route("authorizeresource", client_id=client_id)
         context = {
             "error": "",
             "tenant_id": tenant_id,
@@ -1140,12 +1131,12 @@ class DeviceFlowResource(Resource):
             logger.debug(
                 f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}"
             )
-            return redirect(url_for("loginresource"), 302, headers)
+            return redirect_to_route("loginresource", status_code=302, headers=headers)
         if "username" not in session:
             logger.debug(
                 f"did not find username in session; issuing redirect to LoginResource. session: {session}"
             )
-            return redirect(url_for("loginresource"), 302, headers)
+            return redirect_to_route("loginresource", status_code=302, headers=headers)
 
         user_code = request.form.get("user_code")
         device_code = DeviceCode.query.filter_by(
@@ -1176,16 +1167,14 @@ class DeviceFlowResource(Resource):
                     raise errors.ResourceError(
                         "Unable to update device, cannot continue device flow"
                     )
-                return redirect(
-                    url_for(
-                        "authorizeresource",
-                        client_id=client.client_id,
-                        redirect_uri=None,
-                        state=None,
-                        client_display_name=client.display_name,
-                        response_type="device_code",
-                        user_code=user_code,
-                    )
+                return redirect_to_route(
+                    "authorizeresource",
+                    client_id=client.client_id,
+                    redirect_uri=None,
+                    state=None,
+                    client_display_name=client.display_name,
+                    response_type="device_code",
+                    user_code=user_code,
                 )
             else:
                 response = "Code not eligible to be entered"
@@ -1375,7 +1364,7 @@ class AuthorizeResource(Resource):
                     idp_id = session.get("idp_id")
                     if not idp_id:
                         # user has not selected an idp yet, so redirect them to the idp selection page:
-                        return redirect(url_for("setidentityprovider"))
+                        return redirect_to_route("setidentityprovider")
                     # User has selected an idp, so we need to construct a new oa2ext object that points to
                     # the selected idp extension.
                     oa2ext = OAuth2ProviderExtension(
@@ -1402,14 +1391,12 @@ class AuthorizeResource(Resource):
                     logger.debug(f"final redirect URL: {url}")
                     return redirect(url)
             logger.debug("username not in session; issuing redirect to login.")
-            return redirect(
-                url_for(
-                    "loginresource",
-                    client_id=client_id,
-                    redirect_uri=client_redirect_uri,
-                    state=client_state,
-                    response_type=response_type,
-                )
+            return redirect_to_route(
+                "loginresource",
+                client_id=client_id,
+                redirect_uri=client_redirect_uri,
+                state=client_state,
+                response_type=response_type,
             )
         username = session["username"]
         tenant_id = g.request_tenant_id
@@ -1712,15 +1699,13 @@ class OAuth2ProviderExtCallback(Resource):
         client_id, client_redirect_uri, client_state, client, response_type = (
             check_client(use_session=True)
         )
-        return redirect(
-            url_for(
-                "authorizeresource",
-                client_id=client_id,
-                redirect_uri=client_redirect_uri,
-                state=client_state,
-                client_display_name=client.display_name,
-                response_type="code",
-            )
+        return redirect_to_route(
+            "authorizeresource",
+            client_id=client_id,
+            redirect_uri=client_redirect_uri,
+            state=client_state,
+            client_display_name=client.display_name,
+            response_type="code",
         )
 
 
@@ -2415,15 +2400,13 @@ class WebappTokenAndRedirect(Resource):
                     client_redirect_uri = tokenapp_client["callback_url"]
                     state = secrets.token_hex(24)
                     session["state"] = state
-                    return redirect(
-                        url_for(
-                            "mfaresource",
-                            client_id=client_id,
-                            redirect_uri=client_redirect_uri,
-                            state=state,
-                            response_type="code",
-                            source="webapp",
-                        )
+                    return redirect_to_route(
+                        "mfaresource",
+                        client_id=client_id,
+                        redirect_uri=client_redirect_uri,
+                        state=state,
+                        response_type="code",
+                        source="webapp",
                     )
                 return make_response(
                     render_template("token-display.html", **context), 200, headers
@@ -2555,7 +2538,7 @@ class WebappTokenGen(Resource):
             )
         session["access_token"] = token
         #  Redirect to oauth2/webapp/token-display
-        return redirect(url_for("webapptokenandredirect"))
+        return redirect_to_route("webapptokenandredirect")
 
 
 class WebappLogout(Resource):
@@ -2625,7 +2608,7 @@ class LogoutResource(Resource):
                 headers,
             )
         # if they submitted the logout form but did not check the box then just return them to the logout form -
-        return redirect(url_for("webapptokenandredirect"))
+        return redirect_to_route("webapptokenandredirect")
 
 
 class StaticFilesResource(Resource):

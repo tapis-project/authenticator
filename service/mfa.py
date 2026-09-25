@@ -195,7 +195,8 @@ def check_and_redirect_mfa(
 
     :return: A redirect response if MFA is required, otherwise None.
     """
-    from flask import session, redirect, url_for
+    from flask import session
+    from service.helpers import redirect_to_route
 
     if mfa_config:
         if session.get("mfa_required"):
@@ -210,16 +211,14 @@ def check_and_redirect_mfa(
                     f"Authorize Resource: Redirecting user: {session.get('username')} to MFA"
                 )
 
-                return redirect(
-                    url_for(
-                        "mfaresource",
-                        client_id=client_id,
-                        redirect_uri=client_redirect_uri,
-                        state=client_state,
-                        response_type=response_type,
-                        user_code=user_code,
-                        source="authorize",
-                    )
+                return redirect_to_route(
+                    "mfaresource",
+                    client_id=client_id,
+                    redirect_uri=client_redirect_uri,
+                    state=client_state,
+                    response_type=response_type,
+                    user_code=user_code,
+                    source="authorize",
                 )
 
     return None
