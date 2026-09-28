@@ -7,7 +7,12 @@
       {% include "./content_figure.html" %}
       <span>Connect to Tapis</span>
     </h1>
+    {% if client_display_name == "TACC User Portal" %}
+    <p><strong>Continue to the <var>{{ client_display_name }}</var></strong></p>
+    <p>Allow the <var>{{ client_display_name }}</var> to save your sign-in session so you can complete multifactor authentication and access your account.</p>
+    {% else %}
     <p>The <var>{{ client_display_name }}</var> wants to use <a href="https://tapis-project.org/" target="_blank">Tapis</a> (TACC APIs) service to grant actions on behalf of <var>{{ username }}</var>.</p>
+    {% endif %}
 
     {% if error %}
     <ul>
