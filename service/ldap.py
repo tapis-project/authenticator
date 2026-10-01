@@ -404,6 +404,8 @@ def get_tenant_user(tenant_id, username):
         msg = f"Error retrieving user; debug information: {conn.result}"
         logger.error(msg)
         raise DAOError(msg)
+    # save the info we just got so it doesn't get cleared from conn when we use it again later
+    userinfo = conn.entries
     result = []
     logger.debug(f"conn.entries: {conn.entries}")
     # Now we need to also check if the user is allowed in the tenant
@@ -437,8 +439,10 @@ def get_tenant_user(tenant_id, username):
         result = []
         logger.debug(conn.entries)
 
+    logger.debug(f'userinfo: {userinfo}')
     user = LdapUser.from_ldap3_entry(
-        tenant_id, conn.entries[0].entry_attributes_as_dict
+        # tenant_id, conn.entries[0].entry_attributes_as_dict
+        tenant_id, userinfo[0].entry_attributes_as_dict
     )
     return user
 
