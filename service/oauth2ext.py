@@ -136,12 +136,17 @@ class OAuth2ProviderExtension(object):
             self.oauth2_token_url = self.custom_idp_config_dict.get('tms').get('oauth2_token_url')
             # URL to look up user info from token
             self.user_info_url = self.custom_idp_config_dict.get('tms').get('user_info_url')
-            logger.debug("properties set of tms: ")
-            logger.debug(f"client_id: {self.client_id}")
-            logger.debug(f"client_key: {self.client_key}")
-            logger.debug(f"identity_redirect_url: {self.identity_redirect_url}")
-            logger.debug(f"oauth2_token_url: {self.oauth2_token_url}")
-            logger.debug(f"user_info_url: {self.user_info_url}")
+            logger.debug("properties set of tms")
+        elif self.ext_type == 'vdjserver':
+            self.client_id = self.custom_idp_config_dict.get('vdjserver').get('client_id')
+            self.client_key = self.custom_idp_config_dict.get('vdjserver').get('client_secret')
+            # initial redirect URL; used to start the oauth flow and log in the user
+            self.identity_redirect_url = self.custom_idp_config_dict.get('vdjserver').get('identity_redirect_url')
+            # URL to use to exchange the code for an qccess token
+            self.oauth2_token_url = self.custom_idp_config_dict.get('vdjserver').get('oauth2_token_url')
+            # URL to look up user info from token
+            self.user_info_url = self.custom_idp_config_dict.get('vdjserver').get('user_info_url')
+            logger.debug("properties set of vdjserver")
         elif self.ext_type == 'ldap':
             # NOTE: for the "ldap" type, we don't actually set any of the custom attributes, 
             # but we still need a check here to not fall into the ERROR else below.
@@ -359,6 +364,8 @@ class OAuth2ProviderExtension(object):
             if idp_id:
                 self.username = f"{self.username}@{idp_id}"
             return self.username
+        elif self.ext_type == 'vdjserver':
+            logger.debug(f'vdjserver jwt:: {self.access_token}')
         # elif self.ext_type == 'google':
         #     ...
         else:
