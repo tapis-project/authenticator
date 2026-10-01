@@ -147,6 +147,15 @@ class OAuth2ProviderExtension(object):
             # URL to look up user info from token
             self.user_info_url = self.custom_idp_config_dict.get('vdjserver').get('user_info_url')
             logger.debug("properties set of vdjserver")
+        elif self.ext_type == 'nih_ras':
+            self.client_id = self.custom_idp_config_dict.get('nih_ras').get('client_id')
+            self.client_key = self.custom_idp_config_dict.get('nih_ras').get('client_secret')
+            # initial redirect URL; used to start the oauth flow and log in the user
+            self.identity_redirect_url = self.custom_idp_config_dict.get('nih_ras').get('identity_redirect_url')
+            # URL to use to exchange the code for an qccess token
+            self.oauth2_token_url = self.custom_idp_config_dict.get('nih_ras').get('oauth2_token_url')
+            # URL to look up user info from token
+            self.user_info_url = self.custom_idp_config_dict.get('nih_ras').get('user_info_url')
         elif self.ext_type == 'ldap':
             # NOTE: for the "ldap" type, we don't actually set any of the custom attributes, 
             # but we still need a check here to not fall into the ERROR else below.
@@ -366,6 +375,9 @@ class OAuth2ProviderExtension(object):
             return self.username
         elif self.ext_type == 'vdjserver':
             logger.debug(f'vdjserver jwt:: {self.access_token}')
+        elif self.ext_type == 'nih_ras':
+            pass
+        # TODO: find the NIH 'userinfo' endpoint and call it here.
         # elif self.ext_type == 'google':
         #     ...
         else:
