@@ -4,7 +4,9 @@
       {% include "./branding.html" %}
     {% endwith %}
   {% endif %}
+  {% if tenant_id != "tacc" %}
   {% with tenant_id="tacc" %}
     {% include "./branding.html" %}
   {% endwith %}
+  {% endif %}
 </figure>

@@ -163,7 +163,7 @@ def get_privacy_idea_jwt(config):
 def verify_mfa_token(url, jwt, token, username, realm):
     url = f"{url}/validate/check"
     data = {"user": username, "realm": realm, "pass": token}
-    headers = {"x-tapis-token": jwt}
+    headers = {"User-Agent": "TapisAuth/1.0", "x-tapis-token": jwt}
     try:
         response = requests.post(url, data=data, headers=headers)
         response.raise_for_status()
