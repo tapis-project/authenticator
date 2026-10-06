@@ -3,11 +3,20 @@
 {% block content %}
 <main class="s-form-page">
   <form action="" method="post" id="auth-form" class="s-form s-form--login">
+    {% set consent_mode = "integrated" if client_display_name == "TACC User Portal" else "delegated" %}
     <h1>
       {% include "./content_figure.html" %}
+      {% if consent_mode == "integrated" %}
+      <span>Continue to the <var>{{ client_display_name }}</var></span>
+      {% elif consent_mode == "delegated" %}
       <span>Connect to Tapis</span>
+      {% endif %}
     </h1>
+    {% if consent_mode == "integrated" %}
+    <p>Allow the <var>{{ client_display_name }}</var> to save your sign-in session so you can complete multifactor authentication and access your account.</p>
+    {% elif consent_mode == "delegated" %}
     <p>The <var>{{ client_display_name }}</var> wants to use <a href="https://tapis-project.org/" target="_blank">Tapis</a> (TACC APIs) service to grant actions on behalf of <var>{{ username }}</var>.</p>
+    {% endif %}
 
     {% if error %}
     <ul>
