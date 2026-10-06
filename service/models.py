@@ -247,6 +247,8 @@ class TenantConfigsCache(object):
             return 'ldap'
         if 'globus' in custom_idp_config.keys():
             return 'globus'
+        if 'tms' in custom_idp_config.keys():
+            return 'tms'
         if 'nih_ras' in custom_idp_config.keys():
             return 'nih_ras'
         if 'vdjserver' in custom_idp_config.keys():
