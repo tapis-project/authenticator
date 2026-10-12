@@ -205,9 +205,9 @@ class ClientResource(Resource):
             print(f"openapi_core validation failed. errors: {result.errors}")
             raise errors.ResourceError(msg=f"Invalid PUT data: {result.errors}")
         validated_body = result.body
-        new_callback_urls = getattr(validated_body, "callback_url", client.callback_urls)
+        new_callback_url = getattr(validated_body, "callback_url", client.callback_url)
         new_display_name = getattr(validated_body, "display_name", client.display_name)
-        client.callback_urls = new_callback_urls
+        client.callback_url = new_callback_url
         client.display_name = new_display_name
         db.session.commit()
         logger.debug(f"client updated; client: {client}")
@@ -681,7 +681,7 @@ def check_client(use_session=False):
     if not client_redirect_uri:
         logout()
         raise errors.ResourceError("Required query parameter redirect_uri missing.")
-    if not client_redirect_uri in (client.callback_urls or []):
+    if not client.callback_url == client_redirect_uri:
         logout()
         # cgarcia - I'm not sure if the uris should be exact or if only domain should match. But I'll leave this as is.
         logger.debug(
@@ -1439,14 +1439,13 @@ class AuthorizeResource(Resource):
 
         auto_approve = Users.query.filter_by(username=username, client_id=client_id).first()
         if auto_approve is not None:
-            if auto_approve.always_allow:
-                auto_approve = True
+            auto_approve = True
 
         # Add check here for auto approve
         logger.debug(f'Checking for auto approve ... ')
         if auto_approve and not is_device_flow:
             logger.debug(f'Found. Skipping authoriziation page.')
-            generate_authorization_code(tenant_id, username, client_id, client, client_redirect_uri, nonce)
+            generate_authorization_code(tenant_id, username, client_id, client, nonce)
             auto_redirect = handle_response_type(
                 response_type,
                 allowable_grant_types,
@@ -1454,7 +1453,6 @@ class AuthorizeResource(Resource):
                 username,
                 client_id,
                 client,
-                client_redirect_uri,
                 client_state,
                 nonce=nonce
             )
@@ -1502,7 +1500,6 @@ class AuthorizeResource(Resource):
         state = request.form.get("client_state")
         client_response_type = request.form.get("client_response_type")
         client_id = request.form.get("client_id", None)
-        client_redirect_uri = request.form.get("client_redirect_uri")
         if not client_id:
             logger.debug("client_id missing from form.")
             raise errors.ResourceError("client_id missing.")
@@ -1532,7 +1529,7 @@ class AuthorizeResource(Resource):
         user_code = request.args.get("user_code", None)
 
         mfa_response = check_and_redirect_mfa(
-            mfa_config, client_id, client_redirect_uri, state, client_response_type, user_code
+            mfa_config, client_id, client.callback_url, state, client_response_type, user_code
         )
 
         if mfa_response:
@@ -1649,7 +1646,6 @@ class AuthorizeResource(Resource):
                 username,
                 client_id,
                 client,
-                client_redirect_uri,
                 state,
                 nonce=nonce
             )
@@ -1873,7 +1869,7 @@ def _handle_tokens_request(request, oidc=False):
             redirect_uri = data.get("redirect_uri")
             if not redirect_uri:
                 raise errors.ResourceError("Required redirect_uri parameter missing.")
-            if not redirect_uri in (client.callback_urls or []):
+            if not redirect_uri == client.callback_url:
                 raise errors.ResourceError(
                     "Invalid redirect_uri parameter: does not match "
                     "callback URL registered with client."
