@@ -488,8 +488,17 @@ def check_username_password(tenant_id, username, password):
         raise InvalidPasswordError(
             "Invalid username. Spaces are not allowed in usernames."
         )
+
+    if "@" in username:
+            logger.debug(f"At symbol contained in username: {username}")
+            raise InvalidPasswordError(
+                "Invalid username. @ symbols are not allowed in usernames."
+            )
+
     bind_dn = get_dn(tenant_id, username)
     logger.debug(f"got bind_dn: {bind_dn}")
+    # TODO -- add separate check for username?
+    #         maybe only when it fails?
     try:
         get_tenant_ldap_connection(tenant_id, bind_dn=bind_dn, bind_password=password)
     except LDAPBindError as e:
