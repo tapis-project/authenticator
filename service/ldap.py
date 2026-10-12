@@ -490,10 +490,10 @@ def check_username_password(tenant_id, username, password):
         )
 
     if "@" in username:
-            logger.debug(f"At symbol contained in username: {username}")
-            raise InvalidPasswordError(
-                "Invalid username. @ symbols are not allowed in usernames."
-            )
+        logger.debug(f"At symbol contained in username: {username}")
+        raise InvalidPasswordError(
+            "Invalid username. @ symbols are not allowed in usernames."
+        )
 
     bind_dn = get_dn(tenant_id, username)
     logger.debug(f"got bind_dn: {bind_dn}")
