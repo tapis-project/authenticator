@@ -855,11 +855,12 @@ class LoginResource(Resource):
             check_username_password(
                 tenant_id=tenant_id, username=username, password=password
             )
-        except InvalidPasswordError:
+        except InvalidPasswordError as e:
+            error = e.msg or INVALID_USERNAME_PASSWORD_MESSAGE
             logger.debug(
-                f"Invalid username/password for user: {username}; tenant_id: {tenant_id}"
+                f"Invalid username/password for user: {username}; tenant_id: {tenant_id}; e: {error}"
             )
-            context["error"] = INVALID_USERNAME_PASSWORD_MESSAGE
+            context["error"] = error
             return make_response(render_template("login.html", **context), 200, headers)
         logger.debug(
             f"Username/password accepted for user: {username}; tenant_id: {tenant_id}"
@@ -1859,9 +1860,10 @@ def _handle_tokens_request(request, oidc=False):
                 )
             try:
                 check_username_password(tenant_id, username, password)
-            except InvalidPasswordError:
-                logger.debug(INVALID_USERNAME_PASSWORD_MESSAGE)
-                raise errors.ResourceError(INVALID_USERNAME_PASSWORD_MESSAGE)
+            except InvalidPasswordError as e:
+                error = e.msg or INVALID_USERNAME_PASSWORD_MESSAGE
+                logger.debug(error)
+                raise errors.ResourceError(error)
         elif grant_type == "authorization_code":
             # check the redirect uri -
             redirect_uri = data.get("redirect_uri")

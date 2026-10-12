@@ -494,9 +494,9 @@ def check_username_password(tenant_id, username, password):
         )
 
     if "@" in username:
-        logger.debug(f"At symbol contained in username: {username}")
+        logger.debug(f"@ symbol contained in username: {username}")
         raise InvalidPasswordError(
-            "Invalid username. @ symbols are not allowed in usernames."
+            "Please use your TACC ID to log in, which you can find at https://accounts.tacc.utexas.edu. Please do not log in with your email address."
         )
 
     bind_dn = get_dn(tenant_id, username)
