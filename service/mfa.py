@@ -164,10 +164,12 @@ def verify_mfa_token(url, jwt, token, username, realm):
     url = f"{url}/validate/check"
     data = {"user": username, "realm": realm, "pass": token}
     headers = {"User-Agent": "TapisAuth/1.0", "x-tapis-token": jwt}
+    # TODO -- Add a more robust wait in case PIDEA is having trouble
     try:
-        response = requests.post(url, data=data, headers=headers)
+        response = requests.post(url, data=data, headers=headers, timeout=60)
         response.raise_for_status()
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Error verifying mfa token for user: {username}; err: {e}")
         return False
     valid = response.json()["result"]["value"]
     return valid

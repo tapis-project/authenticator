@@ -492,8 +492,17 @@ def check_username_password(tenant_id, username, password):
         raise InvalidPasswordError(
             "Invalid username. Spaces are not allowed in usernames."
         )
+
+    if "@" in username:
+        logger.debug(f"@ symbol contained in username: {username}")
+        raise InvalidPasswordError(
+            "Please use your TACC ID to log in, which you can find at https://accounts.tacc.utexas.edu. Please do not log in with your email address."
+        )
+
     bind_dn = get_dn(tenant_id, username)
     logger.debug(f"got bind_dn: {bind_dn}")
+    # TODO -- add separate check for username?
+    #         maybe only when it fails?
     try:
         get_tenant_ldap_connection(tenant_id, bind_dn=bind_dn, bind_password=password)
     except LDAPBindError as e:
