@@ -27,14 +27,27 @@
 {% endblock %}
 
 {% block head_extra %}
+<script>
+  if (window.parent !== window) {
+    document.documentElement.classList.add('is-embedded');
+  }
+</script>
 <style>
   body {
     background-color: var(--global-color-primary--light);
 
     /* So body is as tall as page, thus sticky footer sticks to bottom of page */
     /* FAQ: Replaces base.html fixed footer because it has a disadvantage—
-          it covers the login form on screens shorter than the form */
+            it covers the login form on screens shorter than the form */
     min-height: 100vh;
+    /* Unless page is embedded, because it has no footer, so don't adjust height */
+    html.is-embedded & {
+      min-height: unset;
+    }
+  }
+  /* Do not show page footer when form is embedded */
+  html.is-embedded footer.s-footer {
+    display: none;
   }
 </style>
 <template id="loading-content">
@@ -68,6 +81,28 @@
         field.setAttribute('readonly', '');
       });
     });
+</script>
+<script type="module">
+  if (window.parent !== window) {
+    const redirectUri = document.querySelector('input[name="client_redirect_uri"]')?.value;
+    if (redirectUri) {
+      try {
+        const parentOrigin = new URL(redirectUri).origin;
+
+        function postIframeHeight() {
+          parent.postMessage(
+            { type: 'IFrameLoaded', height: document.documentElement.scrollHeight },
+            parentOrigin
+          );
+        }
+
+        postIframeHeight();
+        window.addEventListener('load', postIframeHeight);
+      } catch (e) {
+        /* invalid client_redirect_uri */
+      }
+    }
+  }
 </script>
 {% endblock %}
 
