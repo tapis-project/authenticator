@@ -4,14 +4,7 @@
 <main class="s-form-page">
     <form action="" method="post" class="s-form s-form--login">
       <h1>
-        <figure>
-        {% with tenant_id=tenant_id %}
-        {% include "./branding.html" %}
-        {% endwith %}
-        {% with tenant_id="tacc" %}
-        {% include "./branding.html" %}
-        {% endwith %}
-        </figure>
+        {% include "./content_figure.html" %}
         <span>Congrats! Device Code entered successfully. Please return to your application</span>
       </h1>
   

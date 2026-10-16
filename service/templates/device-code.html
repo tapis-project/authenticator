@@ -4,14 +4,7 @@
 <main class="s-form-page">
   <form action="" method="post" class="s-form s-form--login">
     <h1>
-      <figure>
-      {% with tenant_id=tenant_id %}
-      {% include "./branding.html" %}
-      {% endwith %}
-      {% with tenant_id="tacc" %}
-      {% include "./branding.html" %}
-      {% endwith %}
-      </figure>
+      {% include "./content_figure.html" %}
       <span>Enter User Code</span>
     </h1>
 
@@ -35,5 +28,6 @@
       <button type="submit">Submit</button>
     </footer>
   </form>
+  {% include "./content_footer.html" %}
 </main>
 {% endblock %}

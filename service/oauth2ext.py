@@ -127,6 +127,35 @@ class OAuth2ProviderExtension(object):
             self.oauth2_token_url = self.custom_idp_config_dict.get('globus').get('oauth2_token_url')
             # URL to look up user info from token
             self.user_info_url = self.custom_idp_config_dict.get('globus').get('user_info_url')
+        elif self.ext_type == 'tms':
+            self.client_id = self.custom_idp_config_dict.get('tms').get('client_id')
+            self.client_key = self.custom_idp_config_dict.get('tms').get('client_secret')
+            # initial redirect URL; used to start the oauth flow and log in the user
+            self.identity_redirect_url = self.custom_idp_config_dict.get('tms').get('identity_redirect_url')
+            # URL to use to exchange the code for an qccess token
+            self.oauth2_token_url = self.custom_idp_config_dict.get('tms').get('oauth2_token_url')
+            # URL to look up user info from token
+            self.user_info_url = self.custom_idp_config_dict.get('tms').get('user_info_url')
+            logger.debug("properties set of tms")
+        elif self.ext_type == 'vdjserver':
+            self.client_id = self.custom_idp_config_dict.get('vdjserver').get('client_id')
+            self.client_key = self.custom_idp_config_dict.get('vdjserver').get('client_secret')
+            # initial redirect URL; used to start the oauth flow and log in the user
+            self.identity_redirect_url = self.custom_idp_config_dict.get('vdjserver').get('identity_redirect_url')
+            # URL to use to exchange the code for an qccess token
+            self.oauth2_token_url = self.custom_idp_config_dict.get('vdjserver').get('oauth2_token_url')
+            # URL to look up user info from token
+            self.user_info_url = self.custom_idp_config_dict.get('vdjserver').get('user_info_url')
+            logger.debug("properties set of vdjserver")
+        elif self.ext_type == 'nih_ras':
+            self.client_id = self.custom_idp_config_dict.get('nih_ras').get('client_id')
+            self.client_key = self.custom_idp_config_dict.get('nih_ras').get('client_secret')
+            # initial redirect URL; used to start the oauth flow and log in the user
+            self.identity_redirect_url = self.custom_idp_config_dict.get('nih_ras').get('identity_redirect_url')
+            # URL to use to exchange the code for an qccess token
+            self.oauth2_token_url = self.custom_idp_config_dict.get('nih_ras').get('oauth2_token_url')
+            # URL to look up user info from token
+            self.user_info_url = self.custom_idp_config_dict.get('nih_ras').get('user_info_url')
         elif self.ext_type == 'ldap':
             # NOTE: for the "ldap" type, we don't actually set any of the custom attributes, 
             # but we still need a check here to not fall into the ERROR else below.
@@ -185,28 +214,47 @@ class OAuth2ProviderExtension(object):
             "code": self.authorization_code,
             "redirect_uri": self.callback_url
         }
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+        logger.debug(f'setting parameters for ext_type: {self.ext_type}')
         # keycloak and globus require the "grant_type" parameter
         if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
             body["grant_type"] = "authorization_code"
-        logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}")
+        if self.ext_type == 'tms':
+            body["grant_type"] = "authorization_code"
+            headers["Content-Type"] = "application/json"
+        # make sure the body is proper json
         try:
-            rsp = requests.post(self.oauth2_token_url, data=body, headers={'Accept': 'application/json'})
+            valid_body = json.dumps(body)
+            logger.debug(f'Body validated as json: {valid_body}')
         except Exception as e:
-            logger.error(f"Got exception from POST request to OAuth server attempting to exchange the"
-                         f"authorization code for a token. Debug data:"
-                         f"request body: {body}"
+            logger.error(f'Failed to validate request body as json. Debug data: {e}: body: {body}')
+
+        logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}; headers: {headers}")
+        try:
+            rsp = requests.post(self.oauth2_token_url, data=json.dumps(body), headers=headers)
+        except Exception as e:
+            logger.error(f"Got exception from POST request to OAuth server attempting to exchange the "
+                         f"authorization code for a token. Debug data: "
+                         f"request body: {body} "
+                         f"response: {rsp.text} "
                          f"exception: {e}")
             raise errors.ServiceConfigError("Error requesting access token. Contact server administrator.")
-        logger.debug(f"successfully made POST to token url {self.oauth2_token_url}; rsp: {rsp};"
+        logger.debug(f"successfully made POST to token url {self.oauth2_token_url}; rsp: {rsp}; "
                      f"rsp.content: {rsp.content}")
         # todo -- it is possible different provider servers will not pass JSON
         try:
-            self.access_token = rsp.json().get('access_token')
+            if self.ext_type == 'tms':
+                self.access_token = rsp.json().get('result').get('access_token').get('access_token')
+            else:
+                self.access_token = rsp.json().get('access_token')
         except Exception as e:
-            logger.error(f"Got exception trying to process response from POST request to exchange the"
-                         f"authorization code for a token. Debug data:"
-                         f"request body: {body};"
-                         f"response: {rsp}"
+            logger.error(f"Got exception trying to process response from POST request to exchange the "
+                         f"authorization code for a token. Debug data: "
+                         f"request body: {body}; "
+                         f"response: {rsp} "
                          f"exception: {e}")
             raise errors.ServiceConfigError("Error parsing access token. Contact server administrator.")
         logger.debug(f"successfully got access_token: {self.access_token}")
@@ -242,17 +290,19 @@ class OAuth2ProviderExtension(object):
         """
         logger.debug("top of get_user_from_token")
         # todo -- each OAuth2 provider will have a different mechanism for determining the user's identity
-        if self.ext_type == 'github' or self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
+        if self.ext_type == 'github' or self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus' or self.ext_type == 'tms':
             if self.ext_type == 'github':
                 user_info_url = 'https://api.github.com/user'
             if self.ext_type == 'tacc_keycloak':
                 user_info_url = 'https://identity.tacc.cloud/auth/realms/tapis/protocol/openid-connect/userinfo'
             if self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
                 user_info_url = self.user_info_url
+            if self.ext_type == 'tms':
+                user_info_url = self.user_info_url
             if self.ext_type == 'github':
                 headers = {'Authorization': f'token {self.access_token}',
                         'Accept': 'application/vnd.github.v3+json'}
-            if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
+            if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus' or self.ext_type == 'tms':
                 headers = {'Authorization': f'Bearer {self.access_token}',}
             try:
                 rsp = requests.get(user_info_url, headers=headers)
@@ -293,9 +343,12 @@ class OAuth2ProviderExtension(object):
                     raise errors.ServiceConfigError("Error determining user identity: username could not be determined. "
                                                     "Contact server administrator.")
                 self.username = username
-            logger.debug(f"Successfully determined user's identity: {self.username}")
+            elif self.ext_type == 'tms':
+                username = rsp.json().get('result').get('username')
+                self.username = username
             if idp_id:
                 self.username = f"{self.username}@{idp_id}"
+            logger.debug(f"Successfully determined user's identity: {self.username}")
             return self.username
 
         elif self.ext_type == 'cii':
@@ -320,6 +373,11 @@ class OAuth2ProviderExtension(object):
             if idp_id:
                 self.username = f"{self.username}@{idp_id}"
             return self.username
+        elif self.ext_type == 'vdjserver':
+            logger.debug(f'vdjserver jwt:: {self.access_token}')
+        elif self.ext_type == 'nih_ras':
+            pass
+        # TODO: find the NIH 'userinfo' endpoint and call it here.
         # elif self.ext_type == 'google':
         #     ...
         else:
