@@ -215,8 +215,7 @@ class OAuth2ProviderExtension(object):
             "redirect_uri": self.callback_url
         }
         headers = {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
+            "Accept": "application/json"
         }
         logger.debug(f'setting parameters for ext_type: {self.ext_type}')
         # keycloak and globus require the "grant_type" parameter
@@ -234,7 +233,12 @@ class OAuth2ProviderExtension(object):
 
         logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}; headers: {headers}")
         try:
-            rsp = requests.post(self.oauth2_token_url, data=json.dumps(body), headers=headers)
+            rsp = None
+            if self.ext_type == 'tms':
+                rsp = requests.post(self.oauth2_token_url, data=json.dumps(body), headers=headers)
+            else:
+                rsp = requests.post(self.oauth2_token_url, data=body, headers={'Accept': 'application/json'})
+            
         except Exception as e:
             logger.error(f"Got exception from POST request to OAuth server attempting to exchange the "
                          f"authorization code for a token. Debug data: "
