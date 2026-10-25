@@ -11,6 +11,7 @@ from tapisservice.config import conf as tapisconf
 from service.models import tenant_configs_cache, DeviceCode
 from service.api import app
 from service import models, mfa
+from service.login_messages import INVALID_USERNAME_PASSWORD_MESSAGE
 
 
 # These tests are intended to be run locally.
@@ -222,7 +223,7 @@ def check_device_code_table(
     """
     print("Checking device_codes table")
     retrieved = models.DeviceCode.query.filter_by(user_code=user_code).first()
-    print(f"DEBUG: got device code object:: {retrieved}")
+    print(f"DEBUG: got device code object:: {retrieved.serialize}")
     if negative:
         assert retrieved is None
         return
@@ -699,7 +700,7 @@ def test_password_grant_invalid_user_pass(client, init_db):
             content_type="application/json",
         )
         assert response.status_code == 400
-        assert "Invalid username/password combination." in response.json["message"]
+        assert INVALID_USERNAME_PASSWORD_MESSAGE in response.json["message"]
 
 
 def test_password_grant_invalid_uppercase_user(client, init_db):
@@ -721,7 +722,8 @@ def test_password_grant_invalid_uppercase_user(client, init_db):
             content_type="application/json",
         )
         assert response.status_code == 400
-        assert "Invalid username/password combination." in response.json["message"]
+        assert "Invalid username. Only lowercase letters are allowed." in response.json["message"]
+        # assert INVALID_USERNAME_PASSWORD_MESSAGE in response.json["message"]
 
 
 def test_password_grant_invalid_spaces_user(client, init_db):
@@ -743,7 +745,8 @@ def test_password_grant_invalid_spaces_user(client, init_db):
             content_type="application/json",
         )
         assert response.status_code == 400
-        assert "Invalid username/password combination." in response.json["message"]
+        assert "Invalid username. Spaces are not allowed in usernames." in response.json["message"]
+        # assert INVALID_USERNAME_PASSWORD_MESSAGE in response.json["message"]
 
 
 def test_password_grant_valid(client, init_db):
@@ -890,7 +893,7 @@ def test_password_grant_user_not_in_tenant(client, init_db):
         headers={"X-Tapis-Local-Tenant": 'tacc'} # TEST_USERNAME should never be in the tacc tenant
     )
     assert response.status_code == 400
-    assert f"Invalid username/password combination" in response.json["message"]
+    assert INVALID_USERNAME_PASSWORD_MESSAGE in response.json["message"]
 
 
 def test_password_grant_user_in_group(client, init_db):
@@ -1248,7 +1251,7 @@ def test_exchange_device_code(client):
             client_key=TEST_CLIENT_KEY,
             code=code,
             user_code=user_code,
-            status="Entered",
+            status="Authorized",
             verification_uri=verification_url,
             expiry_time=models.DeviceCode.compute_expiry(),
             access_token_ttl=models.DeviceCode.set_ttl(),
@@ -1268,7 +1271,7 @@ def test_exchange_device_code(client):
         raise Exception("Internal error saving device code. Please try again later.")
     # verify that it was added to the db correctly
     check_device_code_table(
-        TEST_CLIENT_ID, user_code, code, verification_url, "Entered"
+        TEST_CLIENT_ID, user_code, code, verification_url, "Authorized"
     )
 
     # call the tokens url with the device code

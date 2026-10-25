@@ -1,6 +1,21 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 26Q3
+### Breaking Changes:
+- None
+
+### New features:
+- Initial support for TMS as an auth provider
+- Initial support for NIH RAS as an auth provider
+- Initial support for VDJserver as an auth provider
+- Various logging updates
+
+### Bug fixes:
+- MFA calls to privacy idea should no longer time out
+- Fix various issues with login pages
+- Posix group is no longer shown as the username when a tenant has a posix group filter for logins
+
 ## 26Q2
 ### Breaking Changes:
 - None

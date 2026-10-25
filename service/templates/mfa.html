@@ -4,20 +4,13 @@
 <main class="s-form-page">
    <form action="" method="post" class="s-form s-form--login">
       <h1>
-         <figure>
-         {% with tenant_id=tenant_id %}
-         {% include "./branding.html" %}
-         {% endwith %}
-         {% with tenant_id="tacc" %}
-         {% include "./branding.html" %}
-         {% endwith %}
-         </figure>
+         {% include "./content_figure.html" %}
          <span>Enter MFA Token</span>
       </h1>
 
       <p>
-         Multi-Factor Authentication (MFA) is now required. <br /><small><a href="https://docs.tacc.utexas.edu/basics/mfa/" target="_blank">Set up MFA</a> via the <span>TACC&nbsp;User&nbsp;Portal</span>.</small>
-      <p>
+         Multi-Factor Authentication (MFA) is now required. <br /><span><a href="https://docs.tacc.utexas.edu/basics/mfa/" target="_blank">Set up MFA</a> via the TACC&nbsp;User&nbsp;Portal.</span><br /><small>If you reactivated your account you will need to set up MFA again.</small>
+      </p>
 
       {% if error %}
          <ul>
@@ -47,21 +40,20 @@
          <button type="submit" name="action" value="submit">Submit</button>
       </footer>
    </form>
+  {% include "./content_footer.html" %}
 </main>
 {% endblock %}
 
 {% block head_extra %}
 {{ super() }}
 <style>
-   /* To not let certain words break when paragraph is wrapped */
-   /* FAQ: This seemed more robust for other editors than `&nbsp;` */
-  .s-form > p :is(a, span) {
+   /* To not word-break hyperlinks */
+  .s-form > p a {
     white-space: nowrap;
   }
 
    /* To allow non-bold text in form descritpion */
-  .s-form > p small {
-    font-size: inherit;
+  .s-form > p :is(span, small) {
     font-weight: var(--regular);
   }
 </style>
