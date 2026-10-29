@@ -1,4 +1,4 @@
-from flask import g, session, redirect, render_template, make_response
+from flask import g, session, redirect, render_template, make_response, request, url_for
 from service.models import db, AuthorizationCode, tenant_configs_cache
 from service.session import clear_orig_client_data
 
@@ -10,6 +10,25 @@ logger = get_logger(__name__)
 
 
 DEFAULT_DEVICE_CODE_TOKEN_TTL = 30
+
+
+def oauth_redirect_url(endpoint, **values):
+    """
+    Build a redirect target for OAuth UI routes.
+
+    Behind a TLS-terminating proxy, Flask may see an http:// request while clients
+    use https://. Relative redirects then become http:// in the Location header.
+    """
+    if "localhost" in request.base_url:
+        return url_for(endpoint, **values)
+    return url_for(endpoint, _external=True, _scheme="https", **values)
+
+
+def redirect_to_route(endpoint, status_code=302, headers=None, **values):
+    location = oauth_redirect_url(endpoint, **values)
+    if headers is not None:
+        return redirect(location, status_code, headers)
+    return redirect(location, status_code)
 
 
 def generate_authorization_code(tenant_id, username, client_id, client, nonce=None):
