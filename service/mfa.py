@@ -6,6 +6,7 @@ from tapisservice.config import conf
 from tapisservice.logs import get_logger
 
 from service.models import tenant_configs_cache
+from service.session import get_state_tag
 
 logger = get_logger(__name__)
 
@@ -193,7 +194,7 @@ def check_and_redirect_mfa(
                 session["mfa_validated"] = False
 
             if not session.get("mfa_validated"):
-                logger.debug("Authorize Resource: Redirecting to MFA")
+                logger.debug(f"{get_state_tag(client_state)}: Authorize Resource: Redirecting to MFA")
 
                 return redirect(
                     url_for(

@@ -34,7 +34,7 @@ from tapisservice.auth import validate_token, insecure_decode_jwt_to_claims
 from service import t
 from service.errors import InvalidPasswordError
 from service.helpers import handle_response_type, generate_authorization_code
-from service.session import logout, clear_orig_client_data, logout_from_webapp
+from service.session import logout, clear_orig_client_data, logout_from_webapp, get_state_tag
 from service.models import (
     db,
     TenantConfig,
@@ -776,14 +776,16 @@ class LoginResource(Resource):
         client_id, client_redirect_uri, client_state, client, response_type = (
             check_client()
         )
-        logger.debug(f"client_response_type: {response_type}")
+        tag = get_state_tag(client_state)
+        logger.debug(f"{tag}: Attempting to login")
+        logger.debug(f"{tag}: client_response_type: {response_type}")
         # selecting a tenant id is required before logging in -
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get("tenant_id")
         if not tenant_id:
             logger.debug(
-                f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}"
+                f"{tag}: did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}"
             )
             return redirect(
                 url_for(
@@ -827,6 +829,8 @@ class LoginResource(Resource):
         client_id = request.form.get("client_id")
         client_redirect_uri = request.form.get("client_redirect_uri")
         client_state = request.form.get("client_state")
+        tag = get_state_tag(client_state)
+        logger.debug(f"{tag}: In POST of LoginResource")
         client_display_name = request.form.get("client_display_name")
         context = {
             "error": "",
@@ -850,6 +854,7 @@ class LoginResource(Resource):
             )
         except InvalidPasswordError:
             context["error"] = "Invalid username/password combination."
+            logger.info(f"{tag}: invalid username/password for: {username}")
             return make_response(render_template("login.html", **context), 200, headers)
         # the username and password were accepted; set the session and redirect to the authorization page.
         # first, check if this is a multi_idp situation
@@ -888,13 +893,14 @@ class LoginResource(Resource):
             session["mfa_required"] = True
             sms_required = check_sms(tenant_id, username)
             if sms_required:
-                logger.debug(f"SMS required for: {username}")
+                logger.debug(f"{tag}: SMS required for: {username}")
                 sent = send_sms(tenant_id, username)
-                logger.debug(f"SMS Sent: {sent}")
+                logger.debug(f"{tag}: SMS Sent: {sent}")
         if session.get("device_login"):
             response_type = "device_code"
             if not mfa_required:
                 redirect_url = "deviceflowresource"
+        logger.debug(f"{tag}: login accepted for: {username}; redirecting to: {redirect_url}")
         return redirect(
             url_for(
                 redirect_url,
@@ -914,13 +920,14 @@ class MFAResource(Resource):
         client_id, client_redirect_uri, client_state, client, response_type = (
             check_client()
         )
+        tag = get_state_tag(client_state)
         tenant_id = g.request_tenant_id
         headers = {"Content-Type": "text/html"}
         if not tenant_id:
             tenant_id = session.get("tenant_id")
         if not tenant_id:
             logger.debug(
-                f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}"
+                f"{tag}: did not find tenant_id in session; issuing redirect to LoginResource. session: {session}"
             )
             return redirect(
                 url_for(
@@ -937,8 +944,8 @@ class MFAResource(Resource):
         except Exception as e:
             logger.debug(f"Error getting client display name. e: {e}")
 
-        logger.info(f"Source: {request.args.get('source', None)}")
-        logger.info(f"User Code: {request.args.get('user_code', None)}")
+        logger.info(f"{tag}: Source: {request.args.get('source', None)}")
+        logger.info(f"{tag}: User Code: {request.args.get('user_code', None)}")
 
         context = {
             "error": "",
@@ -961,6 +968,7 @@ class MFAResource(Resource):
         client_id, client_redirect_uri, client_state, client, response_type = (
             check_client()
         )
+        tag = get_state_tag(client_state)
 
         action = request.form.get("action", "submit")
 
@@ -982,7 +990,7 @@ class MFAResource(Resource):
             tenant_id = session.get("tenant_id")
         if not tenant_id:
             logger.debug(
-                f"did not find tenant_id in session; issuing redirect to LoginResource. session: {session}"
+                f"{tag}: did not find tenant_id in session; issuing redirect to LoginResource. session: {session}"
             )
             return redirect(
                 url_for(
@@ -998,8 +1006,8 @@ class MFAResource(Resource):
         source = request.form.get("source", None)
         user_code = request.form.get("user_code", None)
 
-        logger.info(f"Source: {source}")
-        logger.info(f"User Code: {user_code}")
+        logger.info(f"{tag}: Source: {source}")
+        logger.info(f"{tag}: User Code: {user_code}")
 
         response = "Incorrect MFA token"
         logger.debug("MFA CODE: %s" % mfa_token)
@@ -1019,6 +1027,7 @@ class MFAResource(Resource):
                 redirect_url = "webapptokenandredirect"
             session["mfa_validated"] = True
             session["mfa_timestamp"] = time.time()
+            logger.debug(f"{tag}: MFA validated for: {username}; redirecting to: {redirect_url}")
             return redirect(
                 url_for(
                     redirect_url,
@@ -1032,6 +1041,7 @@ class MFAResource(Resource):
                 )
             )
         else:
+            logger.info(f"{tag}: MFA validation failed for: {username}")
             context = {
                 "error": response,
                 "username": session.get("username"),
@@ -1258,6 +1268,8 @@ class AuthorizeResource(Resource):
             client_id, client_redirect_uri, client_state, client, response_type = (
                 check_client()
             )
+        tag = get_state_tag(client_state)
+        logger.debug(f"{tag}: client_id: {client_id}; response_type: {response_type}")
         if is_device_flow:
             response_type = "device_code"
         tenant_id = session.get("tenant_id")
@@ -1302,7 +1314,7 @@ class AuthorizeResource(Resource):
                     f"tenant. Allowable grant types: {allowable_grant_types}"
                 )
         if response_type == "device_code":
-            logger.info("device_code response type")
+            logger.info(f"{tag}: device_code response type")
             if "device_code" not in allowable_grant_types:
                 raise errors.ResourceError(
                     f"The device_code grant type is not allowed for this "
@@ -1317,7 +1329,7 @@ class AuthorizeResource(Resource):
                 session["device_login"] = True
             # if the tenant is configured with a custom oa2 extension, start the redirect for that --
             if tenant_configs_cache.get_custom_oa2_extension_type(tenant_id=tenant_id):
-                logger.debug(f"username not in session and custom oa2 extension found.")
+                logger.debug(f"{tag}: username not in session and custom oa2 extension found.")
                 is_local_development = "localhost" in request.base_url
                 # we need to save the original client in the session in this case, because there is no
                 # way to pass it through the third party OAuth server
@@ -1360,9 +1372,9 @@ class AuthorizeResource(Resource):
                 else:
                     url = f"{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}&response_type=code"
                 if not oa2ext.ext_type == "ldap":
-                    logger.debug(f"final redirect URL: {url}")
+                    logger.debug(f"{tag}: final redirect URL: {url}")
                     return redirect(url)
-            logger.debug("username not in session; issuing redirect to login.")
+            logger.debug(f"{tag}: username not in session; issuing redirect to login.")
             return redirect(
                 url_for(
                     "loginresource",
@@ -1402,9 +1414,9 @@ class AuthorizeResource(Resource):
             auto_approve = True
 
         # Add check here for auto approve
-        logger.debug(f'Checking for auto approve ... ')
+        logger.debug(f'{tag}: Checking for auto approve ... ')
         if auto_approve and not is_device_flow:
-            logger.debug(f'Found. Skipping authoriziation page.')
+            logger.debug(f'{tag}: Found. Skipping authoriziation page.')
             generate_authorization_code(tenant_id, username, client_id, client, nonce)
             auto_redirect = handle_response_type(
                 response_type,
@@ -1417,18 +1429,20 @@ class AuthorizeResource(Resource):
                 nonce=nonce
             )
             return auto_redirect
-        logger.debug(f'Not found. Proceeding to authentication page')
+        logger.debug(f'{tag}: Not found. Proceeding to authentication page')
 
         return make_response(render_template("authorize.html", **context), 200, headers)
 
     def post(self):
-        logger.info("top of POST /v3/oauth2/authorize")
+        state = request.form.get("client_state")
+        tag = get_state_tag(state)
+        logger.info(f"{tag}: top of POST /v3/oauth2/authorize")
         # selecting a tenant id is required before logging in -
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get("tenant_id")
         if not tenant_id:
-            logger.debug("did not tenant_id on g or in session; raising error.")
+            logger.debug(f"{tag}: did not tenant_id on g or in session; raising error.")
             raise errors.ResourceError(
                 "Tenant ID missing from session. Please logout and select a tenant."
             )
@@ -1438,14 +1452,14 @@ class AuthorizeResource(Resource):
             username = session["username"]
         except KeyError:
             logger.debug(
-                f"did not find username in session; this is an error. raising error. session: {session};"
+                f"{tag}: did not find username in session; this is an error. raising error. session: {session};"
             )
             raise errors.ResourceError(
                 "username missing from session. Please login to continue."
             )
         approve = request.form.get("approve")
         if not approve:
-            logger.debug("user did not approve.")
+            logger.debug(f"{tag}: user did not approve.")
             headers = {"Content-Type": "text/html"}
             context = {
                 "error": f"To proceed with authorization application {client_display_name}, you "
@@ -1457,22 +1471,21 @@ class AuthorizeResource(Resource):
 
         # TODO - move all request form gets to top, remove duplicates
         always_allow = request.form.get("always_allow")
-        state = request.form.get("client_state")
         client_response_type = request.form.get("client_response_type")
         client_id = request.form.get("client_id", None)
         if not client_id:
-            logger.debug("client_id missing from form.")
+            logger.debug(f"{tag}: client_id missing from form.")
             raise errors.ResourceError("client_id missing.")
 
         # retrieve client data from form and db -
         client = Client.query.filter_by(client_id=client_id).first()
         if not client:
-            logger.debug(f"client not found in db. client_id: {client_id}")
+            logger.debug(f"{tag}: client not found in db. client_id: {client_id}")
             raise errors.ResourceError(f"Invalid client: {client_id}")
 
         # add alawys_allow rule if user has selected
         if always_allow:
-            logger.debug(f'{username} has selected to always allow {client}')
+            logger.debug(f'{tag}: {username} has selected to always allow {client}')
             # check if there is already a record for some reason 
             record_exists = Users.query.filter_by(username=username, client_id=client_id).first()
             logger.debug(f'record exists status: {record_exists} and has type: {type(record_exists)}')
@@ -1515,14 +1528,14 @@ class AuthorizeResource(Resource):
                 )
             client_redirect_uri = request.form.get("client_redirect_uri")
             code = request.form.get("user_code")
-            logger.info(f"User code passed in: {code}")
+            logger.info(f"{tag}: User code passed in: {code}")
 
             # check that device code exists in the database
             try:
                 device_code = DeviceCode.query.filter_by(
                     user_code=code, tenant_id=tenant_id, status="Entered"
                 ).first()
-                logger.info(f"User code entered for device code: {device_code}")
+                logger.info(f"{tag}: User code entered for device code: {device_code}")
             except Exception as e:
                 logger.debug(f"Error grabbing code: {code}; error: {e}")
                 error = e
@@ -1573,10 +1586,10 @@ class AuthorizeResource(Resource):
             if session.get("idp_id"):
                 device_code.tapis_idp_id = session.get("idp_id")
             try:
-                logger.info(f"Updating device code: {device_code}")
+                logger.info(f"{tag}: Updating device code: {device_code}")
                 db.session.commit()
             except Exception as e:
-                logger.error(f"Error updating {device_code}; e: {e}")
+                logger.error(f"{tag}: Error updating {device_code}; e: {e}")
                 context = {
                     "error": e,
                     "username": session["username"],
@@ -1598,6 +1611,8 @@ class AuthorizeResource(Resource):
             return make_response(render_template("success.html"), 200, headers)
 
         else:
+            res = {tenant_id, username, state}
+            logger.debug(f"{tag}: Returning response for {client_id}: {res}")
             return handle_response_type(
                 client_response_type,
                 allowable_grant_types,

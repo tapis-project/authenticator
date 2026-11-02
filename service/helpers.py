@@ -1,6 +1,6 @@
 from flask import g, session, redirect, render_template, make_response
 from service.models import db, AuthorizationCode, tenant_configs_cache
-from service.session import clear_orig_client_data
+from service.session import clear_orig_client_data, get_state_tag
 
 from service import t
 from service import errors
@@ -80,7 +80,7 @@ def handle_response_type(response_type, allowable_grant_types, tenant_id, userna
 
         # Redirect to the client's callback URL with the token
         redirect_url = f"{client.callback_url}?access_token={access_token}&state={state}&expires_in={expires_in}&token_type=Bearer"
-        logger.debug(f"Redirecting to: {redirect_url}")
+        logger.debug(f"{get_state_tag(state)}: Redirecting to: {redirect_url}")
         if session.get("idp_id"):
             clear_orig_client_data()
         return redirect(redirect_url)
