@@ -4,6 +4,7 @@ import json
 
 from service import tenants, MIGRATIONS_RUNNING
 from service.errors import InvalidPasswordError, InvalidTenantUserError
+from service.login_messages import INVALID_USERNAME_PASSWORD_MESSAGE
 from service.models import LdapOU, LdapUser, tenant_configs_cache
 
 from tapisservice.config import conf
@@ -403,6 +404,8 @@ def get_tenant_user(tenant_id, username):
         msg = f"Error retrieving user; debug information: {conn.result}"
         logger.error(msg)
         raise DAOError(msg)
+    # save the info we just got so it doesn't get cleared from conn when we use it again later
+    userinfo = conn.entries
     result = []
     logger.debug(f"conn.entries: {conn.entries}")
     # Now we need to also check if the user is allowed in the tenant
@@ -436,8 +439,10 @@ def get_tenant_user(tenant_id, username):
         result = []
         logger.debug(conn.entries)
 
+    logger.debug(f'userinfo: {userinfo}')
     user = LdapUser.from_ldap3_entry(
-        tenant_id, conn.entries[0].entry_attributes_as_dict
+        # tenant_id, conn.entries[0].entry_attributes_as_dict
+        tenant_id, userinfo[0].entry_attributes_as_dict
     )
     return user
 
@@ -487,13 +492,22 @@ def check_username_password(tenant_id, username, password):
         raise InvalidPasswordError(
             "Invalid username. Spaces are not allowed in usernames."
         )
+
+    if "@" in username:
+        logger.debug(f"@ symbol contained in username: {username}")
+        raise InvalidPasswordError(
+            "Please use your TACC ID to log in, which you can find at https://accounts.tacc.utexas.edu. Please do not log in with your email address."
+        )
+
     bind_dn = get_dn(tenant_id, username)
     logger.debug(f"got bind_dn: {bind_dn}")
+    # TODO -- add separate check for username?
+    #         maybe only when it fails?
     try:
         get_tenant_ldap_connection(tenant_id, bind_dn=bind_dn, bind_password=password)
     except LDAPBindError as e:
         logger.debug(f"got exception checking password: {e}; type(e): {type(e)}")
-        raise InvalidPasswordError("Invalid username/password combination.")
+        raise InvalidPasswordError(INVALID_USERNAME_PASSWORD_MESSAGE)
     # the bind above just checks that the username/password combination are in the underlying ldap; it does
     # not check that the user is in the user search filter for the tenant. for simplicty, we check that here
     try:

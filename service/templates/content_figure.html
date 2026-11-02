@@ -1,0 +1,12 @@
+<figure>
+  {% if client_display_name != "TACC User Portal" %}
+    {% with tenant_id=tenant_id %}
+      {% include "./branding.html" %}
+    {% endwith %}
+  {% endif %}
+  {% if tenant_id != "tacc" %}
+  {% with tenant_id="tacc" %}
+    {% include "./branding.html" %}
+  {% endwith %}
+  {% endif %}
+</figure>

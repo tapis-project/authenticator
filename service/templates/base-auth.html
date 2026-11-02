@@ -43,16 +43,14 @@
 </template>
 <script type="module">
     const form = document.querySelector('form');
-    const submitButtons = form.querySelectorAll('[type="submit"]');
     const loadingTemplate = document.getElementById('loading-content');
     const loadingContent = loadingTemplate.content.cloneNode(true);
     const fields = form.querySelectorAll('input:not([hidden], select, textarea');
 
     form.addEventListener('submit', (event) => {
       /* To show user the submission is in progress */
-      if (submitButtons.length === 1) {
-        const submitButton = submitButtons[0];
-
+      const submitButton = event.submitter;
+      if (submitButton && submitButton.type === 'submit') {
         submitButton.setAttribute('data-state', 'busy');
         submitButton.append(...loadingContent.childNodes);
 

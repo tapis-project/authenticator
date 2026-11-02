@@ -33,6 +33,7 @@ from tapisservice.auth import validate_token, insecure_decode_jwt_to_claims
 
 from service import t
 from service.errors import InvalidPasswordError
+from service.login_messages import INVALID_USERNAME_PASSWORD_MESSAGE
 from service.helpers import handle_response_type, generate_authorization_code
 from service.session import logout, clear_orig_client_data, logout_from_webapp, get_state_tag
 from service.models import (
@@ -771,21 +772,21 @@ class LoginResource(Resource):
     """
 
     def get(self):
-        logger.debug("Logging in")
+        logger.info("Top of GET LoginResource")
         logger.debug(f"Session: {session}")
         client_id, client_redirect_uri, client_state, client, response_type = (
             check_client()
         )
         tag = get_state_tag(client_state)
         logger.debug(f"{tag}: Attempting to login")
-        logger.debug(f"{tag}: client_response_type: {response_type}")
+        logger.debug(f"{tag}: client_id: {client_id}; client_response_type: {response_type}")
         # selecting a tenant id is required before logging in -
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get("tenant_id")
         if not tenant_id:
-            logger.debug(
-                f"{tag}: did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}"
+            logger.info(
+                f"{tag}: did not find tenant_id in session; issuing redirect to SetTenantResource. client_id: {client_id}"
             )
             return redirect(
                 url_for(
@@ -796,6 +797,7 @@ class LoginResource(Resource):
                     response_type="code",
                 )
             )
+        logger.debug(f"resolved tenant_id: {tenant_id}; rendering login page")
         headers = {"Content-Type": "text/html"}
         display_name = ""
         try:
@@ -815,11 +817,12 @@ class LoginResource(Resource):
 
     def post(self):
         # process the login form -
+        logger.info("Top of POST LoginResource")
         tenant_id = g.request_tenant_id
         if not tenant_id:
             tenant_id = session.get("tenant_id")
         if not tenant_id:
-            logger.debug(
+            logger.info(
                 f"did not find tenant_id in session; issuing redirect to SetTenantResource. session: {session}"
             )
             raise errors.ResourceError(
@@ -842,20 +845,30 @@ class LoginResource(Resource):
         }
         username = request.form.get("username")
         if not username:
+            logger.info(f"Login submission missing username; tenant_id: {tenant_id}")
             context["error"] = "Username is required."
             return make_response(render_template("login.html", **context), 200, headers)
         password = request.form.get("password")
         if not password:
+            logger.info(
+                f"Login submission missing password; user: {username}; tenant_id: {tenant_id}"
+            )
             context["error"] = "Password is required."
             return make_response(render_template("login.html", **context), 200, headers)
         try:
             check_username_password(
                 tenant_id=tenant_id, username=username, password=password
             )
-        except InvalidPasswordError:
-            context["error"] = "Invalid username/password combination."
-            logger.info(f"{tag}: invalid username/password for: {username}")
+        except InvalidPasswordError as e:
+            error = e.msg or INVALID_USERNAME_PASSWORD_MESSAGE
+            logger.debug(
+                f"{tag}: Invalid username/password for user: {username}; tenant_id: {tenant_id}; e: {error}"
+            )
+            context["error"] = error
             return make_response(render_template("login.html", **context), 200, headers)
+        logger.debug(
+            f"Username/password accepted for user: {username}; tenant_id: {tenant_id}"
+        )
         # the username and password were accepted; set the session and redirect to the authorization page.
         # first, check if this is a multi_idp situation
         idp_id = session.get("idp_id")
@@ -877,6 +890,9 @@ class LoginResource(Resource):
                     # either way, exit the loop because we've found the idp
                     break
             if append_idp_to_username:
+                logger.debug(
+                    f"appending idp_id {idp_id} to user for multi-idp tenant {tenant_id}"
+                )
                 username = f"{username}@{idp_id}"
 
         # response_type = 'code'
@@ -886,6 +902,9 @@ class LoginResource(Resource):
         session["username"] = username
         mfa_timestamp = session.get("mfa_timestamp", None)
         mfa_required = needs_mfa(tenant_id, mfa_timestamp)
+        logger.info(
+            f"MFA required: {mfa_required} for user: {username}; tenant_id: {tenant_id}"
+        )
         redirect_url = "authorizeresource"
         if mfa_required:
             redirect_url = "mfaresource"
@@ -900,7 +919,10 @@ class LoginResource(Resource):
             response_type = "device_code"
             if not mfa_required:
                 redirect_url = "deviceflowresource"
-        logger.debug(f"{tag}: login accepted for: {username}; redirecting to: {redirect_url}")
+        logger.info(
+            f"{tag}: LoginResource redirecting user: {username} to {redirect_url}; "
+            f"response_type: {response_type}"
+        )
         return redirect(
             url_for(
                 redirect_url,
@@ -944,6 +966,9 @@ class MFAResource(Resource):
         except Exception as e:
             logger.debug(f"Error getting client display name. e: {e}")
 
+        logger.debug(
+            f"{tag}: Rendering MFA page for user: {session.get('username')}; tenant_id: {tenant_id}"
+        )
         logger.info(f"{tag}: Source: {request.args.get('source', None)}")
         logger.info(f"{tag}: User Code: {request.args.get('user_code', None)}")
 
@@ -971,8 +996,10 @@ class MFAResource(Resource):
         tag = get_state_tag(client_state)
 
         action = request.form.get("action", "submit")
+        logger.info(f"MFA action: {action}; username: {session.get('username')}")
 
         if action == "logout":
+            logger.debug(f"Logging out user: {session.get('username')} from MFAResource")
             logout()
             return redirect(
                 url_for(
@@ -1010,8 +1037,12 @@ class MFAResource(Resource):
         logger.info(f"{tag}: User Code: {user_code}")
 
         response = "Incorrect MFA token"
-        logger.debug("MFA CODE: %s" % mfa_token)
+        # note: never log the raw mfa_token value; it is a secret one-time credential.
+        logger.debug(f"MFA token submitted for user: {username}; tenant_id: {tenant_id}")
         validated = call_mfa(mfa_token, tenant_id, username)
+        logger.info(
+            f"MFA validation result: {bool(validated)} for user: {username}; tenant_id: {tenant_id}"
+        )
         display_name = ""
         redirect_url = "authorizeresource"
         try:
@@ -1027,7 +1058,10 @@ class MFAResource(Resource):
                 redirect_url = "webapptokenandredirect"
             session["mfa_validated"] = True
             session["mfa_timestamp"] = time.time()
-            logger.debug(f"{tag}: MFA validated for: {username}; redirecting to: {redirect_url}")
+            logger.info(
+                f"{tag}: MFAResource redirecting username: {username} to {redirect_url}; "
+                f"response_type: {response_type}"
+            )
             return redirect(
                 url_for(
                     redirect_url,
@@ -1041,7 +1075,9 @@ class MFAResource(Resource):
                 )
             )
         else:
-            logger.info(f"{tag}: MFA validation failed for: {username}")
+            logger.info(
+                f"{tag}: MFA token rejected for user: {username}; tenant_id: {tenant_id}; re-rendering MFA page"
+            )
             context = {
                 "error": response,
                 "username": session.get("username"),
@@ -1585,6 +1621,7 @@ class AuthorizeResource(Resource):
                 device_code.access_token_ttl = int(ttl) * 60 * 60 * 24
             if session.get("idp_id"):
                 device_code.tapis_idp_id = session.get("idp_id")
+            device_code.status = "Authorized"
             try:
                 logger.info(f"{tag}: Updating device code: {device_code}")
                 db.session.commit()
@@ -1834,10 +1871,10 @@ def _handle_tokens_request(request, oidc=False):
                 )
             try:
                 check_username_password(tenant_id, username, password)
-            except InvalidPasswordError:
-                msg = "Invalid username/password combination."
-                logger.debug(msg)
-                raise errors.ResourceError(msg)
+            except InvalidPasswordError as e:
+                error = e.msg or INVALID_USERNAME_PASSWORD_MESSAGE
+                logger.debug(error)
+                raise errors.ResourceError(error)
         elif grant_type == "authorization_code":
             # check the redirect uri -
             redirect_uri = data.get("redirect_uri")
