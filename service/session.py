@@ -20,3 +20,10 @@ def logout_from_webapp():
     Helper function that just removes the Token Webapp's attributes from the session.
     """
     session.pop("access_token", None)
+
+
+def get_state_tag(state):
+    """
+    Returns a log prefix for the client state. We truncate to max 64 chars for readability.
+    """
+    return f"[state={state!r:.64}]"
