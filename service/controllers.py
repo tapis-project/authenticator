@@ -1393,6 +1393,9 @@ class AuthorizeResource(Resource):
                 # for globus, we set the scope parameter as well
                 elif oa2ext.ext_type == "globus":
                     url = f"{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}&response_type=code&scope=openid profile"
+                # ras expects a lot more query parameters
+                elif oa2ext.ext_type == "nih_ras":
+                    url = f"{oa2ext.identity_redirect_url}?response_type=code&display=page&prompt=login&client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}&scope=openid email profile ga4gh_passport_v1 federated_identities"
                 # when the extension type is ldap, we redirect to the login resource
                 elif oa2ext.ext_type == "ldap":
                     pass
