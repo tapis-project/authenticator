@@ -219,7 +219,7 @@ class OAuth2ProviderExtension(object):
         }
         logger.debug(f'setting parameters for ext_type: {self.ext_type}')
         # keycloak and globus require the "grant_type" parameter
-        if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus':
+        if self.ext_type == 'tacc_keycloak' or self.ext_type == 'multi_keycloak' or self.ext_type == 'globus' or self.ext_type == 'nih_ras':
             body["grant_type"] = "authorization_code"
         if self.ext_type == 'tms':
             body["grant_type"] = "authorization_code"
@@ -236,9 +236,11 @@ class OAuth2ProviderExtension(object):
             rsp = None
             if self.ext_type == 'tms':
                 rsp = requests.post(self.oauth2_token_url, data=json.dumps(body), headers=headers)
+            elif self.ext_type == 'nih_ras':
+                rsp = requests.post(self.oauth2_token_url, data=body, headers={'Accept': 'application/json'})
             else:
                 rsp = requests.post(self.oauth2_token_url, data=body, headers={'Accept': 'application/json'})
-            
+            rsp.raise_for_status()
         except Exception as e:
             logger.error(f"Got exception from POST request to OAuth server attempting to exchange the "
                          f"authorization code for a token. Debug data: "
@@ -380,6 +382,7 @@ class OAuth2ProviderExtension(object):
         elif self.ext_type == 'vdjserver':
             logger.debug(f'vdjserver jwt:: {self.access_token}')
         elif self.ext_type == 'nih_ras':
+            _username = requests.get('https://sts.nih.gov/openid/connect/v1/userinfo')
             pass
         # TODO: find the NIH 'userinfo' endpoint and call it here.
         # elif self.ext_type == 'google':
