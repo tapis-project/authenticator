@@ -232,12 +232,16 @@ class OAuth2ProviderExtension(object):
             logger.error(f'Failed to validate request body as json. Debug data: {e}: body: {body}')
 
         logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}; headers: {headers}")
+        # for nih 
+        passport = None
         try:
             rsp = None
             if self.ext_type == 'tms':
                 rsp = requests.post(self.oauth2_token_url, data=json.dumps(body), headers=headers)
             elif self.ext_type == 'nih_ras':
                 rsp = requests.post(self.oauth2_token_url, data=body, headers={'Accept': 'application/json'})
+                passport = rsp.text
+                logger.debug(f'got passport: {passport}')
             else:
                 rsp = requests.post(self.oauth2_token_url, data=body, headers={'Accept': 'application/json'})
             rsp.raise_for_status()
@@ -254,6 +258,8 @@ class OAuth2ProviderExtension(object):
         try:
             if self.ext_type == 'tms':
                 self.access_token = rsp.json().get('result').get('access_token').get('access_token')
+            elif self.ext_type == 'nih_ras':
+                self.access_token = rsp.json().get('access_token')
             else:
                 self.access_token = rsp.json().get('access_token')
         except Exception as e:
@@ -352,9 +358,8 @@ class OAuth2ProviderExtension(object):
             elif self.ext_type == 'tms':
                 username = rsp.json().get('result').get('username')
                 self.username = username
-            if idp_id:
-                self.username = f"{self.username}@{idp_id}"
             logger.debug(f"Successfully determined user's identity: {self.username}")
+            # TODO: make sure we can't generate a token for a user with no username, unless that's necessary
             return self.username
 
         elif self.ext_type == 'cii':
@@ -381,10 +386,25 @@ class OAuth2ProviderExtension(object):
             return self.username
         elif self.ext_type == 'vdjserver':
             logger.debug(f'vdjserver jwt:: {self.access_token}')
+            if idp_id:
+                self.username = f"{self.username}@{idp_id}"
+            return self.username
         elif self.ext_type == 'nih_ras':
-            _username = requests.get('https://sts.nih.gov/openid/connect/v1/userinfo')
-            pass
-        # TODO: find the NIH 'userinfo' endpoint and call it here.
+            try:
+                _headers = {"Authorization": f"Bearer {self.access_token}"}
+                _rsp = requests.get(self.user_info_url, headers=_headers)
+                logger.debug(f'Got response from NIH: {_rsp.content}')
+                _rsp.raise_for_status()
+                _username = json.loads(_rsp.content).get("userid")
+                self.username = _username
+            except Exception as e:
+                logger.error(f'Error determining user identity: {e} '
+                                f'debug: {_rsp.content}')
+                raise errors.ServiceConfigError(f"Error determining user identity: {e}")
+            logger.debug(f'determined NIH RAS username: {self.username}')
+            if idp_id:
+                self.username = f"{self.username}@{idp_id}"
+            return self.username
         # elif self.ext_type == 'google':
         #     ...
         else:
