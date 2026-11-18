@@ -15,6 +15,7 @@ Other changes:
 
 """
 import json
+import secrets
 import jwt
 from flask import session
 import requests
@@ -188,12 +189,22 @@ class OAuth2ProviderExtension(object):
         # first, check for the state parameter and, if passed, compare it to the state in the session
         logger.debug(f"top of get_auth_code_from_callback; request.args: {request.args}; request: {request}")
         req_state = request.args.get('state')
-        if req_state:
+        if self.ext_type == 'nih_ras':
+            # for RAS we always send a state parameter on the authorize redirect, so a callback without a
+            # matching state is not a response to a login we started (login CSRF) and must be rejected.
+            expected_state = session.pop('oa2ext_state', None)
+            if not expected_state or not req_state or not secrets.compare_digest(expected_state, req_state):
+                logger.error("ERROR! state missing or did not match the state stored in the session for nih_ras.")
+                raise errors.ServiceConfigError("Error processing provider callback -- state mismatch.")
+        elif req_state:
             state = session.get('state')
             if not state == req_state:
                 logger.error(f"ERROR! state stored in the session ({state}) did not match the state passed in"
                              f"the callback ({req_state}")
                 raise errors.ServiceConfigError("Error processing provider callback -- state mismatch.")
+        if request.args.get('error'):
+            logger.error(f"ERROR! provider returned an error in the callback: {request.args.get('error')}")
+            raise errors.ServiceConfigError("Error processing provider callback -- the provider returned an error.")
         req_code = request.args.get('code')
         if not req_code:
             logger.error(f"ERROR! did not receive an authorization code in the callback.")
@@ -226,34 +237,31 @@ class OAuth2ProviderExtension(object):
             headers["Content-Type"] = "application/json"
         # make sure the body is proper json
         try:
-            valid_body = json.dumps(body)
-            logger.debug(f'Body validated as json: {valid_body}')
+            json.dumps(body)
         except Exception as e:
-            logger.error(f'Failed to validate request body as json. Debug data: {e}: body: {body}')
+            logger.error(f'Failed to validate request body as json. Debug data: {e}')
 
-        logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {body}; headers: {headers}")
-        # for nih 
-        passport = None
+        # never log the client secret or the authorization code
+        safe_body = {k: v for k, v in body.items() if k not in ('client_secret', 'code')}
+        logger.debug(f"making POST to token url {self.oauth2_token_url}...; body: {safe_body}; headers: {headers}")
+        rsp = None
         try:
             rsp = None
             if self.ext_type == 'tms':
                 rsp = requests.post(self.oauth2_token_url, data=json.dumps(body), headers=headers)
             elif self.ext_type == 'nih_ras':
                 rsp = requests.post(self.oauth2_token_url, data=body, headers={'Accept': 'application/json'})
-                passport = rsp.text
-                logger.debug(f'got passport: {passport}')
             else:
                 rsp = requests.post(self.oauth2_token_url, data=body, headers={'Accept': 'application/json'})
             rsp.raise_for_status()
         except Exception as e:
             logger.error(f"Got exception from POST request to OAuth server attempting to exchange the "
                          f"authorization code for a token. Debug data: "
-                         f"request body: {body} "
-                         f"response: {rsp.text} "
+                         f"request body: {safe_body} "
+                         f"response: {rsp.text if rsp is not None else None} "
                          f"exception: {e}")
             raise errors.ServiceConfigError("Error requesting access token. Contact server administrator.")
-        logger.debug(f"successfully made POST to token url {self.oauth2_token_url}; rsp: {rsp}; "
-                     f"rsp.content: {rsp.content}")
+        logger.debug(f"successfully made POST to token url {self.oauth2_token_url}; rsp: {rsp}")
         # todo -- it is possible different provider servers will not pass JSON
         try:
             if self.ext_type == 'tms':
@@ -265,11 +273,14 @@ class OAuth2ProviderExtension(object):
         except Exception as e:
             logger.error(f"Got exception trying to process response from POST request to exchange the "
                          f"authorization code for a token. Debug data: "
-                         f"request body: {body}; "
-                         f"response: {rsp} "
+                         f"request body: {safe_body}; "
+                         f"response status: {rsp.status_code} "
                          f"exception: {e}")
             raise errors.ServiceConfigError("Error parsing access token. Contact server administrator.")
-        logger.debug(f"successfully got access_token: {self.access_token}")
+        if not self.access_token:
+            logger.error("Token response did not contain an access_token.")
+            raise errors.ServiceConfigError("Error parsing access token. Contact server administrator.")
+        logger.debug("successfully got access_token")
         return self.access_token
 
     def get_token_from_callback(self, request):
@@ -390,17 +401,21 @@ class OAuth2ProviderExtension(object):
                 self.username = f"{self.username}@{idp_id}"
             return self.username
         elif self.ext_type == 'nih_ras':
+            _rsp = None
             try:
                 _headers = {"Authorization": f"Bearer {self.access_token}"}
                 _rsp = requests.get(self.user_info_url, headers=_headers)
-                logger.debug(f'Got response from NIH: {_rsp.content}')
                 _rsp.raise_for_status()
-                _username = json.loads(_rsp.content).get("userid")
-                self.username = _username
+                _username = _rsp.json().get("userid")
             except Exception as e:
-                logger.error(f'Error determining user identity: {e} '
-                                f'debug: {_rsp.content}')
+                logger.error(f'Error determining user identity: {e}; '
+                             f'status: {_rsp.status_code if _rsp is not None else None}')
                 raise errors.ServiceConfigError(f"Error determining user identity: {e}")
+            if not _username:
+                logger.error("NIH RAS userinfo response did not contain a userid.")
+                raise errors.ServiceConfigError("Error determining user identity: username was empty. "
+                                                "Contact server administrator.")
+            self.username = _username
             logger.debug(f'determined NIH RAS username: {self.username}')
             if idp_id:
                 self.username = f"{self.username}@{idp_id}"

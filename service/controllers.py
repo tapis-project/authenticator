@@ -24,6 +24,7 @@ from jwcrypto import jwk
 import jwt
 import sqlalchemy
 import secrets
+from urllib.parse import urlencode
 import random
 
 from tapisservice import errors
@@ -1395,7 +1396,18 @@ class AuthorizeResource(Resource):
                     url = f"{oa2ext.identity_redirect_url}?client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}&response_type=code&scope=openid profile"
                 # ras expects a lot more query parameters
                 elif oa2ext.ext_type == "nih_ras":
-                    url = f"{oa2ext.identity_redirect_url}?response_type=code&display=page&prompt=login&client_id={oa2ext.client_id}&redirect_uri={oa2ext.callback_url}&scope=openid email profile ga4gh_passport_v1 federated_identities"
+                    ras_state = secrets.token_hex(24)
+                    session["oa2ext_state"] = ras_state
+                    ras_params = urlencode({
+                        "response_type": "code",
+                        "display": "page",
+                        "prompt": "login",
+                        "client_id": oa2ext.client_id,
+                        "redirect_uri": oa2ext.callback_url,
+                        "scope": "openid email profile ga4gh_passport_v1 federated_identities",
+                        "state": ras_state,
+                    })
+                    url = f"{oa2ext.identity_redirect_url}?{ras_params}"
                 # when the extension type is ldap, we redirect to the login resource
                 elif oa2ext.ext_type == "ldap":
                     pass
