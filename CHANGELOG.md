@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 26Q3.1
+### Breaking Changes:
+- App token is generated each startup by default. This will invalidate active sessions during upgrade. 
+
 ## 26Q3
 ### Breaking Changes:
 - None
