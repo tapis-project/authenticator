@@ -29,8 +29,6 @@ app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(minutes=15)
 
 
 app.secret_key = os.environ.get('AUTHENTICATOR_APP_SECRET_KEY', secrets.token_urlsafe(16))
-if not app.secret_key:
-    raise Exception(msg='Startup failed: AUTHENTICATOR_APP_SECRET_KEY must be set in the environment.')
 
 try:
     full_db_url = f'postgresql://{conf.postgres_user}:{conf.postgres_password}@{conf.sql_db_url}'
